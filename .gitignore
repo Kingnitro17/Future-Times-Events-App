@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ── Security: NEVER commit these ──────────────────────────────────────────────
+*.jks
+*.keystore
+key.properties
+*.p8
+*.p12
+*.mobileprovision
+GoogleService-Info.plist
+google-services.json
+.env
+.env.local
+.env.*.local
+*.secret
+secrets.dart
+
+# ── Build outputs ──────────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ipa

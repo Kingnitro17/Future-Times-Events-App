@@ -1,92 +1,87 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'core/network/dio_client.dart';
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
-import 'data/repositories/event_repository.dart';
-import 'data/repositories/social_repository.dart';
-import 'data/services/payment_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() async {
+import 'core/config/app_config.dart';
+import 'core/supabase/supabase_service.dart';
+import 'core/theme/app_theme.dart';
+import 'core/router/app_router.dart';
+import 'features/auth/data/auth_repository.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_state.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── System UI ──────────────────────────────────────────────────────────────
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.charcoalSurface,
-    systemNavigationBarIconBrightness: Brightness.light,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
   ));
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // ── Firebase ───────────────────────────────────────────────────────────────
-  // Requires google-services.json (Android) / GoogleService-Info.plist (iOS).
-  // Run: flutterfire configure
-  // await Firebase.initializeApp(); // TEMPORARILY DISABLED FOR UI ONLY MODE
+  // ── Supabase ───────────────────────────────────────────────────────────────
+  await SupabaseService.initialize();
 
-  // ── Dio ────────────────────────────────────────────────────────────────────
-  DioClient.instance.init();
+  // ── Determine initial route ─────────────────────────────────────────────
+  final prefs = await SharedPreferences.getInstance();
+  final onboardingDone = prefs.getBool('onboarding_complete') ?? false;
 
-  // ── Stripe ────────────────────────────────────────────────────────────────
-  if (!kIsWeb) {
-    PaymentService.init();
-  }
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  final authRepository = AuthRepository();
+  final authBloc = AuthBloc(authRepository)..add(const AuthStarted());
 
-  // ── Repositories ──────────────────────────────────────────────────────────
-  final eventRepository = EventRepository();
-  final socialRepository = SocialRepository();
-  final paymentService = PaymentService.instance;
-
-  runApp(EventDistroApp(
-    eventRepository: eventRepository,
-    socialRepository: socialRepository,
-    paymentService: paymentService,
+  runApp(FutureTimesApp(
+    authBloc: authBloc,
+    showOnboarding: !onboardingDone,
   ));
 }
 
-class EventDistroApp extends StatelessWidget {
-  const EventDistroApp({
+class FutureTimesApp extends StatelessWidget {
+  const FutureTimesApp({
     super.key,
-    required this.eventRepository,
-    required this.socialRepository,
-    required this.paymentService,
+    required this.authBloc,
+    required this.showOnboarding,
   });
 
-  final EventRepository eventRepository;
-  final SocialRepository socialRepository;
-  final PaymentService paymentService;
+  final AuthBloc authBloc;
+  final bool showOnboarding;
 
   @override
   Widget build(BuildContext context) {
-    final router = buildAppRouter(
-      eventRepository: eventRepository,
-      socialRepository: socialRepository,
-      paymentService: paymentService,
-    );
+    return BlocProvider.value(
+      value: authBloc,
+      child: Builder(
+        builder: (context) {
+          final router = buildAppRouter(authBloc);
 
-    return MaterialApp.router(
-      title: 'EventDistro',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      routerConfig: router,
+          return MaterialApp.router(
+            title: AppConfig.appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            routerConfig: router,
 
-      // ── Meta ──────────────────────────────────────────────────────────────
-      builder: (context, child) {
-        // Clamp font scaling to prevent layout breaks
-        final mq = MediaQuery.of(context);
-        return MediaQuery(
-          data: mq.copyWith(
-            textScaler:
-                TextScaler.linear(mq.textScaler.scale(1.0).clamp(0.85, 1.2)),
-          ),
-          child: child!,
-        );
-      },
+            // ── Clamped text scaling ──────────────────────────────────────
+            builder: (context, child) {
+              final mq = MediaQuery.of(context);
+              return MediaQuery(
+                data: mq.copyWith(
+                  textScaler: TextScaler.linear(
+                    mq.textScaler.scale(1.0).clamp(0.85, 1.2),
+                  ),
+                ),
+                child: child!,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

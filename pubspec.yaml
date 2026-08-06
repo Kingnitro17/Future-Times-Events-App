@@ -1,5 +1,5 @@
-name: event_distro
-description: "EventDistro — Premium event discovery and booking platform."
+name: future_times_events
+description: "Future Times Events — Premier event discovery and ticketing for Zimbabwe and beyond."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,62 +10,113 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # State Management
+  # ── Supabase ───────────────────────────────────────────────────────────────
+  supabase_flutter: ^2.7.0
+
+  # ── State Management ──────────────────────────────────────────────────────
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5
   bloc: ^8.1.4
 
-  # Networking
-  dio: ^5.7.0
-  pretty_dio_logger: ^1.4.0
+  # ── Navigation ─────────────────────────────────────────────────────────────
+  go_router: ^14.6.2
 
-  # Code Generation / Models
+  # ── Dependency Injection ──────────────────────────────────────────────────
+  get_it: ^8.0.2
+
+  # ── Models / Serialization ────────────────────────────────────────────────
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
 
-  # Firebase (Social Layer)
-  firebase_core: ^3.6.0
-  cloud_firestore: ^5.4.4
-  firebase_auth: ^5.3.1
+  # ── Security / Storage ────────────────────────────────────────────────────
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+  crypto: ^3.0.3
 
-  # Payments
-  flutter_stripe: ^10.2.0
-
-  # Image Loading
+  # ── Image Loading ─────────────────────────────────────────────────────────
   cached_network_image: ^3.4.1
 
-  # In-App Browser (Eventbrite fallback)
-  webview_flutter: ^4.10.0
+  # ── QR (display + scanning) ───────────────────────────────────────────────
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.1
 
-  # Navigation
-  go_router: ^14.6.2
-
-  # Dependency Injection
-  get_it: ^8.0.2
-
-  # UI Utilities
-  flutter_svg: ^2.0.10+1
-  shimmer: ^3.0.0
-  intl: ^0.19.0
-
-  # Misc
-  cupertino_icons: ^1.0.8
-  flutter_animate: ^4.5.2
+  # ── Maps ──────────────────────────────────────────────────────────────────
   flutter_map: ^8.3.0
   latlong2: ^0.9.1
+
+  # ── Connectivity & Networking ─────────────────────────────────────────────
+  connectivity_plus: ^6.1.1
+  dio: ^5.7.0
+
+  # ── Sharing & Deep Links ──────────────────────────────────────────────────
+  share_plus: ^10.1.4
+  url_launcher: ^6.3.1
+  app_links: ^6.4.0
+
+  # ── Typography ────────────────────────────────────────────────────────────
+  google_fonts: ^6.2.1
+
+  # ── UI Utilities ──────────────────────────────────────────────────────────
+  flutter_svg: ^2.0.10+1
+  shimmer: ^3.0.0
+  flutter_animate: ^4.5.2
+  intl: ^0.19.0
+
+  # ── Platform ──────────────────────────────────────────────────────────────
+  cupertino_icons: ^1.0.8
+  package_info_plus: ^8.3.0
+  device_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-
-  # Code Generation
   build_runner: ^2.4.13
   freezed: ^2.5.7
   json_serializable: ^6.8.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.5
+  mocktail: ^1.0.4
+
+# ── Launcher Icons ──────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  min_sdk_android: 23
+  web:
+    generate: false
+
+# ── Native Splash ────────────────────────────────────────────────────────────
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/images/logo.png
+  color_dark: "#0a0a14"
+  image_dark: assets/images/logo.png
+  android_12:
+    icon_background_color: "#ffffff"
+    image: assets/images/logo.png
+  android: true
+  ios: true
+  fullscreen: false
 
 flutter:
   uses-material-design: true
+
   assets:
     - assets/images/
     - assets/icons/
+
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/SpaceGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700
