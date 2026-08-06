@@ -1,0 +1,71 @@
+name: event_distro
+description: "EventDistro — Premium event discovery and booking platform."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+  bloc: ^8.1.4
+
+  # Networking
+  dio: ^5.7.0
+  pretty_dio_logger: ^1.4.0
+
+  # Code Generation / Models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Firebase (Social Layer)
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
+
+  # Payments
+  flutter_stripe: ^10.2.0
+
+  # Image Loading
+  cached_network_image: ^3.4.1
+
+  # In-App Browser (Eventbrite fallback)
+  webview_flutter: ^4.10.0
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Dependency Injection
+  get_it: ^8.0.2
+
+  # UI Utilities
+  flutter_svg: ^2.0.10+1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+
+  # Misc
+  cupertino_icons: ^1.0.8
+  flutter_animate: ^4.5.2
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # Code Generation
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
