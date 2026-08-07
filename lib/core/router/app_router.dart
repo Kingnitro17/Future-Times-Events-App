@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/event_repository.dart';
+import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/services/payment_service.dart';
 import '../../logic/blocs/booking/booking_bloc.dart';
@@ -80,6 +81,7 @@ class _AppShellState extends State<AppShell> {
 
 GoRouter buildAppRouter({
   required EventRepository eventRepository,
+  required AuthRepository authRepository,
   required SocialRepository socialRepository,
   required PaymentService paymentService,
 }) {
@@ -101,8 +103,8 @@ GoRouter buildAppRouter({
           ),
           GoRoute(
             path: '/profile',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ProfileScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+                child: ProfileScreen(authRepository: authRepository)),
           ),
         ],
       ),
