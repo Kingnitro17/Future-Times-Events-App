@@ -1,4 +1,4 @@
-# event_distro
+# Future Times Events
 
 A new Flutter project.
 
