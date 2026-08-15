@@ -1,5 +1,6 @@
 param(
-  [int]$Port = 7357
+  [int]$Port = 7357,
+  [switch]$Debug
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,7 +25,14 @@ if ([string]::IsNullOrWhiteSpace($config.SUPABASE_URL) -or
 }
 
 Set-Location -LiteralPath $projectRoot
-Write-Host "Starting Future Times at http://localhost:$Port"
-flutter run -d chrome `
-  --web-port=$Port `
-  --dart-define-from-file=$configPath
+$mode = if ($Debug) { 'debug' } else { 'release' }
+Write-Host "Starting Future Times in $mode mode at http://localhost:$Port"
+
+$flutterArgs = @('run', '-d', 'chrome')
+if (-not $Debug) {
+  $flutterArgs += '--release'
+}
+$flutterArgs += "--web-port=$Port"
+$flutterArgs += "--dart-define-from-file=$configPath"
+
+& flutter @flutterArgs

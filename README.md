@@ -16,7 +16,12 @@ Chrome is a QA target; Android remains the product target.
    ```
 
 The local file is ignored by Git. The runner uses a stable URL:
-`http://localhost:7357`.
+`http://localhost:7357`. It starts an optimized release-mode web build by
+default, avoiding Flutter's slow debug module loader. For debugging only, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/run_chrome.ps1 -Debug
+```
 
 A new Flutter project.
 
