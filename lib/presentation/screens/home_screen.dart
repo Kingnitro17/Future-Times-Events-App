@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
         BlocBuilder<EventBloc, EventState>(
           builder: (context, state) {
             if (state is EventLoading) {
-              return _buildSkeletonGrid();
+              return _buildSkeletonGrid(context);
             }
 
             if (state is EventError) {
@@ -169,10 +169,10 @@ class _HomeScreenState extends State<HomeScreen> {
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                 sliver: SliverGrid.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 1,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 0.88,
+                    childAspectRatio: _eventCardAspectRatio(context),
                   ),
                   itemCount: state.events.length + (state.isPaginating ? 1 : 0),
                   itemBuilder: (context, index) {
@@ -225,14 +225,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  SliverPadding _buildSkeletonGrid() {
+  double _eventCardAspectRatio(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 320 ? 0.72 : 0.88;
+
+  SliverPadding _buildSkeletonGrid(BuildContext context) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
       sliver: SliverGrid.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 1,
           mainAxisSpacing: 16,
-          childAspectRatio: 0.88,
+          childAspectRatio: _eventCardAspectRatio(context),
         ),
         itemCount: 5,
         itemBuilder: (_, __) => const EventCardSkeleton(),

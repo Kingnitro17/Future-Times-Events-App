@@ -105,16 +105,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _signedIn(AuthRepository auth) {
     final name = auth.profile?['display_name']?.toString() ??
-        auth.user?.email?.split('@').first ??
-        'Future Times member';
+        auth.displayEmail.split('@').first;
     return Column(children: [
       const Icon(Icons.account_circle,
           size: 88, color: AppTheme.electricIndigo),
       const SizedBox(height: 16),
       Text(name, style: Theme.of(context).textTheme.headlineSmall),
       const SizedBox(height: 6),
-      Text(auth.user?.email ?? '',
+      Text(auth.displayEmail,
           style: const TextStyle(color: AppTheme.subtleGrey)),
+      if (auth.isQaMockSession)
+        const Padding(
+          padding: EdgeInsets.only(top: 10),
+          child: Text('Local QA session · debug builds only',
+              style: TextStyle(color: Colors.amber, fontSize: 12)),
+        ),
       if (auth.profileError != null)
         Padding(
             padding: const EdgeInsets.only(top: 16),
@@ -123,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: const TextStyle(color: Colors.amber))),
       const SizedBox(height: 28),
       OutlinedButton(
-          onPressed: _submitting
+          onPressed: _submitting || auth.isQaMockSession
               ? null
               : () async {
                   setState(() => _submitting = true);

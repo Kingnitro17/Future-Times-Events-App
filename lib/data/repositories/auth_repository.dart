@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/config/app_config.dart';
 import '../../core/errors/app_failure.dart';
 
 class AuthRepository extends ChangeNotifier {
@@ -12,13 +13,30 @@ class AuthRepository extends ChangeNotifier {
   Map<String, dynamic>? _profile;
   String? _profileError;
   bool _isLoading = true;
+  bool _qaMockSession = false;
   User? get user => _user;
   Map<String, dynamic>? get profile => _profile;
   String? get profileError => _profileError;
   bool get isLoading => _isLoading;
-  bool get isSignedIn => _user != null;
+  bool get isSignedIn => _qaMockSession || _user != null;
+  bool get isQaMockSession => _qaMockSession;
+  String get displayEmail =>
+      _qaMockSession ? 'qa.mobile@futuretimes.test' : (_user?.email ?? '');
 
   Future<void> initialize() async {
+    if (kDebugMode && AppConfig.qaMockAuth) {
+      _qaMockSession = true;
+      _profile = const {
+        'id': 'local-qa-mobile',
+        'display_name': 'Future Times QA',
+        'email': 'qa.mobile@futuretimes.test',
+        'role': 'attendee',
+        'account_status': 'active',
+      };
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
     _subscription = _client.auth.onAuthStateChange.listen(
       (state) => _synchronize(state.session),
       onError: (Object error, StackTrace stack) {

@@ -5,6 +5,7 @@ class AppConfig {
 
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const qaMockAuth = bool.fromEnvironment('QA_MOCK_AUTH');
   static const expectedProjectId = 'ecbbmcqwluivbzlaqdsd';
 
   static bool get isConfigured =>
@@ -31,6 +32,8 @@ class AppConfig {
       debugPrint('[config] Supabase project: $projectId');
       debugPrint('[config] publishable key present: yes');
       debugPrint('[config] build mode: debug');
+      debugPrint(
+          '[config] QA mock auth: ${qaMockAuth ? 'enabled' : 'disabled'}');
     }
   }
 }

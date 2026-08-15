@@ -1,21 +1,12 @@
 # Known issues
 
-## Android build environment
+## Resolved Android build environment issue
 
-`flutter build apk --debug` is currently blocked before compilation because the
-machine-level Flutter setting `jdk-dir` points to the nonexistent
-`C:\Program Files\Java\jdk-17`. The Oracle Java launcher found on PATH also exits
-abnormally, so it cannot serve as a fallback Gradle runtime.
-
-Install or select a valid JDK 17, then run:
-
-```text
-flutter config --jdk-dir "<valid-jdk-17-directory>"
-flutter build apk --debug --dart-define=SUPABASE_URL=<url> --dart-define=SUPABASE_ANON_KEY=<public-key>
-```
-
-This is a workstation tooling blocker, not a reported application compile
-error. `flutter analyze` reports zero errors and `flutter test` passes.
+The stale Flutter JDK path was repaired on 2026-08-15 by installing Microsoft
+OpenJDK 17 and configuring Flutter to use it. The official Android command-line
+tools were installed with their published SHA-256 checksum verified, and all
+SDK licenses were accepted. `flutter doctor -v` now reports no issues and the
+ARM64 debug APK builds successfully.
 
 ## Controlled authentication proof
 
