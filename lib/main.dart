@@ -32,7 +32,12 @@ void main() async {
   // await Firebase.initializeApp(); // TEMPORARILY DISABLED FOR UI ONLY MODE
 
   // ── Dio ────────────────────────────────────────────────────────────────────
-  AppConfig.validate();
+  try {
+    AppConfig.validate();
+  } on StateError {
+    runApp(const _ConfigurationErrorApp());
+    return;
+  }
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
@@ -59,6 +64,47 @@ void main() async {
     socialRepository: socialRepository,
     paymentService: paymentService,
   ));
+}
+
+class _ConfigurationErrorApp extends StatelessWidget {
+  const _ConfigurationErrorApp();
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'Future Times Events',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.settings_outlined,
+                          size: 64, color: AppTheme.electricIndigo),
+                      const SizedBox(height: 20),
+                      Text('Local configuration needed',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Add your Supabase project URL (or project ID) and '
+                        'public anonymous key to '
+                        'config/app_config.local.json, then restart the app. '
+                        'Never use a service-role key in Flutter.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 class EventDistroApp extends StatelessWidget {

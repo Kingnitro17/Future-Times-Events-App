@@ -3,14 +3,25 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   const AppConfig._();
 
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const _supabaseUrlInput = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static const qaMockAuth = bool.fromEnvironment('QA_MOCK_AUTH');
   static const expectedProjectId = 'ecbbmcqwluivbzlaqdsd';
 
-  static bool get isConfigured =>
-      Uri.tryParse(supabaseUrl)?.host.isNotEmpty == true &&
-      supabaseAnonKey.isNotEmpty;
+  static String get supabaseUrl {
+    final value = _supabaseUrlInput.trim();
+    if (value == expectedProjectId) {
+      return 'https://$expectedProjectId.supabase.co';
+    }
+    return value;
+  }
+
+  static bool get isConfigured {
+    final uri = Uri.tryParse(supabaseUrl);
+    return uri?.scheme == 'https' &&
+        uri?.host.endsWith('.supabase.co') == true &&
+        supabaseAnonKey.trim().isNotEmpty;
+  }
 
   static String get projectId {
     final host = Uri.tryParse(supabaseUrl)?.host ?? '';
