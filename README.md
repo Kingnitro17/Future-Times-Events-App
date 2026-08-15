@@ -1,5 +1,23 @@
 # Future Times Events
 
+## Run locally in Chrome
+
+Chrome is a QA target; Android remains the product target.
+
+1. Copy `config/app_config.example.json` to
+   `config/app_config.local.json`.
+2. Put your Supabase project URL in `SUPABASE_URL`.
+3. Put your public anonymous/publishable key in `SUPABASE_ANON_KEY`.
+   Never use the Supabase service-role key in this app.
+4. Run:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools/run_chrome.ps1
+   ```
+
+The local file is ignored by Git. The runner uses a stable URL:
+`http://localhost:7357`.
+
 A new Flutter project.
 
 ## Getting Started
