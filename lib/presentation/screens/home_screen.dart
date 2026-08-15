@@ -20,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = '';
-  String _selectedCategoryName = 'All';
 
   @override
   void initState() {
@@ -37,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onCategoryTap(String id, String name) {
     setState(() {
       _selectedCategory = id;
-      _selectedCategoryName = name;
     });
     context.read<EventBloc>().add(
           FilterByCategory(categoryId: id, categoryName: name),
@@ -257,7 +255,7 @@ class _SearchBar extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(color: AppTheme.pureWhite),
+      style: const TextStyle(color: AppTheme.offWhite),
       decoration: InputDecoration(
         hintText: 'Search events, venues...',
         prefixIcon: const Icon(

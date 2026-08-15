@@ -77,7 +77,17 @@ class SupabaseEventService {
     try {
       final row =
           await _client.from('events').select(selection).eq('id', id).single();
-      return _mapEvent(row);
+      final ticketRows = await _client
+          .from('ticket_types')
+          .select(
+              'id,name,price,quantity_total,quantity_available,claim_opens_at,claim_closes_at,is_active,is_visible')
+          .eq('event_id', id)
+          .eq('is_active', true)
+          .eq('is_visible', true)
+          .order('sort_order', ascending: true);
+      return _mapEvent(row).copyWith(
+        ticketClasses: ticketRows.map<TicketClass>(_mapTicketType).toList(),
+      );
     } on PostgrestException catch (error) {
       throw DataFailure('This event could not be loaded.',
           code: error.code, cause: error);
@@ -124,19 +134,28 @@ class SupabaseEventService {
       capacity: int.tryParse(row['capacity']?.toString() ?? ''),
       status: row['status']?.toString(),
       currency: 'USD',
-      ticketClasses: [
-        TicketClass(
-          id: '${row['id']}-base',
-          name: price == 0 ? 'Free admission' : 'General admission',
-          free: price == 0,
-          quantityTotal: int.tryParse(row['capacity']?.toString() ?? ''),
-          quantitySold: int.tryParse(row['attendees']?.toString() ?? ''),
-          cost: EventCost(
-              currency: 'USD',
-              value: (price * 100).round(),
-              display: price == 0 ? 'Free' : '\$${price.toStringAsFixed(2)}'),
-        ),
-      ],
+      ticketClasses: const [],
+    );
+  }
+
+  TicketClass _mapTicketType(Map<String, dynamic> row) {
+    final price = double.tryParse(row['price']?.toString() ?? '') ?? 0;
+    final total = int.tryParse(row['quantity_total']?.toString() ?? '');
+    final available = int.tryParse(row['quantity_available']?.toString() ?? '');
+    return TicketClass(
+      id: row['id'].toString(),
+      name: row['name']?.toString() ?? 'Admission',
+      free: price == 0,
+      quantityTotal: total,
+      quantitySold:
+          total != null && available != null ? total - available : null,
+      salesStart: row['claim_opens_at']?.toString(),
+      salesEnd: row['claim_closes_at']?.toString(),
+      cost: EventCost(
+        currency: 'USD',
+        value: (price * 100).round(),
+        display: price == 0 ? 'Free' : '\$${price.toStringAsFixed(2)}',
+      ),
     );
   }
 }

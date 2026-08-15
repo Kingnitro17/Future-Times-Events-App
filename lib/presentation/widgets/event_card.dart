@@ -99,7 +99,7 @@ class EventCard extends StatelessWidget {
                     event.name.text,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.pureWhite,
+                          color: AppTheme.offWhite,
                           height: 1.3,
                         ),
                     maxLines: 2,
@@ -187,7 +187,7 @@ class _PriceBadge extends StatelessWidget {
         borderRadius: AppTheme.radiusPill,
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: color.withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

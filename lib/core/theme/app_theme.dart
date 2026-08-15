@@ -1,289 +1,128 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
-/// EventDistro Design System
-/// Palette: Deep Charcoal (#121212) · White · Electric Indigo (#6610F2)
-abstract class AppTheme {
-  // ─── Color Tokens ────────────────────────────────────────────────────────
-  static const Color electricIndigo = Color(0xFF6610F2);
-  static const Color indigoLight = Color(0xFF9B59F5);
-  static const Color indigoDark = Color(0xFF4A0DB3);
-
-  static const Color charcoal = Color(0xFF121212);
-  static const Color charcoalSurface = Color(0xFF1E1E2E);
-  static const Color charcoalCard = Color(0xFF252538);
-  static const Color charcoalBorder = Color(0xFF2E2E45);
-
-  static const Color pureWhite = Color(0xFFFFFFFF);
-  static const Color offWhite = Color(0xFFF0F0F5);
-  static const Color subtleGrey = Color(0xFF8A8AA3);
-
-  static const Color successGreen = Color(0xFF00C896);
-  static const Color errorRed = Color(0xFFFF4566);
-
-  // ─── Gradients ────────────────────────────────────────────────────────────
-  static const LinearGradient indigoGradient = LinearGradient(
-    colors: [electricIndigo, indigoDark],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient heroGradient = LinearGradient(
-    colors: [Colors.transparent, Color(0xCC121212)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-
-  // ─── Border Radius ────────────────────────────────────────────────────────
-  static final BorderRadius radiusLarge = BorderRadius.circular(24);
-  static final BorderRadius radiusMedium = BorderRadius.circular(16);
-  static final BorderRadius radiusSmall = BorderRadius.circular(10);
-  static final BorderRadius radiusPill = BorderRadius.circular(999);
-
-  // ─── Shadows ─────────────────────────────────────────────────────────────
-  static List<BoxShadow> get softShadow => [
+abstract final class AppTheme {
+  static const electricIndigo = AppColors.purple;
+  static const indigoLight = AppColors.purpleLight;
+  static const indigoDark = Color(0xFF5214AE);
+  static const charcoal = AppColors.background;
+  static const charcoalSurface = AppColors.surface;
+  static const charcoalCard = AppColors.surface;
+  static const charcoalBorder = AppColors.border;
+  static const pureWhite = Colors.white;
+  static const offWhite = AppColors.text;
+  static const subtleGrey = AppColors.textMuted;
+  static const successGreen = AppColors.success;
+  static const errorRed = AppColors.error;
+  static final radiusLarge = BorderRadius.circular(24);
+  static final radiusMedium = BorderRadius.circular(16);
+  static final radiusSmall = BorderRadius.circular(10);
+  static final radiusPill = BorderRadius.circular(999);
+  static const indigoGradient = LinearGradient(
+      colors: [AppColors.pink, AppColors.purple],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight);
+  static const heroGradient = LinearGradient(
+      colors: [Colors.transparent, Color(0xB3000000)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter);
+  static List<BoxShadow> get softShadow => const [
         BoxShadow(
-          color: Colors.black.withOpacity(0.35),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
+            color: Color(0x140A0A14), blurRadius: 20, offset: Offset(0, 8))
+      ];
+  static List<BoxShadow> get indigoGlow => const [
+        BoxShadow(
+            color: Color(0x337222E3), blurRadius: 20, offset: Offset(0, 6))
       ];
 
-  static List<BoxShadow> get indigoGlow => [
-        BoxShadow(
-          color: electricIndigo.withOpacity(0.4),
-          blurRadius: 24,
-          offset: const Offset(0, 6),
-        ),
-      ];
-
-  // ─── Material 3 Dark Theme ────────────────────────────────────────────────
-  static ThemeData get darkTheme {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: electricIndigo,
-      brightness: Brightness.dark,
-      surface: charcoalSurface,
-      primary: electricIndigo,
-      onPrimary: pureWhite,
-      secondary: indigoLight,
-      onSecondary: pureWhite,
-      error: errorRed,
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: charcoal,
-      fontFamily: 'Inter',
-
-      // AppBar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: charcoal,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
-          color: pureWhite,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-        iconTheme: IconThemeData(color: pureWhite),
-      ),
-
-      // Cards
-      cardTheme: CardThemeData(
-        color: charcoalCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: radiusLarge,
-          side: const BorderSide(color: charcoalBorder, width: 1),
-        ),
-      ),
-
-      // Buttons
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: electricIndigo,
-          foregroundColor: pureWhite,
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: radiusMedium),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+  static ThemeData get lightTheme {
+    final scheme = ColorScheme.fromSeed(
+        seedColor: AppColors.purple,
+        brightness: Brightness.light,
+        primary: AppColors.purple,
+        secondary: AppColors.pink,
+        surface: AppColors.surface,
+        error: AppColors.error);
+    final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+    return base.copyWith(
+      scaffoldBackgroundColor: AppColors.background,
+      textTheme: base.textTheme
+          .apply(
+              bodyColor: AppColors.textSecondary, displayColor: AppColors.text)
+          .copyWith(
+            headlineLarge: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+                letterSpacing: -1),
+            headlineMedium: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+                letterSpacing: -.7),
+            headlineSmall: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text),
+            titleLarge: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text),
+            titleMedium: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text),
+            bodyLarge: const TextStyle(
+                fontSize: 16, height: 1.5, color: AppColors.textSecondary),
+            bodyMedium: const TextStyle(
+                fontSize: 14, height: 1.45, color: AppColors.textSecondary),
           ),
-        ),
-      ),
-
+      appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.text,
+          elevation: 0,
+          scrolledUnderElevation: 0),
+      cardTheme: CardThemeData(
+          color: AppColors.surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: AppColors.border))),
+      filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+              minimumSize: const Size(48, 54),
+              backgroundColor: AppColors.purple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              textStyle:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: electricIndigo,
-          side: const BorderSide(color: electricIndigo),
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: radiusMedium),
-        ),
-      ),
-
-      // Chips
-      chipTheme: ChipThemeData(
-        backgroundColor: charcoalCard,
-        selectedColor: electricIndigo,
-        labelStyle: const TextStyle(color: offWhite, fontSize: 13),
-        side: const BorderSide(color: charcoalBorder),
-        shape: RoundedRectangleBorder(borderRadius: radiusPill),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-
-      // Input
+          style: OutlinedButton.styleFrom(
+              minimumSize: const Size(48, 54),
+              foregroundColor: AppColors.purple,
+              side: const BorderSide(color: AppColors.purple),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)))),
       inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: charcoalSurface,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: radiusMedium,
-          borderSide: const BorderSide(color: charcoalBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: radiusMedium,
-          borderSide: const BorderSide(color: charcoalBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: radiusMedium,
-          borderSide: const BorderSide(color: electricIndigo, width: 2),
-        ),
-        hintStyle: const TextStyle(color: subtleGrey),
-      ),
-
-      // Navigation Drawer
-      navigationDrawerTheme: NavigationDrawerThemeData(
-        backgroundColor: charcoalSurface,
-        indicatorColor: electricIndigo.withOpacity(0.2),
-        labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(color: offWhite, fontSize: 14),
-        ),
-      ),
-
-      // Divider
-      dividerTheme: const DividerThemeData(
-        color: charcoalBorder,
-        thickness: 1,
-        space: 1,
-      ),
-
-      // Bottom Sheet
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: charcoalSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-      ),
-
-      // Text
-      textTheme: _buildTextTheme(),
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.border)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.border)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.purple, width: 2))),
+      navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: AppColors.surface,
+          indicatorColor: AppColors.purple.withValues(alpha: .12),
+          elevation: 0),
+      dividerTheme: const DividerThemeData(color: AppColors.border),
     );
   }
 
-  // ─── Cupertino Theme ─────────────────────────────────────────────────────
-  static CupertinoThemeData get cupertinoTheme => const CupertinoThemeData(
-        brightness: Brightness.dark,
-        primaryColor: electricIndigo,
-        barBackgroundColor: charcoal,
-        scaffoldBackgroundColor: charcoal,
-        textTheme: CupertinoTextThemeData(
-          primaryColor: pureWhite,
-          textStyle: TextStyle(
-            color: pureWhite,
-            fontFamily: 'Inter',
-            fontSize: 16,
-          ),
-          navLargeTitleTextStyle: TextStyle(
-            color: pureWhite,
-            fontFamily: 'Inter',
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -1,
-          ),
-          navTitleTextStyle: TextStyle(
-            color: pureWhite,
-            fontFamily: 'Inter',
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-
-  // ─── Text Theme ──────────────────────────────────────────────────────────
-  static TextTheme _buildTextTheme() => const TextTheme(
-        displayLarge: TextStyle(
-          color: pureWhite,
-          fontSize: 57,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -2,
-        ),
-        displayMedium: TextStyle(
-          color: pureWhite,
-          fontSize: 45,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -1.5,
-        ),
-        headlineLarge: TextStyle(
-          color: pureWhite,
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -1,
-        ),
-        headlineMedium: TextStyle(
-          color: pureWhite,
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.5,
-        ),
-        headlineSmall: TextStyle(
-          color: pureWhite,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-        ),
-        titleLarge: TextStyle(
-          color: pureWhite,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.3,
-        ),
-        titleMedium: TextStyle(
-          color: pureWhite,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-        titleSmall: TextStyle(
-          color: offWhite,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        bodyLarge: TextStyle(
-          color: offWhite,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          height: 1.6,
-        ),
-        bodyMedium: TextStyle(
-          color: subtleGrey,
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          height: 1.5,
-        ),
-        labelLarge: TextStyle(
-          color: pureWhite,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-        labelSmall: TextStyle(
-          color: subtleGrey,
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 0.5,
-        ),
-      );
+  static ThemeData get darkTheme => lightTheme;
 }

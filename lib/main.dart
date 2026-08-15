@@ -17,9 +17,9 @@ void main() async {
   // ── System UI ──────────────────────────────────────────────────────────────
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.charcoalSurface,
-    systemNavigationBarIconBrightness: Brightness.light,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
   ));
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -87,20 +87,12 @@ class EventDistroApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Future Times Events',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       routerConfig: router,
 
       // ── Meta ──────────────────────────────────────────────────────────────
       builder: (context, child) {
-        // Clamp font scaling to prevent layout breaks
-        final mq = MediaQuery.of(context);
-        return MediaQuery(
-          data: mq.copyWith(
-            textScaler:
-                TextScaler.linear(mq.textScaler.scale(1.0).clamp(0.85, 1.2)),
-          ),
-          child: child!,
-        );
+        return child!;
       },
     );
   }
