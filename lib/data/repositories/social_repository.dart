@@ -1,12 +1,11 @@
-import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/attendee_model.dart';
 
-/// Manages the social "Who's Going" layer via Firebase Firestore.
-/// Collection path: attendees/{eventId}/checkins/{userId}
 class SocialRepository {
-  SocialRepository(); // Removed Firebase dependency for UI-only mode
+  SocialRepository({SupabaseClient? client})
+      : _client = client ?? Supabase.instance.client;
 
-  // ─── Check In ─────────────────────────────────────────────────────────────
+  final SupabaseClient _client;
 
   Future<void> checkIn({
     required String eventId,
@@ -14,52 +13,87 @@ class SocialRepository {
     required String displayName,
     String? avatarUrl,
   }) async {
-    // TEMPORARILY MOCKED FOR UI ONLY
+    final authenticatedId = _client.auth.currentUser?.id;
+    if (authenticatedId == null || authenticatedId != userId) {
+      throw const AuthException('Authentication required.');
+    }
+    await _client.from('rsvps').upsert({
+      'event_id': eventId,
+      'user_id': authenticatedId,
+      'status': 'going',
+      'is_public': true,
+    }, onConflict: 'event_id,user_id');
   }
-
-  // ─── Check Out ────────────────────────────────────────────────────────────
 
   Future<void> checkOut({
     required String eventId,
     required String userId,
   }) async {
-    // TEMPORARILY MOCKED FOR UI ONLY
+    final authenticatedId = _client.auth.currentUser?.id;
+    if (authenticatedId == null || authenticatedId != userId) {
+      throw const AuthException('Authentication required.');
+    }
+    await _client
+        .from('rsvps')
+        .update({'is_public': false})
+        .eq('event_id', eventId)
+        .eq('user_id', authenticatedId);
   }
 
-  // ─── Get Attendees (stream) ────────────────────────────────────────────────
-
-  Stream<List<AttendeeModel>> watchAttendees(String eventId) {
-    // TEMPORARILY MOCKED: Return fake attendees for UI testing
-    return Stream.value([
-      AttendeeModel(userId: '1', eventId: eventId, displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?u=1'),
-      AttendeeModel(userId: '2', eventId: eventId, displayName: 'Jane Smith', avatarUrl: 'https://i.pravatar.cc/150?u=2'),
-      AttendeeModel(userId: '3', eventId: eventId, displayName: 'Alice J.', avatarUrl: 'https://i.pravatar.cc/150?u=3'),
-      AttendeeModel(userId: '4', eventId: eventId, displayName: 'Bob Ross', avatarUrl: 'https://i.pravatar.cc/150?u=4'),
-      AttendeeModel(userId: '5', eventId: eventId, displayName: 'Elon M.', avatarUrl: 'https://i.pravatar.cc/150?u=5'),
-    ]);
-  }
-
-  // ─── Get Attendees (one-shot) ──────────────────────────────────────────────
+  Stream<List<AttendeeModel>> watchAttendees(String eventId) =>
+      Stream.fromFuture(getAttendees(eventId));
 
   Future<List<AttendeeModel>> getAttendees(String eventId) async {
-    return [
-      AttendeeModel(userId: '1', eventId: eventId, displayName: 'John Doe', avatarUrl: 'https://i.pravatar.cc/150?u=1'),
-      AttendeeModel(userId: '2', eventId: eventId, displayName: 'Jane Smith', avatarUrl: 'https://i.pravatar.cc/150?u=2'),
-    ];
-  }
+    final rows = await _client
+        .from('rsvps')
+        .select('user_id,created_at')
+        .eq('event_id', eventId)
+        .eq('status', 'going')
+        .eq('is_public', true)
+        .order('created_at', ascending: false)
+        .limit(24);
+    final ids = rows
+        .map((row) => row['user_id']?.toString())
+        .whereType<String>()
+        .toList();
+    if (ids.isEmpty) return const [];
 
-  // ─── Has Checked In ────────────────────────────────────────────────────────
+    final profiles = await _client
+        .from('public_profile_cards')
+        .select('id,display_name,avatar_url')
+        .inFilter('id', ids);
+    final byId = {
+      for (final profile in profiles)
+        if (profile['id'] != null) profile['id'].toString(): profile,
+    };
+    return rows.take(12).map((row) {
+      final userId = row['user_id'].toString();
+      final profile = byId[userId];
+      return AttendeeModel(
+        userId: userId,
+        eventId: eventId,
+        displayName: profile?['display_name']?.toString() ?? 'Attendee',
+        avatarUrl: profile?['avatar_url']?.toString(),
+        checkedInAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+      );
+    }).toList();
+  }
 
   Future<bool> hasCheckedIn({
     required String eventId,
     required String userId,
   }) async {
-    return false;
+    final row = await _client
+        .from('rsvps')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .eq('status', 'going')
+        .eq('is_public', true)
+        .maybeSingle();
+    return row != null;
   }
 
-  // ─── Get Count ────────────────────────────────────────────────────────────
-
-  Stream<int> watchAttendeeCount(String eventId) {
-    return Stream.value(5);
-  }
+  Stream<int> watchAttendeeCount(String eventId) =>
+      Stream.fromFuture(getAttendees(eventId).then((rows) => rows.length));
 }

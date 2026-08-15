@@ -96,18 +96,28 @@ GoRouter buildAppRouter({
         GoRoute(
           path: '/event/:id',
           builder: (context, state) {
-            final event = state.extra as EventModel;
-            return MultiBlocProvider(
-              providers: [
-                BlocProvider(
-                    create: (_) =>
-                        SocialBloc(socialRepository: socialRepository)),
-                BlocProvider(
-                    create: (_) => BookingBloc(
-                        eventRepository: eventRepository,
-                        paymentService: paymentService)),
-              ],
-              child: DetailsScreen(event: event),
+            final summary = state.extra as EventModel;
+            return FutureBuilder<EventModel>(
+              future: eventRepository.getEventById(summary.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()));
+                }
+                final event = snapshot.data ?? summary;
+                return MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                        create: (_) =>
+                            SocialBloc(socialRepository: socialRepository)),
+                    BlocProvider(
+                        create: (_) => BookingBloc(
+                            eventRepository: eventRepository,
+                            paymentService: paymentService)),
+                  ],
+                  child: DetailsScreen(event: event),
+                );
+              },
             );
           },
         ),
