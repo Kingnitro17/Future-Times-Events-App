@@ -8,7 +8,7 @@ abstract class SocialEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Start watching Firestore attendees for an event (real-time stream).
+/// Load public Supabase RSVP attendees for an event.
 class WatchAttendees extends SocialEvent {
   const WatchAttendees({required this.eventId});
 
@@ -18,7 +18,7 @@ class WatchAttendees extends SocialEvent {
   List<Object?> get props => [eventId];
 }
 
-/// Internal: emitted when the Firestore stream emits new data.
+/// Internal attendee update.
 class AttendeesUpdated extends SocialEvent {
   const AttendeesUpdated({required this.attendees});
 

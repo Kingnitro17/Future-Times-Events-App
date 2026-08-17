@@ -4,7 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'venue_model.freezed.dart';
 part 'venue_model.g.dart';
 
-/// Mapped to Eventbrite's `venue` object returned via `expand=venue`.
+/// Future Times venue data populated from Supabase.
 @freezed
 class VenueModel with _$VenueModel {
   const factory VenueModel({
@@ -29,8 +29,7 @@ class VenueAddress with _$VenueAddress {
     String? region,
     String? postalCode,
     String? country,
-    @JsonKey(name: 'localized_address_display')
-    String? localizedDisplay,
+    @JsonKey(name: 'localized_address_display') String? localizedDisplay,
     @JsonKey(name: 'localized_multi_line_address_display')
     List<String>? multiLineDisplay,
   }) = _VenueAddress;

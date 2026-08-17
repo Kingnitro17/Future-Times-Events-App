@@ -5,11 +5,10 @@ import '../../data/models/event_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/social_repository.dart';
-import '../../data/services/payment_service.dart';
-import '../../logic/blocs/booking/booking_bloc.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
+import '../../presentation/screens/calendar_screen.dart';
 import '../../presentation/screens/event_map_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/map_discovery_screen.dart';
@@ -64,7 +63,6 @@ GoRouter buildAppRouter({
   required EventRepository eventRepository,
   required AuthRepository authRepository,
   required SocialRepository socialRepository,
-  required PaymentService paymentService,
 }) =>
     GoRouter(
       initialLocation: '/',
@@ -94,6 +92,13 @@ GoRouter buildAppRouter({
           ],
         ),
         GoRoute(
+          path: '/calendar',
+          builder: (_, __) => BlocProvider(
+            create: (_) => EventBloc(repository: eventRepository),
+            child: const CalendarScreen(),
+          ),
+        ),
+        GoRoute(
           path: '/event/:id',
           builder: (context, state) {
             final summary = state.extra as EventModel;
@@ -110,10 +115,6 @@ GoRouter buildAppRouter({
                     BlocProvider(
                         create: (_) =>
                             SocialBloc(socialRepository: socialRepository)),
-                    BlocProvider(
-                        create: (_) => BookingBloc(
-                            eventRepository: eventRepository,
-                            paymentService: paymentService)),
                   ],
                   child: DetailsScreen(event: event),
                 );

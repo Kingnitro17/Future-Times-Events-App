@@ -175,6 +175,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SnackBar(content: Text('No new notifications.'))),
                 icon: const Icon(Icons.notifications_none_rounded)),
           ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: const BoxDecoration(
+                color: AppColors.surfaceMuted, shape: BoxShape.circle),
+            child: IconButton(
+                tooltip: 'Events calendar',
+                onPressed: () => context.push('/calendar'),
+                icon: const Icon(Icons.calendar_month_rounded,
+                    color: AppColors.purple)),
+          ),
         ]),
         const SizedBox(height: 18),
         Row(children: [

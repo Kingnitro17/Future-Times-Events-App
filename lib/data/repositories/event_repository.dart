@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event_model.dart';
-import '../services/eventbrite_api_service.dart'
-    show EventListResponse, PaginationMeta;
+import '../models/event_list_response.dart';
 import '../services/supabase_event_service.dart';
 
 class EventRepository {

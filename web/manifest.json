@@ -1,11 +1,11 @@
 {
-    "name": "event_distro",
-    "short_name": "event_distro",
+    "name": "Future Times Events",
+    "short_name": "Future Times",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F7FA",
+    "theme_color": "#7222E3",
+    "description": "Discover and attend Future Times events.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

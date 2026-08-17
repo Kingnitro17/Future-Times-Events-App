@@ -4,8 +4,7 @@ import 'venue_model.dart';
 part 'event_model.freezed.dart';
 part 'event_model.g.dart';
 
-/// Mapped to Eventbrite's `event` object.
-/// API Docs: https://www.eventbrite.com/platform/api#/reference/event
+/// Future Times event model populated from Supabase.
 @freezed
 class EventModel with _$EventModel {
   const factory EventModel({

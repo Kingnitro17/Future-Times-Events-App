@@ -2,8 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_failure.dart';
 import '../models/event_model.dart';
+import '../models/event_list_response.dart';
 import '../models/venue_model.dart';
-import 'eventbrite_api_service.dart' show EventListResponse, PaginationMeta;
 
 class SupabaseEventService {
   SupabaseEventService({SupabaseClient? client})

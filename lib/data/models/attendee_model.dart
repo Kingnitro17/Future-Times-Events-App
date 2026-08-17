@@ -4,8 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'attendee_model.freezed.dart';
 part 'attendee_model.g.dart';
 
-/// Firestore-native attendee — not from Eventbrite API.
-/// Stored in: /attendees/{eventId}/checkins/{userId}
+/// Public Future Times attendee card backed by Supabase RSVP data.
 @freezed
 class AttendeeModel with _$AttendeeModel {
   const AttendeeModel._();
@@ -20,28 +19,4 @@ class AttendeeModel with _$AttendeeModel {
 
   factory AttendeeModel.fromJson(Map<String, dynamic> json) =>
       _$AttendeeModelFromJson(json);
-
-  factory AttendeeModel.fromFirestore(
-    Map<String, dynamic> data,
-    String userId,
-  ) {
-    return AttendeeModel(
-      userId: userId,
-      eventId: data['eventId'] as String,
-      displayName: data['displayName'] as String? ?? 'Anonymous',
-      avatarUrl: data['avatarUrl'] as String?,
-      checkedInAt:
-          data['checkedInAt'] != null
-              ? DateTime.parse(data['checkedInAt'] as String)
-              : null,
-    );
-  }
-
-  Map<String, dynamic> toFirestore() => {
-        'userId': userId,
-        'eventId': eventId,
-        'displayName': displayName,
-        'avatarUrl': avatarUrl,
-        'checkedInAt': checkedInAt?.toIso8601String(),
-      };
 }

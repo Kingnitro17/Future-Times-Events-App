@@ -202,7 +202,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
   String _friendlyError(Object e) {
     final msg = e.toString();
     if (msg.contains('token') || msg.contains('401')) {
-      return 'API authentication failed. Check your Eventbrite token.';
+      return 'Event access could not be authenticated. Please try again.';
     }
     if (msg.contains('SocketException') || msg.contains('network')) {
       return 'No internet connection. Please try again.';

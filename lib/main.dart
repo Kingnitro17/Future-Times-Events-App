@@ -1,15 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
-import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/event_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/social_repository.dart';
-import 'data/services/payment_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,12 +23,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // ── Firebase ───────────────────────────────────────────────────────────────
-  // Requires google-services.json (Android) / GoogleService-Info.plist (iOS).
-  // Run: flutterfire configure
-  // await Firebase.initializeApp(); // TEMPORARILY DISABLED FOR UI ONLY MODE
-
-  // ── Dio ────────────────────────────────────────────────────────────────────
   try {
     AppConfig.validate();
   } on StateError {
@@ -44,25 +35,17 @@ void main() async {
     authOptions:
         const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
   );
-  DioClient.instance.init();
-
-  // ── Stripe ────────────────────────────────────────────────────────────────
-  if (!kIsWeb) {
-    PaymentService.init();
-  }
 
   // ── Repositories ──────────────────────────────────────────────────────────
   final eventRepository = EventRepository();
   final authRepository = AuthRepository();
   await authRepository.initialize();
   final socialRepository = SocialRepository();
-  final paymentService = PaymentService.instance;
 
-  runApp(EventDistroApp(
+  runApp(FutureTimesApp(
     eventRepository: eventRepository,
     authRepository: authRepository,
     socialRepository: socialRepository,
-    paymentService: paymentService,
   ));
 }
 
@@ -107,19 +90,17 @@ class _ConfigurationErrorApp extends StatelessWidget {
       );
 }
 
-class EventDistroApp extends StatelessWidget {
-  const EventDistroApp({
+class FutureTimesApp extends StatelessWidget {
+  const FutureTimesApp({
     super.key,
     required this.eventRepository,
     required this.authRepository,
     required this.socialRepository,
-    required this.paymentService,
   });
 
   final EventRepository eventRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
-  final PaymentService paymentService;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +108,6 @@ class EventDistroApp extends StatelessWidget {
       eventRepository: eventRepository,
       authRepository: authRepository,
       socialRepository: socialRepository,
-      paymentService: paymentService,
     );
 
     return MaterialApp.router(

@@ -1,5 +1,5 @@
-name: event_distro
-description: "EventDistro — Premium event discovery and booking platform."
+name: future_times_events
+description: "Future Times Events mobile discovery and ticketing app."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -16,27 +16,14 @@ dependencies:
   bloc: ^8.1.4
 
   # Networking
-  dio: ^5.7.0
-  pretty_dio_logger: ^1.4.0
   supabase_flutter: ^2.8.1
 
   # Code Generation / Models
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
 
-  # Firebase (Social Layer)
-  firebase_core: ^3.6.0
-  cloud_firestore: ^5.4.4
-  firebase_auth: ^5.3.1
-
-  # Payments
-  flutter_stripe: ^10.2.0
-
   # Image Loading
   cached_network_image: ^3.4.1
-
-  # In-App Browser (Eventbrite fallback)
-  webview_flutter: ^4.10.0
 
   # Navigation
   go_router: ^14.6.2

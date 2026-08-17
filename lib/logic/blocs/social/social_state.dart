@@ -28,8 +28,7 @@ class SocialLoaded extends SocialState {
   final String? currentUserId;
 
   bool get isCurrentUserCheckedIn =>
-      currentUserId != null &&
-      attendees.any((a) => a.userId == currentUserId);
+      currentUserId != null && attendees.any((a) => a.userId == currentUserId);
 
   int get attendeeCount => attendees.length;
 

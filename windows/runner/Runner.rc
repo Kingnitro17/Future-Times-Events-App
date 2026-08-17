@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.eventdistro" "\0"
-            VALUE "FileDescription", "event_distro" "\0"
+            VALUE "CompanyName", "com.futuretimes" "\0"
+            VALUE "FileDescription", "future_times_events" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "event_distro" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.eventdistro. All rights reserved." "\0"
-            VALUE "OriginalFilename", "event_distro.exe" "\0"
-            VALUE "ProductName", "event_distro" "\0"
+            VALUE "InternalName", "future_times_events" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.futuretimes. All rights reserved." "\0"
+            VALUE "OriginalFilename", "future_times_events.exe" "\0"
+            VALUE "ProductName", "future_times_events" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

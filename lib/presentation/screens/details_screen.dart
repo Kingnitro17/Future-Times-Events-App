@@ -8,12 +8,9 @@ import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
-import '../../logic/blocs/booking/booking_bloc.dart';
-import '../../logic/blocs/booking/booking_event.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
-import 'booking_screen.dart';
 
 class DetailsScreen extends StatefulWidget {
   const DetailsScreen({super.key, required this.event});
@@ -24,7 +21,6 @@ class DetailsScreen extends StatefulWidget {
 
 class _DetailsScreenState extends State<DetailsScreen> {
   TicketClass? _selectedTicket;
-  final int _quantity = 1;
   bool _saved = false;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
@@ -421,12 +417,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
   void _book() {
     final ticket = _selectedTicket;
     if (ticket == null) return;
-    context.read<BookingBloc>().add(InitiateBooking(
-        event: widget.event, selectedTicket: ticket, quantity: _quantity));
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-            value: context.read<BookingBloc>(),
-            child: BookingScreen(event: widget.event))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+          '${ticket.name} selected. Secure Future Times checkout is not yet available in this build.'),
+    ));
   }
 
   String get _price {
