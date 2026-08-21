@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -41,11 +42,14 @@ void main() async {
   final authRepository = AuthRepository();
   await authRepository.initialize();
   final socialRepository = SocialRepository();
+  final preferences = await SharedPreferences.getInstance();
+  final showOnboarding = !(preferences.getBool('onboarding_complete') ?? false);
 
   runApp(FutureTimesApp(
     eventRepository: eventRepository,
     authRepository: authRepository,
     socialRepository: socialRepository,
+    showOnboarding: showOnboarding,
   ));
 }
 
@@ -96,11 +100,13 @@ class FutureTimesApp extends StatelessWidget {
     required this.eventRepository,
     required this.authRepository,
     required this.socialRepository,
+    required this.showOnboarding,
   });
 
   final EventRepository eventRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
+  final bool showOnboarding;
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +114,7 @@ class FutureTimesApp extends StatelessWidget {
       eventRepository: eventRepository,
       authRepository: authRepository,
       socialRepository: socialRepository,
+      showOnboarding: showOnboarding,
     );
 
     return MaterialApp.router(

@@ -12,6 +12,7 @@ import '../../presentation/screens/calendar_screen.dart';
 import '../../presentation/screens/event_map_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/map_discovery_screen.dart';
+import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
 
@@ -63,10 +64,15 @@ GoRouter buildAppRouter({
   required EventRepository eventRepository,
   required AuthRepository authRepository,
   required SocialRepository socialRepository,
+  required bool showOnboarding,
 }) =>
     GoRouter(
-      initialLocation: '/',
+      initialLocation: showOnboarding ? '/onboarding' : '/',
       routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, __) => const OnboardingScreen(),
+        ),
         ShellRoute(
           builder: (context, state, child) => BlocProvider(
             create: (_) => EventBloc(repository: eventRepository),
