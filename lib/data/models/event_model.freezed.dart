@@ -29,10 +29,16 @@ mixin _$EventModel {
   EventImage? get logo => throw _privateConstructorUsedError;
   VenueModel? get venue => throw _privateConstructorUsedError;
   String? get categoryId => throw _privateConstructorUsedError;
+  String? get categoryLabel => throw _privateConstructorUsedError;
   String? get subcategoryId => throw _privateConstructorUsedError;
   bool get isFree => throw _privateConstructorUsedError;
   bool get isOnlineEvent => throw _privateConstructorUsedError;
   int? get capacity => throw _privateConstructorUsedError;
+  int get attendeeCount => throw _privateConstructorUsedError;
+  bool get featured => throw _privateConstructorUsedError;
+  List<String> get tags => throw _privateConstructorUsedError;
+  List<String> get lineup => throw _privateConstructorUsedError;
+  String? get organizerName => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
   String? get currency => throw _privateConstructorUsedError;
   List<TicketClass> get ticketClasses => throw _privateConstructorUsedError;
@@ -63,10 +69,16 @@ abstract class $EventModelCopyWith<$Res> {
       EventImage? logo,
       VenueModel? venue,
       String? categoryId,
+      String? categoryLabel,
       String? subcategoryId,
       bool isFree,
       bool isOnlineEvent,
       int? capacity,
+      int attendeeCount,
+      bool featured,
+      List<String> tags,
+      List<String> lineup,
+      String? organizerName,
       String? status,
       String? currency,
       List<TicketClass> ticketClasses});
@@ -103,10 +115,16 @@ class _$EventModelCopyWithImpl<$Res, $Val extends EventModel>
     Object? logo = freezed,
     Object? venue = freezed,
     Object? categoryId = freezed,
+    Object? categoryLabel = freezed,
     Object? subcategoryId = freezed,
     Object? isFree = null,
     Object? isOnlineEvent = null,
     Object? capacity = freezed,
+    Object? attendeeCount = null,
+    Object? featured = null,
+    Object? tags = null,
+    Object? lineup = null,
+    Object? organizerName = freezed,
     Object? status = freezed,
     Object? currency = freezed,
     Object? ticketClasses = null,
@@ -148,6 +166,10 @@ class _$EventModelCopyWithImpl<$Res, $Val extends EventModel>
           ? _value.categoryId
           : categoryId // ignore: cast_nullable_to_non_nullable
               as String?,
+      categoryLabel: freezed == categoryLabel
+          ? _value.categoryLabel
+          : categoryLabel // ignore: cast_nullable_to_non_nullable
+              as String?,
       subcategoryId: freezed == subcategoryId
           ? _value.subcategoryId
           : subcategoryId // ignore: cast_nullable_to_non_nullable
@@ -164,6 +186,26 @@ class _$EventModelCopyWithImpl<$Res, $Val extends EventModel>
           ? _value.capacity
           : capacity // ignore: cast_nullable_to_non_nullable
               as int?,
+      attendeeCount: null == attendeeCount
+          ? _value.attendeeCount
+          : attendeeCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      featured: null == featured
+          ? _value.featured
+          : featured // ignore: cast_nullable_to_non_nullable
+              as bool,
+      tags: null == tags
+          ? _value.tags
+          : tags // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      lineup: null == lineup
+          ? _value.lineup
+          : lineup // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      organizerName: freezed == organizerName
+          ? _value.organizerName
+          : organizerName // ignore: cast_nullable_to_non_nullable
+              as String?,
       status: freezed == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -270,10 +312,16 @@ abstract class _$$EventModelImplCopyWith<$Res>
       EventImage? logo,
       VenueModel? venue,
       String? categoryId,
+      String? categoryLabel,
       String? subcategoryId,
       bool isFree,
       bool isOnlineEvent,
       int? capacity,
+      int attendeeCount,
+      bool featured,
+      List<String> tags,
+      List<String> lineup,
+      String? organizerName,
       String? status,
       String? currency,
       List<TicketClass> ticketClasses});
@@ -314,10 +362,16 @@ class __$$EventModelImplCopyWithImpl<$Res>
     Object? logo = freezed,
     Object? venue = freezed,
     Object? categoryId = freezed,
+    Object? categoryLabel = freezed,
     Object? subcategoryId = freezed,
     Object? isFree = null,
     Object? isOnlineEvent = null,
     Object? capacity = freezed,
+    Object? attendeeCount = null,
+    Object? featured = null,
+    Object? tags = null,
+    Object? lineup = null,
+    Object? organizerName = freezed,
     Object? status = freezed,
     Object? currency = freezed,
     Object? ticketClasses = null,
@@ -359,6 +413,10 @@ class __$$EventModelImplCopyWithImpl<$Res>
           ? _value.categoryId
           : categoryId // ignore: cast_nullable_to_non_nullable
               as String?,
+      categoryLabel: freezed == categoryLabel
+          ? _value.categoryLabel
+          : categoryLabel // ignore: cast_nullable_to_non_nullable
+              as String?,
       subcategoryId: freezed == subcategoryId
           ? _value.subcategoryId
           : subcategoryId // ignore: cast_nullable_to_non_nullable
@@ -375,6 +433,26 @@ class __$$EventModelImplCopyWithImpl<$Res>
           ? _value.capacity
           : capacity // ignore: cast_nullable_to_non_nullable
               as int?,
+      attendeeCount: null == attendeeCount
+          ? _value.attendeeCount
+          : attendeeCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      featured: null == featured
+          ? _value.featured
+          : featured // ignore: cast_nullable_to_non_nullable
+              as bool,
+      tags: null == tags
+          ? _value._tags
+          : tags // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      lineup: null == lineup
+          ? _value._lineup
+          : lineup // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      organizerName: freezed == organizerName
+          ? _value.organizerName
+          : organizerName // ignore: cast_nullable_to_non_nullable
+              as String?,
       status: freezed == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -404,14 +482,22 @@ class _$EventModelImpl implements _EventModel {
       this.logo,
       this.venue,
       this.categoryId,
+      this.categoryLabel,
       this.subcategoryId,
       this.isFree = false,
       this.isOnlineEvent = false,
       this.capacity,
+      this.attendeeCount = 0,
+      this.featured = false,
+      final List<String> tags = const [],
+      final List<String> lineup = const [],
+      this.organizerName,
       this.status,
       this.currency,
       final List<TicketClass> ticketClasses = const []})
-      : _ticketClasses = ticketClasses;
+      : _tags = tags,
+        _lineup = lineup,
+        _ticketClasses = ticketClasses;
 
   factory _$EventModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$EventModelImplFromJson(json);
@@ -435,6 +521,8 @@ class _$EventModelImpl implements _EventModel {
   @override
   final String? categoryId;
   @override
+  final String? categoryLabel;
+  @override
   final String? subcategoryId;
   @override
   @JsonKey()
@@ -444,6 +532,32 @@ class _$EventModelImpl implements _EventModel {
   final bool isOnlineEvent;
   @override
   final int? capacity;
+  @override
+  @JsonKey()
+  final int attendeeCount;
+  @override
+  @JsonKey()
+  final bool featured;
+  final List<String> _tags;
+  @override
+  @JsonKey()
+  List<String> get tags {
+    if (_tags is EqualUnmodifiableListView) return _tags;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_tags);
+  }
+
+  final List<String> _lineup;
+  @override
+  @JsonKey()
+  List<String> get lineup {
+    if (_lineup is EqualUnmodifiableListView) return _lineup;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_lineup);
+  }
+
+  @override
+  final String? organizerName;
   @override
   final String? status;
   @override
@@ -459,7 +573,7 @@ class _$EventModelImpl implements _EventModel {
 
   @override
   String toString() {
-    return 'EventModel(id: $id, name: $name, description: $description, url: $url, start: $start, end: $end, logo: $logo, venue: $venue, categoryId: $categoryId, subcategoryId: $subcategoryId, isFree: $isFree, isOnlineEvent: $isOnlineEvent, capacity: $capacity, status: $status, currency: $currency, ticketClasses: $ticketClasses)';
+    return 'EventModel(id: $id, name: $name, description: $description, url: $url, start: $start, end: $end, logo: $logo, venue: $venue, categoryId: $categoryId, categoryLabel: $categoryLabel, subcategoryId: $subcategoryId, isFree: $isFree, isOnlineEvent: $isOnlineEvent, capacity: $capacity, attendeeCount: $attendeeCount, featured: $featured, tags: $tags, lineup: $lineup, organizerName: $organizerName, status: $status, currency: $currency, ticketClasses: $ticketClasses)';
   }
 
   @override
@@ -478,6 +592,8 @@ class _$EventModelImpl implements _EventModel {
             (identical(other.venue, venue) || other.venue == venue) &&
             (identical(other.categoryId, categoryId) ||
                 other.categoryId == categoryId) &&
+            (identical(other.categoryLabel, categoryLabel) ||
+                other.categoryLabel == categoryLabel) &&
             (identical(other.subcategoryId, subcategoryId) ||
                 other.subcategoryId == subcategoryId) &&
             (identical(other.isFree, isFree) || other.isFree == isFree) &&
@@ -485,6 +601,14 @@ class _$EventModelImpl implements _EventModel {
                 other.isOnlineEvent == isOnlineEvent) &&
             (identical(other.capacity, capacity) ||
                 other.capacity == capacity) &&
+            (identical(other.attendeeCount, attendeeCount) ||
+                other.attendeeCount == attendeeCount) &&
+            (identical(other.featured, featured) ||
+                other.featured == featured) &&
+            const DeepCollectionEquality().equals(other._tags, _tags) &&
+            const DeepCollectionEquality().equals(other._lineup, _lineup) &&
+            (identical(other.organizerName, organizerName) ||
+                other.organizerName == organizerName) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.currency, currency) ||
                 other.currency == currency) &&
@@ -494,24 +618,31 @@ class _$EventModelImpl implements _EventModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      description,
-      url,
-      start,
-      end,
-      logo,
-      venue,
-      categoryId,
-      subcategoryId,
-      isFree,
-      isOnlineEvent,
-      capacity,
-      status,
-      currency,
-      const DeepCollectionEquality().hash(_ticketClasses));
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        name,
+        description,
+        url,
+        start,
+        end,
+        logo,
+        venue,
+        categoryId,
+        categoryLabel,
+        subcategoryId,
+        isFree,
+        isOnlineEvent,
+        capacity,
+        attendeeCount,
+        featured,
+        const DeepCollectionEquality().hash(_tags),
+        const DeepCollectionEquality().hash(_lineup),
+        organizerName,
+        status,
+        currency,
+        const DeepCollectionEquality().hash(_ticketClasses)
+      ]);
 
   /// Create a copy of EventModel
   /// with the given fields replaced by the non-null parameter values.
@@ -540,10 +671,16 @@ abstract class _EventModel implements EventModel {
       final EventImage? logo,
       final VenueModel? venue,
       final String? categoryId,
+      final String? categoryLabel,
       final String? subcategoryId,
       final bool isFree,
       final bool isOnlineEvent,
       final int? capacity,
+      final int attendeeCount,
+      final bool featured,
+      final List<String> tags,
+      final List<String> lineup,
+      final String? organizerName,
       final String? status,
       final String? currency,
       final List<TicketClass> ticketClasses}) = _$EventModelImpl;
@@ -570,6 +707,8 @@ abstract class _EventModel implements EventModel {
   @override
   String? get categoryId;
   @override
+  String? get categoryLabel;
+  @override
   String? get subcategoryId;
   @override
   bool get isFree;
@@ -577,6 +716,16 @@ abstract class _EventModel implements EventModel {
   bool get isOnlineEvent;
   @override
   int? get capacity;
+  @override
+  int get attendeeCount;
+  @override
+  bool get featured;
+  @override
+  List<String> get tags;
+  @override
+  List<String> get lineup;
+  @override
+  String? get organizerName;
   @override
   String? get status;
   @override

@@ -28,18 +28,21 @@ class SupabaseEventService {
     try {
       var request =
           _client.from('events').select(selection).eq('status', 'published');
-      if (category?.isNotEmpty == true)
+      if (category?.isNotEmpty == true) {
         request = request.eq('category', category!);
+      }
       if (city?.isNotEmpty == true) request = request.eq('city', city!);
       if (query?.trim().isNotEmpty == true) {
         final safe = query!.trim().replaceAll(',', ' ');
         request = request
             .or('title.ilike.%$safe%,venue.ilike.%$safe%,city.ilike.%$safe%');
       }
-      if (startDate?.isNotEmpty == true)
+      if (startDate?.isNotEmpty == true) {
         request = request.gte('date', startDate!.substring(0, 10));
-      if (endDate?.isNotEmpty == true)
+      }
+      if (endDate?.isNotEmpty == true) {
         request = request.lte('date', endDate!.substring(0, 10));
+      }
       if (isFree == true) request = request.eq('price', 0);
       if (isFree == false) request = request.gt('price', 0);
 
@@ -94,6 +97,23 @@ class SupabaseEventService {
     }
   }
 
+  Future<List<EventModel>> fetchEventsByIds(Iterable<String> ids) async {
+    final values = ids.toSet().toList();
+    if (values.isEmpty) return const [];
+    try {
+      final rows = await _client
+          .from('events')
+          .select(selection)
+          .inFilter('id', values)
+          .eq('status', 'published')
+          .order('date', ascending: true);
+      return rows.map<EventModel>(_mapEvent).toList();
+    } on PostgrestException catch (error) {
+      throw DataFailure('Saved events could not be loaded.',
+          code: error.code, cause: error);
+    }
+  }
+
   EventModel _mapEvent(Map<String, dynamic> row) {
     final date = row['date']?.toString() ?? '';
     final startTime = row['time']?.toString() ?? '00:00:00';
@@ -125,13 +145,25 @@ class SupabaseEventService {
         latitude: row['lat']?.toString(),
         longitude: row['lng']?.toString(),
         address: VenueAddress(
+            address1: row['address']?.toString(),
+            city: row['city']?.toString(),
+            country: 'Zimbabwe',
             localizedDisplay: [row['address'], row['city']]
                 .where((value) => value?.toString().isNotEmpty == true)
                 .join(', ')),
       ),
       categoryId: row['category']?.toString(),
+      categoryLabel: row['category_label']?.toString(),
       isFree: price == 0,
       capacity: int.tryParse(row['capacity']?.toString() ?? ''),
+      attendeeCount: int.tryParse(row['attendees']?.toString() ?? '') ?? 0,
+      featured: row['featured'] == true,
+      tags: (row['tags'] as List?)?.map((value) => value.toString()).toList() ??
+          const [],
+      lineup:
+          (row['lineup'] as List?)?.map((value) => value.toString()).toList() ??
+              const [],
+      organizerName: row['organizer_name']?.toString(),
       status: row['status']?.toString(),
       currency: 'USD',
       ticketClasses: const [],

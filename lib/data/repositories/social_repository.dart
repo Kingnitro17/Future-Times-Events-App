@@ -44,37 +44,22 @@ class SocialRepository {
       Stream.fromFuture(getAttendees(eventId));
 
   Future<List<AttendeeModel>> getAttendees(String eventId) async {
-    final rows = await _client
-        .from('rsvps')
-        .select('user_id,created_at')
+    final snapshot = await _client
+        .from('event_attendee_snapshots')
+        .select('preview_attendees')
         .eq('event_id', eventId)
-        .eq('status', 'going')
-        .eq('is_public', true)
-        .order('created_at', ascending: false)
-        .limit(24);
-    final ids = rows
-        .map((row) => row['user_id']?.toString())
-        .whereType<String>()
-        .toList();
-    if (ids.isEmpty) return const [];
-
-    final profiles = await _client
-        .from('public_profile_cards')
-        .select('id,display_name,avatar_url')
-        .inFilter('id', ids);
-    final byId = {
-      for (final profile in profiles)
-        if (profile['id'] != null) profile['id'].toString(): profile,
-    };
-    return rows.take(12).map((row) {
-      final userId = row['user_id'].toString();
-      final profile = byId[userId];
+        .maybeSingle();
+    final preview = snapshot?['preview_attendees'];
+    if (preview is! List) return const [];
+    return preview.take(12).map((value) {
+      final row = value as Map<String, dynamic>;
+      final userId = row['user_id']?.toString() ?? '';
       return AttendeeModel(
         userId: userId,
         eventId: eventId,
-        displayName: profile?['display_name']?.toString() ?? 'Attendee',
-        avatarUrl: profile?['avatar_url']?.toString(),
-        checkedInAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+        displayName: row['display_name']?.toString() ?? 'Attendee',
+        avatarUrl: row['avatar_url']?.toString(),
+        checkedInAt: DateTime.tryParse(row['rsvp_at']?.toString() ?? ''),
       );
     }).toList();
   }
@@ -94,6 +79,10 @@ class SocialRepository {
     return row != null;
   }
 
-  Stream<int> watchAttendeeCount(String eventId) =>
-      Stream.fromFuture(getAttendees(eventId).then((rows) => rows.length));
+  Stream<int> watchAttendeeCount(String eventId) => Stream.fromFuture(_client
+      .from('event_attendee_snapshots')
+      .select('going_count')
+      .eq('event_id', eventId)
+      .maybeSingle()
+      .then((row) => int.tryParse(row?['going_count']?.toString() ?? '') ?? 0));
 }

@@ -10,6 +10,7 @@ import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
 import '../widgets/glassmorphism_card.dart';
+import '../widgets/event_network_image.dart';
 
 class EventMapScreen extends StatefulWidget {
   final EventModel event;
@@ -165,22 +166,13 @@ class _EventMapScreenState extends State<EventMapScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                borderRadius: AppTheme.radiusSmall,
-                image: widget.event.logo?.url != null
-                    ? DecorationImage(
-                        image: NetworkImage(widget.event.logo!.url!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                color: AppTheme.charcoalSurface,
+            ClipRRect(
+              borderRadius: AppTheme.radiusSmall,
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: EventNetworkImage.forEvent(widget.event),
               ),
-              child: widget.event.logo?.url == null
-                  ? const Icon(Icons.event, color: AppTheme.subtleGrey)
-                  : null,
             ),
             const SizedBox(width: 16),
             Expanded(

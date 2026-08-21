@@ -1,27 +1,40 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
+import '../../data/repositories/saved_events_repository.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/social_repository.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
+import '../widgets/event_network_image.dart';
+import '../widgets/save_event_button.dart';
 
 class DetailsScreen extends StatefulWidget {
-  const DetailsScreen({super.key, required this.event});
+  const DetailsScreen(
+      {super.key,
+      required this.event,
+      required this.savedEventsRepository,
+      required this.authRepository,
+      required this.socialRepository});
   final EventModel event;
+  final SavedEventsRepository savedEventsRepository;
+  final AuthRepository authRepository;
+  final SocialRepository socialRepository;
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
 }
 
 class _DetailsScreenState extends State<DetailsScreen> {
   TicketClass? _selectedTicket;
-  bool _saved = false;
+  bool _going = false;
+  bool _rsvpLoading = false;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -34,6 +47,52 @@ class _DetailsScreenState extends State<DetailsScreen> {
     context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
     final tickets = widget.event.ticketClasses.where((t) => !t.hidden);
     if (tickets.isNotEmpty) _selectedTicket = tickets.first;
+    _loadGoing();
+  }
+
+  Future<void> _loadGoing() async {
+    final userId = widget.authRepository.user?.id;
+    if (userId == null) return;
+    final going = await widget.socialRepository
+        .hasCheckedIn(eventId: widget.event.id, userId: userId);
+    if (mounted) setState(() => _going = going);
+  }
+
+  Future<void> _toggleGoing() async {
+    final user = widget.authRepository.user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign in from Profile to RSVP.')));
+      return;
+    }
+    setState(() => _rsvpLoading = true);
+    try {
+      if (_going) {
+        await widget.socialRepository
+            .checkOut(eventId: widget.event.id, userId: user.id);
+      } else {
+        await widget.socialRepository.checkIn(
+          eventId: widget.event.id,
+          userId: user.id,
+          displayName:
+              widget.authRepository.profile?['display_name']?.toString() ??
+                  widget.authRepository.displayEmail.split('@').first,
+        );
+      }
+      if (mounted) setState(() => _going = !_going);
+      if (mounted) {
+        context
+            .read<SocialBloc>()
+            .add(WatchAttendees(eventId: widget.event.id));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not update your RSVP. Try again.')));
+      }
+    } finally {
+      if (mounted) setState(() => _rsvpLoading = false);
+    }
   }
 
   @override
@@ -68,20 +127,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
             bottom: 62,
             child: Hero(
               tag: 'event_${widget.event.id}',
-              child: _image.isEmpty
-                  ? Container(
-                      decoration:
-                          const BoxDecoration(gradient: AppGradients.brand),
-                      child: const Center(
-                          child: Icon(Icons.event_rounded,
-                              size: 72, color: Colors.white)))
-                  : CachedNetworkImage(
-                      imageUrl: _image,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                          decoration: const BoxDecoration(
-                              gradient: AppGradients.brand)),
-                    ),
+              child: EventNetworkImage(
+                url: _image,
+                semanticLabel: '${widget.event.name.text} artwork',
+              ),
             ),
           ),
           Positioned.fill(
@@ -107,8 +156,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       fontWeight: FontWeight.w800,
                       shadows: [Shadow(color: Colors.black38, blurRadius: 8)])),
               const Spacer(),
-              _circleButton(_saved ? Icons.bookmark : Icons.bookmark_border,
-                  () => setState(() => _saved = !_saved)),
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: SaveEventButton(
+                  eventId: widget.event.id,
+                  repository: widget.savedEventsRepository,
+                ),
+              ),
             ]),
           ),
           Positioned(
@@ -202,8 +259,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             backgroundColor: AppColors.purpleLight,
                             backgroundImage: attendee.avatarUrl == null
                                 ? null
-                                : CachedNetworkImageProvider(
-                                    attendee.avatarUrl!),
+                                : NetworkImage(attendee.avatarUrl!),
                             child: attendee.avatarUrl == null
                                 ? Text(attendee.displayName[0].toUpperCase(),
                                     style: const TextStyle(color: Colors.white))
@@ -226,15 +282,17 @@ class _DetailsScreenState extends State<DetailsScreen> {
             SizedBox(
               height: 40,
               child: FilledButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Event link ready to share.'))),
+                onPressed: _rsvpLoading ? null : _toggleGoing,
                 style: FilledButton.styleFrom(
                     minimumSize: const Size(82, 40),
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10))),
-                child: const Text('Invite'),
+                child: Text(_rsvpLoading
+                    ? 'Updating…'
+                    : _going
+                        ? '✓ Going'
+                        : "I'm Going"),
               ),
             ),
           ]);
@@ -389,10 +447,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total Price',
+                Text(ticket == null ? 'Attendance' : 'Total Price',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 const SizedBox(height: 2),
-                Text(ticket == null ? 'Unavailable' : _price,
+                Text(
+                    ticket == null
+                        ? (_going ? 'You are going' : 'Free RSVP')
+                        : _price,
                     style: const TextStyle(
                         color: AppColors.purple,
                         fontSize: 18,
@@ -402,25 +463,54 @@ class _DetailsScreenState extends State<DetailsScreen> {
         SizedBox(
           width: 170,
           child: FilledButton(
-            onPressed: ticket == null ? null : _book,
+            onPressed: _eventEnded || _soldOut
+                ? null
+                : ticket == null
+                    ? (_rsvpLoading ? null : _toggleGoing)
+                    : _openCheckout,
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.pink,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16))),
-            child: Text(ticket == null ? 'No tickets' : 'Book Now'),
+            child: Text(_ctaLabel),
           ),
         ),
       ]),
     );
   }
 
-  void _book() {
+  Future<void> _openCheckout() async {
+    final slug = widget.event.url.trim();
+    final uri = Uri.https('futuretimesevents.com', '/events/$slug');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Could not open secure checkout. Try again shortly.')));
+    }
+  }
+
+  bool get _eventEnded => _end.isBefore(DateTime.now());
+  bool get _soldOut {
+    final visible =
+        widget.event.ticketClasses.where((ticket) => !ticket.hidden);
+    return visible.isNotEmpty &&
+        visible.every((ticket) =>
+            ticket.quantityTotal != null &&
+            ticket.quantitySold != null &&
+            ticket.quantitySold! >= ticket.quantityTotal!);
+  }
+
+  String get _ctaLabel {
+    if (_eventEnded) return 'Event Ended';
+    if (_soldOut) return 'Sold Out';
     final ticket = _selectedTicket;
-    if (ticket == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-          '${ticket.name} selected. Secure Future Times checkout is not yet available in this build.'),
-    ));
+    if (ticket == null)
+      return _rsvpLoading
+          ? 'Updating…'
+          : _going
+              ? '✓ Going'
+              : "I'm Going";
+    return ticket.free ? 'Get Free Ticket' : 'Get Tickets';
   }
 
   String get _price {

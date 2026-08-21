@@ -98,15 +98,18 @@ class AuthRepository extends ChangeNotifier {
 
   AuthFailure _mapAuthError(AuthException error) {
     final message = error.message.toLowerCase();
-    if (message.contains('invalid login credentials'))
+    if (message.contains('invalid login credentials')) {
       return AuthFailure('Incorrect email or password.',
           code: error.code, cause: error);
-    if (message.contains('email not confirmed'))
+    }
+    if (message.contains('email not confirmed')) {
       return AuthFailure('Confirm your email before signing in.',
           code: error.code, cause: error);
-    if (message.contains('rate') || error.statusCode == '429')
+    }
+    if (message.contains('rate') || error.statusCode == '429') {
       return AuthFailure('Too many attempts. Please wait and try again.',
           code: error.code, cause: error);
+    }
     return AuthFailure('Sign in could not be completed. Please try again.',
         code: error.code, cause: error);
   }

@@ -8,6 +8,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Future Times Events</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Future Times uses your location only when you ask to discover events near you.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

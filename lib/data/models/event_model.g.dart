@@ -23,10 +23,21 @@ _$EventModelImpl _$$EventModelImplFromJson(Map<String, dynamic> json) =>
           ? null
           : VenueModel.fromJson(json['venue'] as Map<String, dynamic>),
       categoryId: json['categoryId'] as String?,
+      categoryLabel: json['categoryLabel'] as String?,
       subcategoryId: json['subcategoryId'] as String?,
       isFree: json['isFree'] as bool? ?? false,
       isOnlineEvent: json['isOnlineEvent'] as bool? ?? false,
       capacity: (json['capacity'] as num?)?.toInt(),
+      attendeeCount: (json['attendeeCount'] as num?)?.toInt() ?? 0,
+      featured: json['featured'] as bool? ?? false,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
+      lineup: (json['lineup'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      organizerName: json['organizerName'] as String?,
       status: json['status'] as String?,
       currency: json['currency'] as String?,
       ticketClasses: (json['ticketClasses'] as List<dynamic>?)
@@ -46,10 +57,16 @@ Map<String, dynamic> _$$EventModelImplToJson(_$EventModelImpl instance) =>
       'logo': instance.logo,
       'venue': instance.venue,
       'categoryId': instance.categoryId,
+      'categoryLabel': instance.categoryLabel,
       'subcategoryId': instance.subcategoryId,
       'isFree': instance.isFree,
       'isOnlineEvent': instance.isOnlineEvent,
       'capacity': instance.capacity,
+      'attendeeCount': instance.attendeeCount,
+      'featured': instance.featured,
+      'tags': instance.tags,
+      'lineup': instance.lineup,
+      'organizerName': instance.organizerName,
       'status': instance.status,
       'currency': instance.currency,
       'ticketClasses': instance.ticketClasses,

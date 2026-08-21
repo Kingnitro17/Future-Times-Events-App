@@ -53,6 +53,9 @@ class EventRepository {
   Future<EventModel> getEventById(String eventId) =>
       _service.fetchEventById(eventId);
 
+  Future<List<EventModel>> getEventsByIds(Iterable<String> eventIds) =>
+      _service.fetchEventsByIds(eventIds);
+
   Future<List<TicketClass>> getTicketClasses(String eventId) async =>
       (await _service.fetchEventById(eventId)).ticketClasses;
 

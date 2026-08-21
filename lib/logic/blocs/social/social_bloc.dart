@@ -28,9 +28,9 @@ class SocialBloc extends Bloc<SocialEvent, SocialState> {
 
     _subscription = _repository.watchAttendees(event.eventId).listen(
           (attendees) => add(AttendeesUpdated(attendees: attendees)),
-          onError: (e) => emit(
-            SocialError(message: 'Failed to load attendees: $e'),
-          ),
+          onError: (_) => emit(const SocialError(
+            message: 'Who\'s Going is temporarily unavailable.',
+          )),
         );
 
     // Keep the event handler alive for the lifetime of the stream
@@ -74,8 +74,9 @@ class SocialBloc extends Bloc<SocialEvent, SocialState> {
         avatarUrl: event.avatarUrl,
       );
       // Stream will auto-update state via WatchAttendees
-    } catch (e) {
-      emit(SocialError(message: 'Failed to check in: $e'));
+    } catch (_) {
+      emit(
+          const SocialError(message: 'Could not update your RSVP. Try again.'));
     }
   }
 
@@ -91,8 +92,9 @@ class SocialBloc extends Bloc<SocialEvent, SocialState> {
         userId: event.userId,
       );
       // Stream will auto-update state via WatchAttendees
-    } catch (e) {
-      emit(SocialError(message: 'Failed to check out: $e'));
+    } catch (_) {
+      emit(
+          const SocialError(message: 'Could not update your RSVP. Try again.'));
     }
   }
 

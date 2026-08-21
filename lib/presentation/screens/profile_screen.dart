@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/saved_events_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, required this.authRepository});
+  const ProfileScreen(
+      {super.key,
+      required this.authRepository,
+      required this.savedEventsRepository});
   final AuthRepository authRepository;
+  final SavedEventsRepository savedEventsRepository;
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -127,6 +133,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.amber))),
       const SizedBox(height: 28),
+      ListTile(
+        onTap: () => context.push('/saved'),
+        leading: const Icon(Icons.bookmark_outline_rounded,
+            color: AppTheme.electricIndigo),
+        title: const Text('Saved Events'),
+        subtitle: const Text('Your shortlist for what happens next'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+      ListTile(
+        onTap: () => context.go('/tickets'),
+        leading: const Icon(Icons.confirmation_number_outlined,
+            color: AppTheme.electricIndigo),
+        title: const Text('My Tickets'),
+        subtitle: const Text('Active and previously used tickets'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+      ListTile(
+        onTap: () => context.push('/onboarding'),
+        leading: const Icon(Icons.tune_rounded, color: AppTheme.electricIndigo),
+        title: const Text('Discovery Preferences'),
+        subtitle: const Text('Interests and preferred location'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+      const SizedBox(height: 12),
       OutlinedButton(
           onPressed: _submitting || auth.isQaMockSession
               ? null

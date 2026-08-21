@@ -17,19 +17,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
   String _city = 'Harare';
-  final Set<String> _interests = {'Live music', 'Culture'};
+  final Set<String> _interests = {'Music', 'Performing & Visual Arts'};
   bool _saving = false;
 
   static const _cities = ['Harare', 'Bulawayo', 'Victoria Falls', 'Mutare'];
   static const _interestsList = <(String, IconData)>[
-    ('Live music', Icons.music_note_rounded),
+    ('Music', Icons.music_note_rounded),
     ('Nightlife', Icons.nightlife_rounded),
-    ('Culture', Icons.palette_outlined),
-    ('Food & drink', Icons.restaurant_rounded),
+    ('Performing & Visual Arts', Icons.palette_outlined),
+    ('Food & Drink', Icons.restaurant_rounded),
     ('Business', Icons.business_center_outlined),
-    ('Sport', Icons.sports_soccer_rounded),
-    ('Family', Icons.family_restroom_rounded),
-    ('Wellness', Icons.self_improvement_rounded),
+    ('Sports', Icons.sports_soccer_rounded),
+    ('Holidays', Icons.flight_takeoff_rounded),
+    ('Hobbies', Icons.sports_esports_outlined),
+    ('Dating', Icons.favorite_border_rounded),
   ];
 
   Future<void> _finish() async {
@@ -91,7 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               _BottomBar(
                 page: _page,
-                enabled: _page != 1 || _interests.isNotEmpty,
+                enabled: _page != 1 || _interests.length >= 2,
                 saving: _saving,
                 onBack: () => _controller.previousPage(
                   duration: const Duration(milliseconds: 320),
@@ -145,8 +146,8 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _PageFrame(
         visual: const _DiscoveryVisual(),
-        eyebrow: 'YOUR CITY, LIVE',
-        title: 'Be there when\nit happens.',
+        eyebrow: 'FUTURE TIMES EVENTS',
+        title: "Find what's happening\naround you.",
         body:
             'Discover the concerts, culture, food, sport and ideas shaping Zimbabwe—curated around you, not a generic popularity list.',
         trust: 'Real organisers  •  Secure tickets  •  Local discovery',
@@ -179,12 +180,12 @@ class _PreferencePage extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const _Eyebrow('MAKE IT YOURS'),
               const SizedBox(height: 12),
-              Text('What should we put\non your radar?',
+              Text('What are you into?',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontSize: 38, height: 1.02, letterSpacing: -1.4)),
               const SizedBox(height: 12),
               const Text(
-                'Choose at least one interest. You can change this anytime.',
+                'Choose at least two interests. You can change these anytime.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
               ),
               const SizedBox(height: 28),
@@ -614,7 +615,9 @@ class _BottomBar extends StatelessWidget {
                             ? 'Opening…'
                             : page == 2
                                 ? 'Explore events'
-                                : 'Continue'),
+                                : page == 0
+                                    ? 'Get Started'
+                                    : 'Continue'),
                         if (!saving) ...[
                           const SizedBox(width: 6),
                           const Icon(Icons.arrow_forward_rounded, size: 18)

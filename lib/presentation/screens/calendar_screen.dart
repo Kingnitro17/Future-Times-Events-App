@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +10,7 @@ import '../../data/models/event_model.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
+import '../widgets/event_network_image.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -67,7 +67,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             final events = state is EventLoaded ? state.events : <EventModel>[];
             return RefreshIndicator(
               onRefresh: () async {
-                context.read<EventBloc>().add(const FetchEvents(forceRefresh: true));
+                context
+                    .read<EventBloc>()
+                    .add(const FetchEvents(forceRefresh: true));
                 await context.read<EventBloc>().stream.firstWhere(
                     (value) => value is EventLoaded || value is EventError);
               },
@@ -96,8 +98,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         icon: Icons.cloud_off_outlined,
                         title: 'Could not refresh the calendar',
                         action: 'Try again',
-                        onPressed: () => context.read<EventBloc>().add(
-                            const FetchEvents(forceRefresh: true)),
+                        onPressed: () => context
+                            .read<EventBloc>()
+                            .add(const FetchEvents(forceRefresh: true)),
                       ),
                     )
                   else
@@ -121,7 +124,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
-          BoxShadow(color: Color(0x100A0A14), blurRadius: 24, offset: Offset(0, 10)),
+          BoxShadow(
+              color: Color(0x100A0A14), blurRadius: 24, offset: Offset(0, 10)),
         ],
       ),
       child: Column(children: [
@@ -147,7 +151,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Expanded(
                 child: Text(day,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
                         fontWeight: FontWeight.w700)),
@@ -165,12 +169,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
           itemCount: leading + days,
           itemBuilder: (_, index) {
             if (index < leading) return const SizedBox.shrink();
-            final date = DateTime(_month.year, _month.month, index - leading + 1);
+            final date =
+                DateTime(_month.year, _month.month, index - leading + 1);
             return _DayCell(
               date: date,
               selected: _sameDay(date, _selected),
               today: _sameDay(date, DateTime.now()),
-              hasEvents: events.any((event) => _sameDay(_eventDate(event), date)),
+              hasEvents:
+                  events.any((event) => _sameDay(_eventDate(event), date)),
               onTap: () {
                 HapticFeedback.selectionClick();
                 setState(() => _selected = date);
@@ -203,15 +209,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
       sliver: SliverList.separated(
         itemCount: selectedEvents.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, index) => _CalendarEventCard(event: selectedEvents[index]),
+        itemBuilder: (_, index) =>
+            _CalendarEventCard(event: selectedEvents[index]),
       ),
     );
   }
 }
 
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.date, required this.selected, required this.today,
-      required this.hasEvents, required this.onTap});
+  const _DayCell(
+      {required this.date,
+      required this.selected,
+      required this.today,
+      required this.hasEvents,
+      required this.onTap});
   final DateTime date;
   final bool selected;
   final bool today;
@@ -237,24 +248,28 @@ class _DayCell extends StatelessWidget {
                     : null,
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('${date.day}',
-                    style: TextStyle(
-                        color: selected ? Colors.white : AppColors.text,
-                        fontWeight: selected || today ? FontWeight.w800 : FontWeight.w500)),
-                const SizedBox(height: 3),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 4,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: hasEvents
-                        ? (selected ? Colors.white : AppColors.pink)
-                        : Colors.transparent,
-                  ),
-                ),
-              ]),
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('${date.day}',
+                        style: TextStyle(
+                            color: selected ? Colors.white : AppColors.text,
+                            fontWeight: selected || today
+                                ? FontWeight.w800
+                                : FontWeight.w500)),
+                    const SizedBox(height: 3),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasEvents
+                            ? (selected ? Colors.white : AppColors.pink)
+                            : Colors.transparent,
+                      ),
+                    ),
+                  ]),
             ),
           ),
         ),
@@ -267,7 +282,6 @@ class _CalendarEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = event.logo?.original?.url ?? event.logo?.url;
     return Material(
       color: AppColors.surface,
       shape: RoundedRectangleBorder(
@@ -284,34 +298,45 @@ class _CalendarEventCard extends StatelessWidget {
               child: SizedBox(
                 width: 92,
                 height: 92,
-                child: image == null || image.isEmpty
-                    ? Container(
-                        decoration: const BoxDecoration(gradient: AppGradients.brand),
-                        child: const Icon(Icons.event_rounded, color: Colors.white))
-                    : CachedNetworkImage(imageUrl: image, fit: BoxFit.cover),
+                child: EventNetworkImage.forEvent(event),
               ),
             ),
             const SizedBox(width: 13),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(event.name.text, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.text,
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 7),
-                Text(DateFormat('h:mm a').format(_eventDate(event)),
-                    style: const TextStyle(color: AppColors.purple,
-                        fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                Text(event.isOnlineEvent ? 'Online event' :
-                    (event.venue?.name ?? event.venue?.address?.city ?? 'Venue TBA'),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(event.name.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 7),
+                    Text(DateFormat('h:mm a').format(_eventDate(event)),
+                        style: const TextStyle(
+                            color: AppColors.purple,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(
+                        event.isOnlineEvent
+                            ? 'Online event'
+                            : (event.venue?.name ??
+                                event.venue?.address?.city ??
+                                'Venue TBA'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 12)),
+                  ]),
             ),
             const SizedBox(width: 8),
             Text(event.isFree ? 'Free' : 'Tickets',
-                style: const TextStyle(color: AppColors.pink,
-                    fontWeight: FontWeight.w800, fontSize: 12)),
+                style: const TextStyle(
+                    color: AppColors.pink,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12)),
           ]),
         ),
       ),
@@ -320,8 +345,11 @@ class _CalendarEventCard extends StatelessWidget {
 }
 
 class _EmptyDay extends StatelessWidget {
-  const _EmptyDay({required this.icon, required this.title,
-      required this.action, required this.onPressed});
+  const _EmptyDay(
+      {required this.icon,
+      required this.title,
+      required this.action,
+      required this.onPressed});
   final IconData icon;
   final String title;
   final String action;

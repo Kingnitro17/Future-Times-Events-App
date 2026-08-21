@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/event_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/social_repository.dart';
+import 'data/repositories/saved_events_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,11 @@ void main() async {
   final authRepository = AuthRepository();
   await authRepository.initialize();
   final socialRepository = SocialRepository();
+  final savedEventsRepository =
+      SavedEventsRepository(authRepository: authRepository);
+  if (authRepository.isSignedIn && !authRepository.isQaMockSession) {
+    await savedEventsRepository.load();
+  }
   final preferences = await SharedPreferences.getInstance();
   final showOnboarding = !(preferences.getBool('onboarding_complete') ?? false);
 
@@ -50,6 +56,7 @@ void main() async {
     authRepository: authRepository,
     socialRepository: socialRepository,
     showOnboarding: showOnboarding,
+    savedEventsRepository: savedEventsRepository,
   ));
 }
 
@@ -101,12 +108,14 @@ class FutureTimesApp extends StatelessWidget {
     required this.authRepository,
     required this.socialRepository,
     required this.showOnboarding,
+    required this.savedEventsRepository,
   });
 
   final EventRepository eventRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
   final bool showOnboarding;
+  final SavedEventsRepository savedEventsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +124,7 @@ class FutureTimesApp extends StatelessWidget {
       authRepository: authRepository,
       socialRepository: socialRepository,
       showOnboarding: showOnboarding,
+      savedEventsRepository: savedEventsRepository,
     );
 
     return MaterialApp.router(

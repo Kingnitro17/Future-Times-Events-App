@@ -5,6 +5,7 @@ import '../../data/models/event_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/social_repository.dart';
+import '../../data/repositories/saved_events_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
@@ -15,28 +16,21 @@ import '../../presentation/screens/map_discovery_screen.dart';
 import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
+import '../../presentation/screens/saved_events_screen.dart';
 
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.child, required this.location});
-  final Widget child;
-  final String location;
-
-  static const paths = ['/', '/tickets', '/map', '/profile'];
-  int get selectedIndex {
-    if (location.startsWith('/tickets')) return 1;
-    if (location.startsWith('/map')) return 2;
-    if (location.startsWith('/profile')) return 3;
-    return 0;
-  }
+  const AppShell({super.key, required this.navigationShell});
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: child,
+        body: navigationShell,
         bottomNavigationBar: SafeArea(
           top: false,
           child: NavigationBar(
-            selectedIndex: selectedIndex,
-            onDestinationSelected: (index) => context.go(paths[index]),
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: (index) => navigationShell.goBranch(index,
+                initialLocation: index == navigationShell.currentIndex),
             destinations: const [
               NavigationDestination(
                   icon: Icon(Icons.home_outlined),
@@ -65,6 +59,7 @@ GoRouter buildAppRouter({
   required AuthRepository authRepository,
   required SocialRepository socialRepository,
   required bool showOnboarding,
+  required SavedEventsRepository savedEventsRepository,
 }) =>
     GoRouter(
       initialLocation: showOnboarding ? '/onboarding' : '/',
@@ -73,29 +68,48 @@ GoRouter buildAppRouter({
           path: '/onboarding',
           builder: (_, __) => const OnboardingScreen(),
         ),
-        ShellRoute(
-          builder: (context, state, child) => BlocProvider(
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) => BlocProvider(
             create: (_) => EventBloc(repository: eventRepository),
-            child: AppShell(location: state.uri.path, child: child),
+            child: AppShell(navigationShell: navigationShell),
           ),
-          routes: [
-            GoRoute(
-                path: '/',
-                pageBuilder: (_, __) =>
-                    const NoTransitionPage(child: HomeScreen())),
-            GoRoute(
-                path: '/tickets',
-                pageBuilder: (_, __) => NoTransitionPage(
-                    child: TicketsScreen(authRepository: authRepository))),
-            GoRoute(
-                path: '/map',
-                pageBuilder: (_, __) =>
-                    const NoTransitionPage(child: MapDiscoveryScreen())),
-            GoRoute(
-                path: '/profile',
-                pageBuilder: (_, __) => NoTransitionPage(
-                    child: ProfileScreen(authRepository: authRepository))),
+          branches: [
+            StatefulShellBranch(routes: [
+              GoRoute(
+                  path: '/',
+                  pageBuilder: (_, __) => NoTransitionPage(
+                      child: HomeScreen(
+                          savedEventsRepository: savedEventsRepository)))
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                  path: '/tickets',
+                  pageBuilder: (_, __) => NoTransitionPage(
+                      child: TicketsScreen(authRepository: authRepository)))
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                  path: '/map',
+                  pageBuilder: (_, __) => NoTransitionPage(
+                      child: MapDiscoveryScreen(
+                          savedEventsRepository: savedEventsRepository)))
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                  path: '/profile',
+                  pageBuilder: (_, __) => NoTransitionPage(
+                      child: ProfileScreen(
+                          authRepository: authRepository,
+                          savedEventsRepository: savedEventsRepository)))
+            ]),
           ],
+        ),
+        GoRoute(
+          path: '/saved',
+          builder: (_, __) => SavedEventsScreen(
+            eventRepository: eventRepository,
+            savedEventsRepository: savedEventsRepository,
+          ),
         ),
         GoRoute(
           path: '/calendar',
@@ -122,7 +136,11 @@ GoRouter buildAppRouter({
                         create: (_) =>
                             SocialBloc(socialRepository: socialRepository)),
                   ],
-                  child: DetailsScreen(event: event),
+                  child: DetailsScreen(
+                      event: event,
+                      savedEventsRepository: savedEventsRepository,
+                      authRepository: authRepository,
+                      socialRepository: socialRepository),
                 );
               },
             );

@@ -39,10 +39,11 @@ class GlassmorphismCard extends StatelessWidget {
           child: Container(
             padding: padding ?? const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: (color ?? AppTheme.electricIndigo).withOpacity(opacity),
+              color:
+                  (color ?? AppTheme.electricIndigo).withValues(alpha: opacity),
               borderRadius: radius,
               border: Border.all(
-                color: Colors.white.withOpacity(borderOpacity),
+                color: Colors.white.withValues(alpha: borderOpacity),
                 width: 1.0,
               ),
             ),
