@@ -57,14 +57,16 @@ class ApplyFilters extends EventEvent {
     this.startDate,
     this.endDate,
     this.isFree,
+    this.city,
   });
 
   final DateTime? startDate;
   final DateTime? endDate;
   final bool? isFree;
+  final String? city;
 
   @override
-  List<Object?> get props => [startDate, endDate, isFree];
+  List<Object?> get props => [startDate, endDate, isFree, city];
 }
 
 /// Paginate — load the next page of results.

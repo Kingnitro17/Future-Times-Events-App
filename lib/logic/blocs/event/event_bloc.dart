@@ -69,6 +69,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         activeStartDate: baseState?.activeStartDate,
         activeEndDate: baseState?.activeEndDate,
         activeIsFree: baseState?.activeIsFree,
+        activeCity: baseState?.activeCity,
       ));
     } catch (e) {
       emit(EventError(message: _friendlyError(e)));
@@ -95,6 +96,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         query: event.query,
         categoryId: baseState?.activeCategoryId,
         isFree: baseState?.activeIsFree,
+        locationAddress: baseState?.activeCity,
         page: 1,
         forceRefresh: true,
       );
@@ -108,6 +110,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         activeStartDate: baseState?.activeStartDate,
         activeEndDate: baseState?.activeEndDate,
         activeIsFree: baseState?.activeIsFree,
+        activeCity: baseState?.activeCity,
       ));
     } catch (e) {
       emit(EventError(message: _friendlyError(e)));
@@ -129,6 +132,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         categoryId: baseState?.activeCategoryId,
         query: baseState?.activeQuery,
         isFree: event.isFree,
+        locationAddress: event.city,
         startDateRangeStart: event.startDate?.toIso8601String(),
         startDateRangeEnd: event.endDate?.toIso8601String(),
         page: 1,
@@ -144,6 +148,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         activeStartDate: event.startDate,
         activeEndDate: event.endDate,
         activeIsFree: event.isFree,
+        activeCity: event.city,
       ));
     } catch (e) {
       emit(EventError(message: _friendlyError(e)));
@@ -169,6 +174,7 @@ class EventBloc extends Bloc<EventEvent, EventState> {
         categoryId: current.activeCategoryId,
         query: current.activeQuery,
         isFree: current.activeIsFree,
+        locationAddress: current.activeCity,
         startDateRangeStart: current.activeStartDate?.toIso8601String(),
         startDateRangeEnd: current.activeEndDate?.toIso8601String(),
         page: nextPage,

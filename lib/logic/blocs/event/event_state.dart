@@ -30,6 +30,7 @@ class EventLoaded extends EventState {
     this.activeStartDate,
     this.activeEndDate,
     this.activeIsFree,
+    this.activeCity,
     this.isPaginating = false,
   });
 
@@ -44,6 +45,7 @@ class EventLoaded extends EventState {
   final DateTime? activeStartDate;
   final DateTime? activeEndDate;
   final bool? activeIsFree;
+  final String? activeCity;
 
   /// True when loading additional pages (bottom-of-list spinner).
   final bool isPaginating;
@@ -58,6 +60,7 @@ class EventLoaded extends EventState {
     DateTime? activeStartDate,
     DateTime? activeEndDate,
     bool? activeIsFree,
+    String? activeCity,
     bool? isPaginating,
   }) {
     return EventLoaded(
@@ -70,6 +73,7 @@ class EventLoaded extends EventState {
       activeStartDate: activeStartDate ?? this.activeStartDate,
       activeEndDate: activeEndDate ?? this.activeEndDate,
       activeIsFree: activeIsFree ?? this.activeIsFree,
+      activeCity: activeCity ?? this.activeCity,
       isPaginating: isPaginating ?? this.isPaginating,
     );
   }
@@ -79,7 +83,8 @@ class EventLoaded extends EventState {
       activeQuery != null ||
       activeStartDate != null ||
       activeEndDate != null ||
-      activeIsFree != null;
+      activeIsFree != null ||
+      activeCity != null;
 
   @override
   List<Object?> get props => [
@@ -92,6 +97,7 @@ class EventLoaded extends EventState {
         activeStartDate,
         activeEndDate,
         activeIsFree,
+        activeCity,
         isPaginating,
       ];
 }

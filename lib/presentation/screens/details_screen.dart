@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -110,6 +111,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
               _map(),
               const SizedBox(height: 28),
               _about(),
+              if (widget.event.lineup.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                _lineup(),
+              ],
+              if ((widget.event.organizerName ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 28),
+                _organizer(),
+              ],
               if (widget.event.ticketClasses.isNotEmpty) ...[
                 const SizedBox(height: 28),
                 _tickets(),
@@ -156,6 +165,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       fontWeight: FontWeight.w800,
                       shadows: [Shadow(color: Colors.black38, blurRadius: 8)])),
               const Spacer(),
+              _circleButton(Icons.ios_share_rounded, _shareEvent),
+              const SizedBox(width: 8),
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -224,6 +235,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
           ),
         ]),
       );
+
+  Future<void> _shareEvent() async {
+    final uri = Uri.https(
+        'futuretimesevents.com', '/events/${widget.event.url.trim()}');
+    await Clipboard.setData(ClipboardData(text: uri.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Event link copied. Share it anywhere.')));
+    }
+  }
 
   Widget _circleButton(IconData icon, VoidCallback onPressed) => Container(
         decoration:
@@ -391,6 +412,54 @@ class _DetailsScreenState extends State<DetailsScreen> {
               ?.copyWith(color: AppColors.textMuted)),
     ]);
   }
+
+  Widget _lineup() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Lineup', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.event.lineup
+                .map((artist) => Chip(
+                    avatar: const Icon(Icons.mic_external_on_rounded, size: 17),
+                    label: Text(artist)))
+                .toList(),
+          ),
+        ],
+      );
+
+  Widget _organizer() => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                color: AppColors.purple.withValues(alpha: .1),
+                shape: BoxShape.circle),
+            child: const Icon(Icons.verified_rounded, color: AppColors.purple),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                const Text('Organized by',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 3),
+                Text(widget.event.organizerName!,
+                    style: const TextStyle(
+                        color: AppColors.text, fontWeight: FontWeight.w800)),
+              ])),
+        ]),
+      );
 
   Widget _tickets() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -6,6 +6,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
+import '../../data/repositories/discovery_preferences_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
@@ -60,13 +61,15 @@ GoRouter buildAppRouter({
   required SocialRepository socialRepository,
   required bool showOnboarding,
   required SavedEventsRepository savedEventsRepository,
+  required DiscoveryPreferencesRepository discoveryPreferences,
 }) =>
     GoRouter(
       initialLocation: showOnboarding ? '/onboarding' : '/',
       routes: [
         GoRoute(
           path: '/onboarding',
-          builder: (_, __) => const OnboardingScreen(),
+          builder: (_, __) =>
+              OnboardingScreen(preferencesRepository: discoveryPreferences),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) => BlocProvider(
@@ -79,7 +82,8 @@ GoRouter buildAppRouter({
                   path: '/',
                   pageBuilder: (_, __) => NoTransitionPage(
                       child: HomeScreen(
-                          savedEventsRepository: savedEventsRepository)))
+                          savedEventsRepository: savedEventsRepository,
+                          preferencesRepository: discoveryPreferences)))
             ]),
             StatefulShellBranch(routes: [
               GoRoute(
@@ -100,7 +104,8 @@ GoRouter buildAppRouter({
                   pageBuilder: (_, __) => NoTransitionPage(
                       child: ProfileScreen(
                           authRepository: authRepository,
-                          savedEventsRepository: savedEventsRepository)))
+                          savedEventsRepository: savedEventsRepository,
+                          preferencesRepository: discoveryPreferences)))
             ]),
           ],
         ),

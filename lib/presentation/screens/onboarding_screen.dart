@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../data/repositories/discovery_preferences_repository.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, required this.preferencesRepository});
+  final DiscoveryPreferencesRepository preferencesRepository;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -16,8 +17,8 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
-  String _city = 'Harare';
-  final Set<String> _interests = {'Music', 'Performing & Visual Arts'};
+  late String _city;
+  late Set<String> _interests;
   bool _saving = false;
 
   static const _cities = ['Harare', 'Bulawayo', 'Victoria Falls', 'Mutare'];
@@ -33,13 +34,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('Dating', Icons.favorite_border_rounded),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _city = widget.preferencesRepository.city;
+    _interests = widget.preferencesRepository.interests.isEmpty
+        ? {'Music', 'Performing & Visual Arts'}
+        : widget.preferencesRepository.interests.toSet();
+  }
+
   Future<void> _finish() async {
     if (_saving) return;
     setState(() => _saving = true);
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool('onboarding_complete', true);
-    await preferences.setString('discovery_city', _city);
-    await preferences.setStringList('event_interests', _interests.toList());
+    await widget.preferencesRepository.save(city: _city, interests: _interests);
     if (mounted) context.go('/');
   }
 
@@ -75,18 +82,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   children: [
                     const _WelcomePage(),
                     _PreferencePage(
-                      city: _city,
-                      cities: _cities,
                       interests: _interests,
                       options: _interestsList,
-                      onCity: (value) => setState(() => _city = value),
                       onInterest: (value) => setState(() {
                         _interests.contains(value)
                             ? _interests.remove(value)
                             : _interests.add(value);
                       }),
                     ),
-                    const _ReadyPage(),
+                    _LocationPage(
+                      city: _city,
+                      cities: _cities,
+                      onCity: (value) => setState(() => _city = value),
+                    ),
                   ],
                 ),
               ),
@@ -156,18 +164,12 @@ class _WelcomePage extends StatelessWidget {
 
 class _PreferencePage extends StatelessWidget {
   const _PreferencePage({
-    required this.city,
-    required this.cities,
     required this.interests,
     required this.options,
-    required this.onCity,
     required this.onInterest,
   });
-  final String city;
-  final List<String> cities;
   final Set<String> interests;
   final List<(String, IconData)> options;
-  final ValueChanged<String> onCity;
   final ValueChanged<String> onInterest;
 
   @override
@@ -187,28 +189,6 @@ class _PreferencePage extends StatelessWidget {
               const Text(
                 'Choose at least two interests. You can change these anytime.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-              ),
-              const SizedBox(height: 28),
-              const Text('YOUR CITY',
-                  style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1)),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: city,
-                decoration: const InputDecoration(
-                  prefixIcon:
-                      Icon(Icons.location_on_rounded, color: AppColors.pink),
-                ),
-                items: cities
-                    .map((value) => DropdownMenuItem(
-                        value: value, child: Text('$value, Zimbabwe')))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) onCity(value);
-                },
               ),
               const SizedBox(height: 24),
               Wrap(
@@ -250,18 +230,76 @@ class _PreferencePage extends StatelessWidget {
       );
 }
 
-class _ReadyPage extends StatelessWidget {
-  const _ReadyPage();
+class _LocationPage extends StatelessWidget {
+  const _LocationPage(
+      {required this.city, required this.cities, required this.onCity});
+  final String city;
+  final List<String> cities;
+  final ValueChanged<String> onCity;
 
   @override
-  Widget build(BuildContext context) => _PageFrame(
-        visual: const _TicketVisual(),
-        eyebrow: 'ONE PLACE. ZERO FRICTION.',
-        title: 'Plans made\nsimple.',
-        body:
-            'Follow the moments that matter, keep every ticket close, and get useful reminders before doors open. No spam. No noise.',
-        trust:
-            'You control alerts in Settings. We never sell your preferences.',
+  Widget build(BuildContext context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Eyebrow('DISCOVER NEARBY'),
+                const SizedBox(height: 12),
+                Text('Where should we look?',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontSize: 38, height: 1.02, letterSpacing: -1.4)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Choose your home city now. You can use precise location later from the Map, only when you ask us to.',
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                ),
+                const SizedBox(height: 28),
+                for (final value in cities)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: RadioListTile<String>(
+                      value: value,
+                      groupValue: city,
+                      onChanged: (selected) {
+                        if (selected != null) onCity(selected);
+                      },
+                      title: Text(value,
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: const Text('Zimbabwe'),
+                      secondary: const Icon(Icons.location_city_rounded,
+                          color: AppColors.purple),
+                      tileColor: city == value
+                          ? AppColors.purple.withValues(alpha: .08)
+                          : AppColors.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                            color: city == value
+                                ? AppColors.purple
+                                : AppColors.border),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                const Row(children: [
+                  Icon(Icons.notifications_none_rounded,
+                      color: AppColors.textMuted),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'We will ask about event reminders later, when the benefit is clear.',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
       );
 }
 
@@ -360,26 +398,28 @@ class _DiscoveryVisual extends StatelessWidget {
               color: const Color(0xFF23143D),
               icon: Icons.graphic_eq_rounded,
               category: 'LIVE • HARARE',
-              title: 'NIGHT\nSHIFT',
+              title: 'WHAT\'S\nNEXT',
               subtitle: 'FRIDAY  •  20:00',
             )),
         const Positioned(
             right: 8,
             top: 4,
             child: _FloatBadge(
-                icon: Icons.local_fire_department_rounded,
-                title: 'Trending now',
-                detail: 'Near you')),
+                icon: Icons.explore_rounded,
+                title: 'Discover locally',
+                detail: 'Built around you')),
         const Positioned(
             right: 0,
             bottom: 8,
             child: _FloatBadge(
-                icon: Icons.people_alt_outlined,
-                title: '2.4k going',
-                detail: 'Join the city')),
+                icon: Icons.verified_outlined,
+                title: 'Real events',
+                detail: 'Trusted details')),
       ]);
 }
 
+// Kept as a reusable branded ticket illustration for future contextual prompts.
+// ignore: unused_element
 class _TicketVisual extends StatelessWidget {
   const _TicketVisual();
   @override
@@ -605,8 +645,10 @@ class _BottomBar extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(99)),
                             )))),
             SizedBox(
-                width: 148,
+                width: 176,
                 child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12)),
                   onPressed: enabled && !saving ? onNext : null,
                   child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,

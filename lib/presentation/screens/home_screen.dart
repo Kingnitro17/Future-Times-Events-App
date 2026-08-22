@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
+import '../../data/repositories/discovery_preferences_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
@@ -15,8 +16,13 @@ import '../widgets/event_network_image.dart';
 import '../widgets/save_event_button.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.savedEventsRepository});
+  const HomeScreen({
+    super.key,
+    required this.savedEventsRepository,
+    required this.preferencesRepository,
+  });
   final SavedEventsRepository savedEventsRepository;
+  final DiscoveryPreferencesRepository preferencesRepository;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -31,11 +37,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (context.read<EventBloc>().state is EventInitial) {
       context.read<EventBloc>().add(const FetchEvents());
     }
+    widget.preferencesRepository.addListener(_preferencesChanged);
+  }
+
+  void _preferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _search.dispose();
+    widget.preferencesRepository.removeListener(_preferencesChanged);
     super.dispose();
   }
 
@@ -53,40 +65,150 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<EventBloc>().add(const ClearFilters());
   }
 
-  void _filters() => showModalBottomSheet<void>(
+  void _filters(List<EventModel> events) => showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (sheet) => Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Filter events',
-                      style: Theme.of(context).textTheme.titleLarge)),
-              const SizedBox(height: 18),
-              SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonalIcon(
-                      onPressed: () {
-                        Navigator.pop(sheet);
-                        context
-                            .read<EventBloc>()
-                            .add(const ApplyFilters(isFree: true));
-                      },
-                      icon: const Icon(Icons.local_activity_outlined),
-                      label: const Text('Free events'))),
-              const SizedBox(height: 10),
-              SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(sheet);
-                        _clear();
-                      },
-                      child: const Text('Clear all filters'))),
-            ]),
-          ));
+      isScrollControlled: true,
+      builder: (sheet) {
+        final cities = events
+            .map((event) => event.venue?.address?.city?.trim())
+            .whereType<String>()
+            .where((city) => city.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+        bool? free;
+        String? city;
+        DateTime? start;
+        DateTime? end;
+        return StatefulBuilder(builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 4, 20, MediaQuery.viewInsetsOf(context).bottom + 28),
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Filter events',
+                        style: Theme.of(context).textTheme.titleLarge)),
+                const SizedBox(height: 18),
+                Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Price',
+                        style: Theme.of(context).textTheme.titleSmall)),
+                const SizedBox(height: 8),
+                SegmentedButton<bool?>(
+                  segments: const [
+                    ButtonSegment(value: null, label: Text('Any')),
+                    ButtonSegment(value: true, label: Text('Free')),
+                    ButtonSegment(value: false, label: Text('Paid')),
+                  ],
+                  selected: {free},
+                  onSelectionChanged: (value) =>
+                      setSheetState(() => free = value.first),
+                ),
+                const SizedBox(height: 18),
+                DropdownButtonFormField<String?>(
+                  value: city,
+                  decoration: const InputDecoration(
+                      labelText: 'City',
+                      prefixIcon: Icon(Icons.location_on_outlined)),
+                  items: [
+                    const DropdownMenuItem(
+                        value: null, child: Text('All cities')),
+                    ...cities.map((value) =>
+                        DropdownMenuItem(value: value, child: Text(value))),
+                  ],
+                  onChanged: (value) => setSheetState(() => city = value),
+                ),
+                const SizedBox(height: 18),
+                Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Date',
+                        style: Theme.of(context).textTheme.titleSmall)),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, children: [
+                  ChoiceChip(
+                      label: const Text('Any date'),
+                      selected: start == null,
+                      onSelected: (_) => setSheetState(() {
+                            start = null;
+                            end = null;
+                          })),
+                  ChoiceChip(
+                      label: const Text('Today'),
+                      selected: start != null &&
+                          DateUtils.isSameDay(start, DateTime.now()),
+                      onSelected: (_) => setSheetState(() {
+                            final now = DateTime.now();
+                            start = DateTime(now.year, now.month, now.day);
+                            end = start!.add(const Duration(days: 1));
+                          })),
+                  ChoiceChip(
+                      label: const Text('Next 7 days'),
+                      selected: start != null &&
+                          end != null &&
+                          end!.difference(start!).inDays == 7,
+                      onSelected: (_) => setSheetState(() {
+                            final now = DateTime.now();
+                            start = DateTime(now.year, now.month, now.day);
+                            end = start!.add(const Duration(days: 7));
+                          })),
+                ]),
+                const SizedBox(height: 22),
+                Row(children: [
+                  Expanded(
+                      child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(sheet);
+                            _clear();
+                          },
+                          child: const Text('Reset'))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: FilledButton(
+                          onPressed: () {
+                            Navigator.pop(sheet);
+                            context.read<EventBloc>().add(ApplyFilters(
+                                isFree: free,
+                                city: city,
+                                startDate: start,
+                                endDate: end));
+                          },
+                          child: const Text('Apply filters'))),
+                ]),
+              ]),
+            ),
+          );
+        });
+      });
+
+  List<EventModel> _personalized(List<EventModel> events) {
+    final city = widget.preferencesRepository.city.toLowerCase();
+    final interests = widget.preferencesRepository.interests
+        .map((value) => value.toLowerCase())
+        .toSet();
+    final ranked = events.indexed.toList();
+    ranked.sort((a, b) {
+      int score(EventModel event) {
+        var value = event.featured ? 4 : 0;
+        final eventCity = event.venue?.address?.city?.toLowerCase();
+        if (eventCity == city) value += 3;
+        final category =
+            (event.categoryLabel ?? event.categoryId ?? '').toLowerCase();
+        if (interests.any((interest) =>
+            category.contains(interest) || interest.contains(category))) {
+          value += 2;
+        }
+        return value;
+      }
+
+      final comparison = score(b.$2).compareTo(score(a.$2));
+      return comparison == 0 ? a.$1.compareTo(b.$1) : comparison;
+    });
+    return ranked.map((entry) => entry.$2).toList();
+  }
 
   void _allCategories(List<String> values) => showModalBottomSheet<void>(
       context: context,
@@ -118,7 +240,9 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           bottom: false,
           child: BlocBuilder<EventBloc, EventState>(builder: (context, state) {
-            final events = state is EventLoaded ? state.events : <EventModel>[];
+            final loadedEvents =
+                state is EventLoaded ? state.events : <EventModel>[];
+            final events = _personalized(loadedEvents);
             final categories = events
                 .map((e) => e.categoryId)
                 .whereType<String>()
@@ -137,14 +261,21 @@ class _HomeScreenState extends State<HomeScreen> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  SliverToBoxAdapter(child: _Header(events: events)),
+                  SliverToBoxAdapter(
+                      child: _Header(
+                          preferredCity: widget.preferencesRepository.city)),
                   SliverToBoxAdapter(
                       child: _SearchBar(
                           controller: _search,
-                          onSearch: (value) => context
-                              .read<EventBloc>()
-                              .add(SearchEvents(query: value.trim())),
-                          onFilter: _filters)),
+                          recentSearches:
+                              widget.preferencesRepository.recentSearches,
+                          onSearch: (value) {
+                            widget.preferencesRepository.rememberSearch(value);
+                            context
+                                .read<EventBloc>()
+                                .add(SearchEvents(query: value.trim()));
+                          },
+                          onFilter: () => _filters(loadedEvents))),
                   SliverToBoxAdapter(
                       child: _Section('Categories',
                           onSeeAll: categories.isEmpty
@@ -209,15 +340,11 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.events});
-  final List<EventModel> events;
+  const _Header({required this.preferredCity});
+  final String preferredCity;
   @override
   Widget build(BuildContext context) {
-    final cities = events
-        .map((e) => e.venue?.address?.city)
-        .whereType<String>()
-        .where((v) => v.isNotEmpty);
-    final place = cities.isEmpty ? 'Zimbabwe' : '${cities.first}, Zimbabwe';
+    final place = '$preferredCity, Zimbabwe';
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(children: [
@@ -280,44 +407,68 @@ class _SearchBar extends StatelessWidget {
   const _SearchBar(
       {required this.controller,
       required this.onSearch,
+      required this.recentSearches,
       required this.onFilter});
   final TextEditingController controller;
   final ValueChanged<String> onSearch;
+  final List<String> recentSearches;
   final VoidCallback onFilter;
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Row(children: [
-          Expanded(
-              child: SizedBox(
-                  height: 52,
-                  child: TextField(
-                      controller: controller,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: onSearch,
-                      decoration: const InputDecoration(
-                          hintText: 'Search events, artists or venues',
-                          prefixIcon: Icon(Icons.search_rounded),
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 12))))),
-          const SizedBox(width: 10),
-          Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                  gradient: AppGradients.brand,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Color(0x287222E3),
-                        blurRadius: 14,
-                        offset: Offset(0, 6))
-                  ]),
-              child: IconButton(
-                  tooltip: 'Filter events',
-                  onPressed: onFilter,
-                  color: Colors.white,
-                  icon: const Icon(Icons.tune_rounded))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+                child: SizedBox(
+                    height: 52,
+                    child: TextField(
+                        controller: controller,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: onSearch,
+                        decoration: const InputDecoration(
+                            hintText: 'Search events, artists or venues',
+                            prefixIcon: Icon(Icons.search_rounded),
+                            contentPadding:
+                                EdgeInsets.symmetric(vertical: 12))))),
+            const SizedBox(width: 10),
+            Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                    gradient: AppGradients.brand,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Color(0x287222E3),
+                          blurRadius: 14,
+                          offset: Offset(0, 6))
+                    ]),
+                child: IconButton(
+                    tooltip: 'Filter events',
+                    onPressed: onFilter,
+                    color: Colors.white,
+                    icon: const Icon(Icons.tune_rounded))),
+          ]),
+          if (recentSearches.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 32,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recentSearches.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, index) => ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.history_rounded, size: 15),
+                  label: Text(recentSearches[index]),
+                  onPressed: () {
+                    controller.text = recentSearches[index];
+                    onSearch(recentSearches[index]);
+                  },
+                ),
+              ),
+            ),
+          ],
         ]),
       );
 }
@@ -404,7 +555,7 @@ class _FeaturedRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = (MediaQuery.sizeOf(context).width * .78).clamp(280.0, 328.0);
     return SizedBox(
-        height: 334,
+        height: 336,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           scrollDirection: Axis.horizontal,

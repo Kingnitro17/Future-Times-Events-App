@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
+import '../../data/repositories/discovery_preferences_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen(
       {super.key,
       required this.authRepository,
-      required this.savedEventsRepository});
+      required this.savedEventsRepository,
+      required this.preferencesRepository});
   final AuthRepository authRepository;
   final SavedEventsRepository savedEventsRepository;
+  final DiscoveryPreferencesRepository preferencesRepository;
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -59,9 +64,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final auth = widget.authRepository;
     return Scaffold(
-      backgroundColor: AppTheme.charcoal,
-      appBar: AppBar(
-          title: const Text('Profile'), backgroundColor: AppTheme.charcoal),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Profile')),
       body: SafeArea(
           child: Center(
               child: SingleChildScrollView(
@@ -120,6 +124,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 6),
       Text(auth.displayEmail,
           style: const TextStyle(color: AppTheme.subtleGrey)),
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+          onPressed: () => _editName(name),
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('Edit Profile')),
       if (auth.isQaMockSession)
         const Padding(
           padding: EdgeInsets.only(top: 10),
@@ -153,8 +162,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () => context.push('/onboarding'),
         leading: const Icon(Icons.tune_rounded, color: AppTheme.electricIndigo),
         title: const Text('Discovery Preferences'),
-        subtitle: const Text('Interests and preferred location'),
+        subtitle: Text(
+            '${widget.preferencesRepository.city} · ${widget.preferencesRepository.interests.length} interests'),
         trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+      const SizedBox(height: 18),
+      _sectionLabel('Support & legal'),
+      ListTile(
+        onTap: () => _openWeb('/privacy-policy'),
+        leading: const Icon(Icons.privacy_tip_outlined),
+        title: const Text('Privacy Policy'),
+        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+      ),
+      ListTile(
+        onTap: () => _openWeb('/privacy-policy'),
+        leading: const Icon(Icons.description_outlined),
+        title: const Text('Terms'),
+        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+      ),
+      ListTile(
+        onTap: _emailSupport,
+        leading: const Icon(Icons.help_outline_rounded),
+        title: const Text('Help & support'),
+        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+      ),
+      ListTile(
+        onTap: () => _openWeb('/settings'),
+        leading: const Icon(Icons.manage_accounts_outlined),
+        title: const Text('Account management'),
+        subtitle: const Text('Notification settings and account deletion'),
+        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
       ),
       const SizedBox(height: 12),
       OutlinedButton(
@@ -167,5 +204,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
           child: const Text('Sign Out')),
     ]);
+  }
+
+  Widget _sectionLabel(String value) => Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(value.toUpperCase(),
+              style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1))));
+
+  Future<void> _editName(String current) async {
+    final controller = TextEditingController(text: current);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit profile'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Display name'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null) return;
+    try {
+      await widget.authRepository.updateDisplayName(value);
+    } on AppFailure catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(failure.message)));
+      }
+    }
+  }
+
+  Future<void> _openWeb(String path) async {
+    final uri = Uri.https('futuretimesevents.com', path);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open this page.')));
+    }
+  }
+
+  Future<void> _emailSupport() async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'support@futuretimesevents.com',
+      queryParameters: {'subject': 'Future Times app support'},
+    );
+    if (!await launchUrl(uri) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Email support@futuretimesevents.com for help.')));
+    }
   }
 }

@@ -96,6 +96,24 @@ class AuthRepository extends ChangeNotifier {
     await _synchronize(null);
   }
 
+  Future<void> updateDisplayName(String displayName) async {
+    final user = _user;
+    final value = displayName.trim();
+    if (user == null || value.length < 2) {
+      throw const AuthFailure('Enter a name with at least two characters.');
+    }
+    try {
+      await _client
+          .from('profiles')
+          .update({'display_name': value}).eq('id', user.id);
+      _profile = {...?_profile, 'display_name': value};
+      notifyListeners();
+    } on PostgrestException catch (error) {
+      if (kDebugMode) debugPrint('[profile] update failed: ${error.code}');
+      throw const AuthFailure('Your profile could not be updated. Try again.');
+    }
+  }
+
   AuthFailure _mapAuthError(AuthException error) {
     final message = error.message.toLowerCase();
     if (message.contains('invalid login credentials')) {
