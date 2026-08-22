@@ -89,7 +89,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   if (state is EventLoading || state is EventInitial)
                     const SliverFillRemaining(
                       hasScrollBody: false,
-                      child: Center(child: CircularProgressIndicator()),
+                      child: _CalendarSkeleton(),
                     )
                   else if (state is EventError)
                     SliverFillRemaining(
@@ -366,6 +366,41 @@ class _EmptyDay extends StatelessWidget {
             const SizedBox(height: 14),
             TextButton(onPressed: onPressed, child: Text(action)),
           ]),
+        ),
+      );
+}
+
+class _CalendarSkeleton extends StatelessWidget {
+  const _CalendarSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                height: 22,
+                width: 180,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 18),
+              for (var index = 0; index < 3; index++) ...[
+                Container(
+                  height: 108,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ],
+          ),
         ),
       );
 }
