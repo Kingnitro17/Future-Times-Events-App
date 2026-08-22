@@ -258,6 +258,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   Widget _attendance() => BlocBuilder<SocialBloc, SocialState>(
         builder: (context, state) {
           final attendees = state is SocialLoaded ? state.attendees : const [];
+          final goingCount = state is SocialLoaded ? state.goingCount : 0;
           return Row(children: [
             SizedBox(
               width: attendees.isEmpty ? 46 : 94,
@@ -293,9 +294,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                  attendees.isEmpty
-                      ? 'Be the first to go'
-                      : '+${attendees.length} Going',
+                  goingCount == 0 ? 'Be the first to go' : '$goingCount Going',
                   style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w700)),

@@ -85,4 +85,13 @@ class SocialRepository {
       .eq('event_id', eventId)
       .maybeSingle()
       .then((row) => int.tryParse(row?['going_count']?.toString() ?? '') ?? 0));
+
+  Future<int> getAttendeeCount(String eventId) async {
+    final row = await _client
+        .from('event_attendee_snapshots')
+        .select('going_count')
+        .eq('event_id', eventId)
+        .maybeSingle();
+    return int.tryParse(row?['going_count']?.toString() ?? '') ?? 0;
+  }
 }
