@@ -324,12 +324,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onPressed: () => _editName(name),
           icon: const Icon(Icons.edit_outlined),
           label: const Text('Edit Profile')),
-      if (auth.isQaMockSession)
-        const Padding(
-          padding: EdgeInsets.only(top: 10),
-          child: Text('Local QA session · debug builds only',
-              style: TextStyle(color: Colors.amber, fontSize: 12)),
-        ),
       if (auth.profileError != null)
         Padding(
             padding: const EdgeInsets.only(top: 16),
@@ -390,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       const SizedBox(height: 12),
       OutlinedButton(
-          onPressed: _submitting || auth.isQaMockSession
+          onPressed: _submitting
               ? null
               : () async {
                   setState(() => _submitting = true);

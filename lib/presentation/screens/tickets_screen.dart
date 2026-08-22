@@ -45,8 +45,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.authRepository.isSignedIn ||
-        widget.authRepository.isQaMockSession) {
+    if (!widget.authRepository.isSignedIn) {
       return const _SignedOut();
     }
     return Scaffold(

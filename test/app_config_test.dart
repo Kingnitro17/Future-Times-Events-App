@@ -9,6 +9,16 @@ void main() {
     );
   });
 
+  test('default configuration is valid for production', () {
+    expect(AppConfig.isConfigured, isTrue);
+    expect(AppConfig.projectId, AppConfig.expectedProjectId);
+    expect(
+      AppConfig.supabaseUrl,
+      'https://${AppConfig.expectedProjectId}.supabase.co',
+    );
+    expect(AppConfig.supabaseAnonKey.isNotEmpty, isTrue);
+  });
+
   test('accepts only the intended production project and a public key', () {
     expect(
       AppConfig.isValidSupabaseConfig(

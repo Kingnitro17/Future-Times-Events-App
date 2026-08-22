@@ -3,9 +3,18 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   const AppConfig._();
 
-  static const _supabaseUrlInput = String.fromEnvironment('SUPABASE_URL');
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  static const qaMockAuth = bool.fromEnvironment('QA_MOCK_AUTH');
+  static const _defaultSupabaseUrl = 'https://ecbbmcqwluivbzlaqdsd.supabase.co';
+  static const _defaultSupabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjYmJtY3F3bHVpdmJ6bGFxZHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NjEyNzcsImV4cCI6MjA5MzMzNzI3N30.XTTs7RN-SrZ0YnC20m8mZms8ZfVVeANJgvwg1Key6SQ';
+
+  static const _supabaseUrlInput = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: _defaultSupabaseUrl,
+  );
+  static const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: _defaultSupabaseAnonKey,
+  );
   static const expectedProjectId = 'ecbbmcqwluivbzlaqdsd';
 
   static String get supabaseUrl {
@@ -35,8 +44,6 @@ class AppConfig {
       debugPrint('[config] Supabase project: $projectId');
       debugPrint('[config] publishable key present: yes');
       debugPrint('[config] build mode: debug');
-      debugPrint(
-          '[config] QA mock auth: ${qaMockAuth ? 'enabled' : 'disabled'}');
     }
   }
 

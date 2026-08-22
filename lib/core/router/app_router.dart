@@ -14,6 +14,7 @@ import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
 import '../../presentation/screens/calendar_screen.dart';
 import '../../presentation/screens/event_map_screen.dart';
+import '../../presentation/screens/explore_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/map_discovery_screen.dart';
 import '../../presentation/screens/onboarding_screen.dart';
@@ -156,6 +157,118 @@ class _FutureTimesNavigation extends StatelessWidget {
       );
 }
 
+class _EventDetailsLoader extends StatefulWidget {
+  const _EventDetailsLoader({
+    required this.eventId,
+    required this.summary,
+    required this.eventRepository,
+    required this.savedEventsRepository,
+    required this.authRepository,
+    required this.socialRepository,
+  });
+
+  final String eventId;
+  final EventModel? summary;
+  final EventRepository eventRepository;
+  final SavedEventsRepository savedEventsRepository;
+  final AuthRepository authRepository;
+  final SocialRepository socialRepository;
+
+  @override
+  State<_EventDetailsLoader> createState() => _EventDetailsLoaderState();
+}
+
+class _EventDetailsLoaderState extends State<_EventDetailsLoader> {
+  late Future<EventModel> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _future = widget.eventRepository.getEventById(widget.eventId);
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<EventModel>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done &&
+              widget.summary == null) {
+            return const _EventDetailsSkeleton();
+          }
+          final event = snapshot.data ?? widget.summary;
+          if (event == null) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.event_busy_outlined,
+                        size: 58, color: AppColors.textMuted),
+                    const SizedBox(height: 16),
+                    const Text('This event could not be loaded.'),
+                    const SizedBox(height: 16),
+                    FilledButton.tonal(
+                      onPressed: () => setState(_load),
+                      child: const Text('Try again'),
+                    ),
+                  ]),
+                ),
+              ),
+            );
+          }
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (_) =>
+                    SocialBloc(socialRepository: widget.socialRepository),
+              ),
+            ],
+            child: DetailsScreen(
+              event: event,
+              savedEventsRepository: widget.savedEventsRepository,
+              authRepository: widget.authRepository,
+              socialRepository: widget.socialRepository,
+            ),
+          );
+        },
+      );
+}
+
+class _EventDetailsSkeleton extends StatelessWidget {
+  const _EventDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: ExcludeSemantics(
+          child: Column(children: [
+            Container(height: 320, color: AppColors.surfaceMuted),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(children: [
+                  for (final width in [double.infinity, 240.0, 300.0, 190.0])
+                    Container(
+                      height: 22,
+                      width: width,
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+      );
+}
+
 GoRouter buildAppRouter({
   required EventRepository eventRepository,
   required AuthRepository authRepository,
@@ -183,6 +296,7 @@ GoRouter buildAppRouter({
                   path: '/',
                   pageBuilder: (_, __) => NoTransitionPage(
                       child: HomeScreen(
+                          authRepository: authRepository,
                           savedEventsRepository: savedEventsRepository,
                           preferencesRepository: discoveryPreferences)))
             ]),
@@ -196,7 +310,7 @@ GoRouter buildAppRouter({
               GoRoute(
                   path: '/explore',
                   pageBuilder: (_, __) => NoTransitionPage(
-                      child: HomeScreen(
+                      child: ExploreScreen(
                           savedEventsRepository: savedEventsRepository,
                           preferencesRepository: discoveryPreferences)))
             ]),
@@ -235,28 +349,14 @@ GoRouter buildAppRouter({
         GoRoute(
           path: '/event/:id',
           builder: (context, state) {
-            final summary = state.extra as EventModel;
-            return FutureBuilder<EventModel>(
-              future: eventRepository.getEventById(summary.id),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Scaffold(
-                      body: Center(child: CircularProgressIndicator()));
-                }
-                final event = snapshot.data ?? summary;
-                return MultiBlocProvider(
-                  providers: [
-                    BlocProvider(
-                        create: (_) =>
-                            SocialBloc(socialRepository: socialRepository)),
-                  ],
-                  child: DetailsScreen(
-                      event: event,
-                      savedEventsRepository: savedEventsRepository,
-                      authRepository: authRepository,
-                      socialRepository: socialRepository),
-                );
-              },
+            return _EventDetailsLoader(
+              eventId: state.pathParameters['id']!,
+              summary:
+                  state.extra is EventModel ? state.extra! as EventModel : null,
+              eventRepository: eventRepository,
+              savedEventsRepository: savedEventsRepository,
+              authRepository: authRepository,
+              socialRepository: socialRepository,
             );
           },
         ),

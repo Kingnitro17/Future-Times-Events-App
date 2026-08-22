@@ -55,8 +55,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   Future<void> _loadOwnedTicket() async {
-    if (!widget.authRepository.isSignedIn ||
-        widget.authRepository.isQaMockSession) {
+    if (!widget.authRepository.isSignedIn) {
       return;
     }
     try {

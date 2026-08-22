@@ -46,7 +46,7 @@ void main() async {
   final socialRepository = SocialRepository();
   final savedEventsRepository =
       SavedEventsRepository(authRepository: authRepository);
-  if (authRepository.isSignedIn && !authRepository.isQaMockSession) {
+  if (authRepository.isSignedIn) {
     await savedEventsRepository.load();
   }
   final discoveryPreferences = await DiscoveryPreferencesRepository.create();
