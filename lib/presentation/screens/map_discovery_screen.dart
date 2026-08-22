@@ -125,7 +125,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
 
   void _fit(List<EventModel> events) {
     if (!_mapReady || events.isEmpty) return;
-    final points = events.map(_point).whereType<LatLng>().toList();
+    final points = events.map(mapPointForEvent).whereType<LatLng>().toList();
     if (points.length == 1) {
       _mapController.move(points.first, 12.5);
     } else if (points.isNotEmpty) {
@@ -142,7 +142,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
     final index = filtered.indexWhere((value) => value.id == event.id);
     if (index < 0) return;
     setState(() => _selectedId = event.id);
-    final point = _point(event);
+    final point = mapPointForEvent(event);
     if (point != null) _mapController.move(point, 13.2);
     if (!fromCard && _cards.hasClients) {
       _cards.animateToPage(index,
@@ -151,11 +151,11 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
   }
 
   List<EventModel> _filtered(List<EventModel> events) {
-    final located = events.where((event) => _point(event) != null).toList();
-    if (_city == null) return located;
-    return located
-        .where((event) => event.venue?.address?.city == _city)
-        .toList();
+    return filterEventsForMap(
+      events,
+      city: _city,
+      userLocation: _userLocation,
+    );
   }
 
   @override
@@ -177,7 +177,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           );
         }
         final all = (state as EventLoaded).events;
-        final located = all.where((event) => _point(event) != null).toList();
+        final located =
+            all.where((event) => mapPointForEvent(event) != null).toList();
         if (located.isEmpty) {
           return const _Message(
             icon: Icons.map_outlined,
@@ -197,7 +198,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _point(located.first)!,
+              initialCenter: mapPointForEvent(located.first)!,
               initialZoom: 10,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
@@ -224,7 +225,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
                       child: const _UserMarker()),
                 for (final event in filtered)
                   Marker(
-                    point: _point(event)!,
+                    point: mapPointForEvent(event)!,
                     width: _selectedId == event.id ? 58 : 46,
                     height: _selectedId == event.id ? 58 : 46,
                     child: _EventMarker(
@@ -288,7 +289,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
                     distanceKm: _userLocation == null
                         ? null
                         : const Distance().as(LengthUnit.Kilometer,
-                            _userLocation!, _point(filtered[index])!),
+                            _userLocation!, mapPointForEvent(filtered[index])!),
                     selected: _selectedId == filtered[index].id ||
                         (_selectedId == null && index == 0),
                   ),
@@ -301,11 +302,32 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
   }
 }
 
-LatLng? _point(EventModel event) {
+LatLng? mapPointForEvent(EventModel event) {
   final lat = double.tryParse(event.venue?.latitude ?? '');
   final lng = double.tryParse(event.venue?.longitude ?? '');
   if (lat == null || lng == null || (lat == 0 && lng == 0)) return null;
   return LatLng(lat, lng);
+}
+
+List<EventModel> filterEventsForMap(
+  Iterable<EventModel> events, {
+  String? city,
+  LatLng? userLocation,
+}) {
+  final normalizedCity = city?.trim().toLowerCase();
+  final located = events.where((event) {
+    if (mapPointForEvent(event) == null) return false;
+    if (normalizedCity == null || normalizedCity.isEmpty) return true;
+    return event.venue?.address?.city?.trim().toLowerCase() == normalizedCity;
+  }).toList();
+  if (userLocation != null) {
+    const distance = Distance();
+    located.sort((a, b) => distance
+        .as(LengthUnit.Meter, userLocation, mapPointForEvent(a)!)
+        .compareTo(
+            distance.as(LengthUnit.Meter, userLocation, mapPointForEvent(b)!)));
+  }
+  return located;
 }
 
 class _MapFilters extends StatelessWidget {
