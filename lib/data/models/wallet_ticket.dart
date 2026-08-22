@@ -12,6 +12,7 @@ class WalletTicket {
       required this.venue,
       required this.imageUrl,
       required this.ticketType,
+      this.qrPayload,
       this.checkedInAt,
       this.gate});
 
@@ -29,7 +30,49 @@ class WalletTicket {
   final String venue;
   final String imageUrl;
   final String ticketType;
+  final String? qrPayload;
 
   bool get isActive => status == 'issued';
   bool get isUsed => status == 'checked_in';
+
+  factory WalletTicket.fromSupabase(Map<String, dynamic> row) {
+    final event = row['events'] as Map<String, dynamic>? ?? const {};
+    final type = row['ticket_type'] as Map<String, dynamic>? ?? const {};
+    final date = event['date']?.toString();
+    final time = event['time']?.toString();
+    final startsAt = event['starts_at']?.toString() ??
+        (date == null ? null : '${date}T${time ?? '00:00:00'}');
+    return WalletTicket(
+      id: row['id'].toString(),
+      ticketNumber: row['ticket_number']?.toString() ??
+          row['ticket_id']?.toString() ??
+          row['id'].toString(),
+      eventId: row['event_id'].toString(),
+      status: row['status']?.toString() ?? 'issued',
+      issuedAt: DateTime.tryParse(row['issued_at']?.toString() ?? '') ??
+          DateTime.tryParse(row['purchased_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      checkedInAt: DateTime.tryParse(row['checked_in_at']?.toString() ?? ''),
+      gate: _nonEmpty(row['gate']),
+      attendeeName: row['attendee_name']?.toString() ??
+          row['holder_name']?.toString() ??
+          'Ticket holder',
+      attendeeEmail: row['attendee_email']?.toString() ??
+          row['holder_email']?.toString() ??
+          '',
+      eventTitle: event['title']?.toString() ?? 'Event',
+      eventStart: DateTime.tryParse(startsAt ?? ''),
+      venue: event['venue_name']?.toString() ??
+          event['venue']?.toString() ??
+          'Venue TBA',
+      imageUrl: event['image_url']?.toString() ?? '',
+      ticketType: type['name']?.toString() ?? 'General Admission',
+      qrPayload: _nonEmpty(row['qr_code']),
+    );
+  }
+
+  static String? _nonEmpty(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? null : text;
+  }
 }

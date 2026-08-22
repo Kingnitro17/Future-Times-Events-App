@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/wallet_ticket.dart';
@@ -18,7 +19,7 @@ class TicketsScreen extends StatefulWidget {
 class _TicketsScreenState extends State<TicketsScreen> {
   late final TicketRepository _repository;
   Future<List<WalletTicket>>? _future;
-  String _filter = 'Upcoming';
+  String _filter = 'All';
 
   @override
   void initState() {
@@ -58,11 +59,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
           }
           if (snapshot.hasError) return _TicketError(onRetry: _refresh);
           final all = snapshot.data ?? const [];
-          final tickets = all
-              .where((ticket) =>
-                  (_filter == 'Upcoming' && ticket.isActive) ||
-                  (_filter == 'Past' && !ticket.isActive))
-              .toList();
+          final tickets = switch (_filter) {
+            'Active' => all.where((ticket) => ticket.isActive).toList(),
+            'Used' => all.where((ticket) => ticket.isUsed).toList(),
+            _ => all,
+          };
           return RefreshIndicator(
             onRefresh: () async {
               _refresh();
@@ -107,8 +108,9 @@ class _Filters extends StatelessWidget {
         child: SegmentedButton<String>(
           showSelectedIcon: false,
           segments: const [
-            ButtonSegment(value: 'Upcoming', label: Text('Upcoming')),
-            ButtonSegment(value: 'Past', label: Text('Past')),
+            ButtonSegment(value: 'All', label: Text('All')),
+            ButtonSegment(value: 'Active', label: Text('Active')),
+            ButtonSegment(value: 'Used', label: Text('Used')),
           ],
           selected: {value},
           onSelectionChanged: (selection) => onChanged(selection.first),
@@ -243,23 +245,54 @@ class _TicketDetail extends StatelessWidget {
           _DetailRow('Checked in',
               DateFormat('d MMM yyyy · h:mm a').format(ticket.checkedInAt!)),
         const SizedBox(height: 20),
-        Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(18)),
-            child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.shield_outlined, color: AppColors.purple),
-                  SizedBox(width: 12),
-                  Expanded(
-                      child: Text(
-                          'Secure QR access is shown only when the one-time '
-                          'claim token is available on this device. Ticket references are never '
-                          'converted into fake QR codes.')),
-                ])),
+        if (ticket.qrPayload != null &&
+            ticket.status != 'cancelled' &&
+            ticket.status != 'revoked')
+          Center(
+            child: Semantics(
+              label: 'Secure entry QR code for ${ticket.eventTitle}',
+              image: true,
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: QrImageView(
+                  data: ticket.qrPayload!,
+                  version: QrVersions.auto,
+                  size: 220,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: AppColors.text,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: AppColors.text,
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(18)),
+              child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.shield_outlined, color: AppColors.purple),
+                    SizedBox(width: 12),
+                    Expanded(
+                        child: Text(
+                            'A secure entry QR is not available for this ticket. '
+                            'Ticket references are never converted into fake QR codes.')),
+                  ])),
       ]));
 }
 
