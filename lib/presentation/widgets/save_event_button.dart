@@ -21,25 +21,29 @@ class SaveEventButton extends StatelessWidget {
         listenable: repository,
         builder: (context, _) {
           final saved = repository.isSaved(eventId);
+          final pending = repository.isPending(eventId);
           return IconButton(
             tooltip: saved ? 'Remove from saved events' : 'Save event',
-            onPressed: () async {
-              try {
-                await repository.toggle(eventId);
-              } on AuthFailure {
-                onAuthenticationRequired?.call();
-                if (onAuthenticationRequired == null && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Sign in from Profile to save events.'),
-                  ));
-                }
-              } on AppFailure catch (failure) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(failure.message)));
-                }
-              }
-            },
+            onPressed: pending
+                ? null
+                : () async {
+                    try {
+                      await repository.toggle(eventId);
+                    } on AuthFailure {
+                      onAuthenticationRequired?.call();
+                      if (onAuthenticationRequired == null && context.mounted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(
+                          content: Text('Sign in from Profile to save events.'),
+                        ));
+                      }
+                    } on AppFailure catch (failure) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(failure.message)));
+                      }
+                    }
+                  },
             style: onSurface
                 ? IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: .9),

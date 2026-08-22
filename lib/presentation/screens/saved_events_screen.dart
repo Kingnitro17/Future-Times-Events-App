@@ -24,6 +24,9 @@ class SavedEventsScreen extends StatelessWidget {
             builder: (context, _) {
               final ids = savedEventsRepository.ids;
               if (savedEventsRepository.isLoading) return const _Loading();
+              if (savedEventsRepository.lastFailure != null && ids.isEmpty) {
+                return _Error(onRetry: savedEventsRepository.load);
+              }
               if (ids.isEmpty) return const _Empty();
               return FutureBuilder<List<EventModel>>(
                 future: eventRepository.getEventsByIds(ids),
