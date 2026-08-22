@@ -7,18 +7,25 @@ class AppConfig {
   static const _defaultSupabaseAnonKey =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjYmJtY3F3bHVpdmJ6bGFxZHNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NjEyNzcsImV4cCI6MjA5MzMzNzI3N30.XTTs7RN-SrZ0YnC20m8mZms8ZfVVeANJgvwg1Key6SQ';
 
-  static const _supabaseUrlInput = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: _defaultSupabaseUrl,
-  );
-  static const supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: _defaultSupabaseAnonKey,
-  );
+  static const _supabaseUrlInput = String.fromEnvironment('SUPABASE_URL');
+  static const _supabaseAnonKeyInput =
+      String.fromEnvironment('SUPABASE_ANON_KEY');
   static const expectedProjectId = 'ecbbmcqwluivbzlaqdsd';
 
   static String get supabaseUrl {
-    return normalizeSupabaseUrl(_supabaseUrlInput);
+    final raw = normalizeSupabaseUrl(_supabaseUrlInput);
+    if (raw.trim().isEmpty || raw.contains('your-project-id')) {
+      return _defaultSupabaseUrl;
+    }
+    return raw;
+  }
+
+  static String get supabaseAnonKey {
+    final key = _supabaseAnonKeyInput.trim();
+    if (key.isEmpty || key.startsWith('your-')) {
+      return _defaultSupabaseAnonKey;
+    }
+    return key;
   }
 
   static bool get isConfigured {
