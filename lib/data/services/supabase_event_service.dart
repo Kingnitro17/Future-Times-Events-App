@@ -14,7 +14,8 @@ class SupabaseEventService {
   static const selection =
       'id,title,slug,category,category_label,date,time,end_time,venue,'
       'address,city,description,long_description,price,attendees,capacity,'
-      'image_url,mood,tags,featured,lineup,organizer_name,lat,lng,status';
+      'image_url,mood,tags,featured,lineup,organizer_name,lat,lng,status,'
+      'starts_at,ends_at,timezone,venue_name';
 
   Future<EventListResponse> fetchEvents({
     String? category,
@@ -34,8 +35,10 @@ class SupabaseEventService {
       if (city?.isNotEmpty == true) request = request.eq('city', city!);
       if (query?.trim().isNotEmpty == true) {
         final safe = query!.trim().replaceAll(',', ' ');
-        request = request
-            .or('title.ilike.%$safe%,venue.ilike.%$safe%,city.ilike.%$safe%');
+        request = request.or('title.ilike.%$safe%,venue.ilike.%$safe%,'
+            'venue_name.ilike.%$safe%,city.ilike.%$safe%,'
+            'category.ilike.%$safe%,category_label.ilike.%$safe%,'
+            'organizer_name.ilike.%$safe%,address.ilike.%$safe%');
       }
       if (startDate?.isNotEmpty == true) {
         request = request.gte('date', startDate!.substring(0, 10));
@@ -49,8 +52,8 @@ class SupabaseEventService {
       final from = (page - 1) * pageSize;
       final rows = await request
           .order('date', ascending: true)
-          .range(from, from + pageSize);
-      final events = rows.map<EventModel>(_mapEvent).toList();
+          .range(from, from + pageSize - 1);
+      final events = rows.map<EventModel>(eventFromSupabaseRow).toList();
       return EventListResponse(
         events: events,
         pagination: PaginationMeta(
@@ -88,7 +91,7 @@ class SupabaseEventService {
           .eq('is_active', true)
           .eq('is_visible', true)
           .order('sort_order', ascending: true);
-      return _mapEvent(row).copyWith(
+      return eventFromSupabaseRow(row).copyWith(
         ticketClasses: ticketRows.map<TicketClass>(_mapTicketType).toList(),
       );
     } on PostgrestException catch (error) {
@@ -107,67 +110,11 @@ class SupabaseEventService {
           .inFilter('id', values)
           .eq('status', 'published')
           .order('date', ascending: true);
-      return rows.map<EventModel>(_mapEvent).toList();
+      return rows.map<EventModel>(eventFromSupabaseRow).toList();
     } on PostgrestException catch (error) {
       throw DataFailure('Saved events could not be loaded.',
           code: error.code, cause: error);
     }
-  }
-
-  EventModel _mapEvent(Map<String, dynamic> row) {
-    final date = row['date']?.toString() ?? '';
-    final startTime = row['time']?.toString() ?? '00:00:00';
-    final endTime = row['end_time']?.toString() ?? startTime;
-    final price = double.tryParse(row['price']?.toString() ?? '') ?? 0;
-    final start = '${date}T$startTime';
-    final end = '${date}T$endTime';
-    final image = row['image_url']?.toString() ?? '';
-    return EventModel(
-      id: row['id'].toString(),
-      name: EventText(
-          text: row['title']?.toString() ?? 'Event',
-          html: row['title']?.toString() ?? 'Event'),
-      description: EventText(
-        text: row['long_description']?.toString().isNotEmpty == true
-            ? row['long_description'].toString()
-            : row['description']?.toString() ?? '',
-        html: row['description']?.toString() ?? '',
-      ),
-      url: row['slug']?.toString() ?? row['id'].toString(),
-      start: EventDateTime(timezone: 'Africa/Harare', local: start, utc: start),
-      end: EventDateTime(timezone: 'Africa/Harare', local: end, utc: end),
-      logo: image.isEmpty
-          ? null
-          : EventImage(id: row['id'].toString(), url: image),
-      venue: VenueModel(
-        id: row['venue']?.toString() ?? '',
-        name: row['venue']?.toString() ?? '',
-        latitude: row['lat']?.toString(),
-        longitude: row['lng']?.toString(),
-        address: VenueAddress(
-            address1: row['address']?.toString(),
-            city: row['city']?.toString(),
-            country: 'Zimbabwe',
-            localizedDisplay: [row['address'], row['city']]
-                .where((value) => value?.toString().isNotEmpty == true)
-                .join(', ')),
-      ),
-      categoryId: row['category']?.toString(),
-      categoryLabel: row['category_label']?.toString(),
-      isFree: price == 0,
-      capacity: int.tryParse(row['capacity']?.toString() ?? ''),
-      attendeeCount: int.tryParse(row['attendees']?.toString() ?? '') ?? 0,
-      featured: row['featured'] == true,
-      tags: (row['tags'] as List?)?.map((value) => value.toString()).toList() ??
-          const [],
-      lineup:
-          (row['lineup'] as List?)?.map((value) => value.toString()).toList() ??
-              const [],
-      organizerName: row['organizer_name']?.toString(),
-      status: row['status']?.toString(),
-      currency: 'USD',
-      ticketClasses: const [],
-    );
   }
 
   TicketClass _mapTicketType(Map<String, dynamic> row) {
@@ -190,4 +137,62 @@ class SupabaseEventService {
       ),
     );
   }
+}
+
+EventModel eventFromSupabaseRow(Map<String, dynamic> row) {
+  final date = row['date']?.toString() ?? '';
+  final startTime = row['time']?.toString() ?? '00:00:00';
+  final endTime = row['end_time']?.toString() ?? startTime;
+  final price = double.tryParse(row['price']?.toString() ?? '') ?? 0;
+  final fallbackStart = '${date}T$startTime';
+  final fallbackEnd = '${date}T$endTime';
+  final start = row['starts_at']?.toString() ?? fallbackStart;
+  final end = row['ends_at']?.toString() ?? fallbackEnd;
+  final timezone = row['timezone']?.toString() ?? 'Africa/Harare';
+  final image = row['image_url']?.toString() ?? '';
+  return EventModel(
+    id: row['id'].toString(),
+    name: EventText(
+        text: row['title']?.toString() ?? 'Event',
+        html: row['title']?.toString() ?? 'Event'),
+    description: EventText(
+      text: row['long_description']?.toString().isNotEmpty == true
+          ? row['long_description'].toString()
+          : row['description']?.toString() ?? '',
+      html: row['description']?.toString() ?? '',
+    ),
+    url: row['slug']?.toString() ?? row['id'].toString(),
+    start: EventDateTime(timezone: timezone, local: start, utc: start),
+    end: EventDateTime(timezone: timezone, local: end, utc: end),
+    logo:
+        image.isEmpty ? null : EventImage(id: row['id'].toString(), url: image),
+    venue: VenueModel(
+      id: row['venue']?.toString() ?? '',
+      name: row['venue_name']?.toString() ?? row['venue']?.toString() ?? '',
+      latitude: row['lat']?.toString(),
+      longitude: row['lng']?.toString(),
+      address: VenueAddress(
+          address1: row['address']?.toString(),
+          city: row['city']?.toString(),
+          country: 'Zimbabwe',
+          localizedDisplay: [row['address'], row['city']]
+              .where((value) => value?.toString().isNotEmpty == true)
+              .join(', ')),
+    ),
+    categoryId: row['category']?.toString(),
+    categoryLabel: row['category_label']?.toString(),
+    isFree: price == 0,
+    capacity: int.tryParse(row['capacity']?.toString() ?? ''),
+    attendeeCount: int.tryParse(row['attendees']?.toString() ?? '') ?? 0,
+    featured: row['featured'] == true,
+    tags: (row['tags'] as List?)?.map((value) => value.toString()).toList() ??
+        const [],
+    lineup:
+        (row['lineup'] as List?)?.map((value) => value.toString()).toList() ??
+            const [],
+    organizerName: row['organizer_name']?.toString(),
+    status: row['status']?.toString(),
+    currency: 'USD',
+    ticketClasses: const [],
+  );
 }
