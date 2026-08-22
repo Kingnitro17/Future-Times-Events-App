@@ -517,7 +517,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(ticket == null ? 'Attendance' : 'Total Price',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 12)),
                 const SizedBox(height: 2),
                 Text(
                     ticket == null
@@ -573,12 +574,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
     if (_eventEnded) return 'Event Ended';
     if (_soldOut) return 'Sold Out';
     final ticket = _selectedTicket;
-    if (ticket == null)
+    if (ticket == null) {
       return _rsvpLoading
           ? 'Updating…'
           : _going
               ? '✓ Going'
               : "I'm Going";
+    }
     return ticket.free ? 'Get Free Ticket' : 'Get Tickets';
   }
 

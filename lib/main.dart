@@ -90,10 +90,11 @@ class _ConfigurationErrorApp extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineSmall),
                       const SizedBox(height: 12),
                       const Text(
-                        'Add your Supabase project URL (or project ID) and '
-                        'public anonymous key to '
-                        'config/app_config.local.json, then restart the app. '
-                        'Never use a service-role key in Flutter.',
+                        'Your local Supabase values were not passed to Flutter. '
+                        'Start Chrome with tools/run_chrome.ps1 or Android with '
+                        'tools/run_android.ps1. Both safely read '
+                        'config/app_config.local.json. Never use a '
+                        'service-role key in Flutter.',
                         textAlign: TextAlign.center,
                       ),
                     ],

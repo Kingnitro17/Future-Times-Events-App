@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 18),
                 DropdownButtonFormField<String?>(
-                  value: city,
+                  initialValue: city,
                   decoration: const InputDecoration(
                       labelText: 'City',
                       prefixIcon: Icon(Icons.location_on_outlined)),

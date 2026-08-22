@@ -152,8 +152,8 @@ class _WelcomePage extends StatelessWidget {
   const _WelcomePage();
 
   @override
-  Widget build(BuildContext context) => _PageFrame(
-        visual: const _DiscoveryVisual(),
+  Widget build(BuildContext context) => const _PageFrame(
+        visual: _DiscoveryVisual(),
         eyebrow: 'FUTURE TIMES EVENTS',
         title: "Find what's happening\naround you.",
         body:
@@ -258,32 +258,39 @@ class _LocationPage extends StatelessWidget {
                       TextStyle(color: AppColors.textSecondary, fontSize: 16),
                 ),
                 const SizedBox(height: 28),
-                for (final value in cities)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: RadioListTile<String>(
-                      value: value,
-                      groupValue: city,
-                      onChanged: (selected) {
-                        if (selected != null) onCity(selected);
-                      },
-                      title: Text(value,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: const Text('Zimbabwe'),
-                      secondary: const Icon(Icons.location_city_rounded,
-                          color: AppColors.purple),
-                      tileColor: city == value
-                          ? AppColors.purple.withValues(alpha: .08)
-                          : AppColors.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                            color: city == value
-                                ? AppColors.purple
-                                : AppColors.border),
-                      ),
-                    ),
+                RadioGroup<String>(
+                  groupValue: city,
+                  onChanged: (selected) {
+                    if (selected != null) onCity(selected);
+                  },
+                  child: Column(
+                    children: [
+                      for (final value in cities)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: RadioListTile<String>(
+                            value: value,
+                            title: Text(value,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800)),
+                            subtitle: const Text('Zimbabwe'),
+                            secondary: const Icon(Icons.location_city_rounded,
+                                color: AppColors.purple),
+                            tileColor: city == value
+                                ? AppColors.purple.withValues(alpha: .08)
+                                : AppColors.surface,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                  color: city == value
+                                      ? AppColors.purple
+                                      : AppColors.border),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
+                ),
                 const SizedBox(height: 8),
                 const Row(children: [
                   Icon(Icons.notifications_none_rounded,
@@ -388,27 +395,27 @@ class _Eyebrow extends StatelessWidget {
 class _DiscoveryVisual extends StatelessWidget {
   const _DiscoveryVisual();
   @override
-  Widget build(BuildContext context) => _VisualStage(children: [
+  Widget build(BuildContext context) => const _VisualStage(children: [
         Positioned(
             left: 8,
             right: 62,
             top: 24,
             bottom: 28,
             child: _EventPoster(
-              color: const Color(0xFF23143D),
+              color: Color(0xFF23143D),
               icon: Icons.graphic_eq_rounded,
               category: 'LIVE • HARARE',
               title: 'WHAT\'S\nNEXT',
               subtitle: 'FRIDAY  •  20:00',
             )),
-        const Positioned(
+        Positioned(
             right: 8,
             top: 4,
             child: _FloatBadge(
                 icon: Icons.explore_rounded,
                 title: 'Discover locally',
                 detail: 'Built around you')),
-        const Positioned(
+        Positioned(
             right: 0,
             bottom: 8,
             child: _FloatBadge(

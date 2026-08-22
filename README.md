@@ -23,18 +23,20 @@ default, avoiding Flutter's slow debug module loader. For debugging only, run:
 powershell -ExecutionPolicy Bypass -File tools/run_chrome.ps1 -Debug
 ```
 
-A new Flutter project.
+## Run locally on Android
 
-## Getting Started
+With an emulator or device available, run:
 
-This project is a starting point for a Flutter application.
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/run_android.ps1
+```
 
-A few resources to get you started if this is your first Flutter project:
+Choose a specific device with `-Device <device-id>`. Both launch helpers pass
+the ignored local configuration through `--dart-define-from-file`; running
+plain `flutter run` does not load that file.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+For a configured Android build, use:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/build_android.ps1 -Release
+```
