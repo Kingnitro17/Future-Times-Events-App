@@ -96,10 +96,16 @@ class EventNetworkImage extends StatelessWidget {
     }
   }
 
-  Widget _fallback() => DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppGradients.brand),
-        child: Center(
-          child: Icon(fallbackIcon, color: Colors.white, size: 42),
+  Widget _fallback() => Semantics(
+        image: true,
+        label: '$semanticLabel unavailable',
+        child: ExcludeSemantics(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(gradient: AppGradients.brand),
+            child: Center(
+              child: Icon(fallbackIcon, color: Colors.white, size: 42),
+            ),
+          ),
         ),
       );
 }

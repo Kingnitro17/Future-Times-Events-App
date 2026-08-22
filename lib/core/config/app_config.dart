@@ -9,23 +9,15 @@ class AppConfig {
   static const expectedProjectId = 'ecbbmcqwluivbzlaqdsd';
 
   static String get supabaseUrl {
-    final value = _supabaseUrlInput.trim();
-    if (value == expectedProjectId) {
-      return 'https://$expectedProjectId.supabase.co';
-    }
-    return value;
+    return normalizeSupabaseUrl(_supabaseUrlInput);
   }
 
   static bool get isConfigured {
-    final uri = Uri.tryParse(supabaseUrl);
-    return uri?.scheme == 'https' &&
-        uri?.host.endsWith('.supabase.co') == true &&
-        supabaseAnonKey.trim().isNotEmpty;
+    return isValidSupabaseConfig(supabaseUrl, supabaseAnonKey);
   }
 
   static String get projectId {
-    final host = Uri.tryParse(supabaseUrl)?.host ?? '';
-    return host.endsWith('.supabase.co') ? host.split('.').first : host;
+    return projectIdFromSupabaseUrl(supabaseUrl);
   }
 
   static void validate() {
@@ -46,5 +38,29 @@ class AppConfig {
       debugPrint(
           '[config] QA mock auth: ${qaMockAuth ? 'enabled' : 'disabled'}');
     }
+  }
+
+  @visibleForTesting
+  static String normalizeSupabaseUrl(String input) {
+    final value = input.trim();
+    if (value == expectedProjectId) {
+      return 'https://$expectedProjectId.supabase.co';
+    }
+    return value;
+  }
+
+  @visibleForTesting
+  static String projectIdFromSupabaseUrl(String value) {
+    final host = Uri.tryParse(value)?.host ?? '';
+    return host.endsWith('.supabase.co') ? host.split('.').first : host;
+  }
+
+  @visibleForTesting
+  static bool isValidSupabaseConfig(String url, String publishableKey) {
+    final uri = Uri.tryParse(url.trim());
+    return uri?.scheme == 'https' &&
+        uri?.host.endsWith('.supabase.co') == true &&
+        projectIdFromSupabaseUrl(url) == expectedProjectId &&
+        publishableKey.trim().isNotEmpty;
   }
 }
