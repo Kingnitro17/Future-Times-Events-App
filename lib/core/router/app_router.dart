@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
@@ -25,31 +27,130 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: navigationShell,
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => navigationShell.goBranch(index,
-                initialLocation: index == navigationShell.currentIndex),
-            destinations: const [
-              NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Home'),
-              NavigationDestination(
-                  icon: Icon(Icons.confirmation_number_outlined),
-                  selectedIcon: Icon(Icons.confirmation_number_rounded),
-                  label: 'Tickets'),
-              NavigationDestination(
-                  icon: Icon(Icons.map_outlined),
-                  selectedIcon: Icon(Icons.map_rounded),
-                  label: 'Map'),
-              NavigationDestination(
-                  icon: Icon(Icons.person_outline_rounded),
-                  selectedIcon: Icon(Icons.person_rounded),
-                  label: 'Profile'),
+        extendBody: true,
+        body: Padding(
+          padding: const EdgeInsets.only(bottom: 92),
+          child: navigationShell,
+        ),
+        bottomNavigationBar: _FutureTimesNavigation(
+          selectedIndex: navigationShell.currentIndex,
+          onSelected: (index) => navigationShell.goBranch(index,
+              initialLocation: index == navigationShell.currentIndex),
+        ),
+      );
+}
+
+class _FutureTimesNavigation extends StatelessWidget {
+  const _FutureTimesNavigation(
+      {required this.selectedIndex, required this.onSelected});
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  static const _items = [
+    ('Home', Icons.home_outlined, Icons.home_rounded),
+    (
+      'Tickets',
+      Icons.confirmation_number_outlined,
+      Icons.confirmation_number_rounded
+    ),
+    ('Explore', Icons.search_rounded, Icons.search_rounded),
+    ('Map', Icons.map_outlined, Icons.map_rounded),
+    ('Profile', Icons.person_outline_rounded, Icons.person_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: Container(
+          height: 78,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: .97),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x260A0A14),
+                  blurRadius: 24,
+                  offset: Offset(0, 10)),
             ],
+          ),
+          child: Row(
+            children: List.generate(_items.length, (index) {
+              final item = _items[index];
+              final selected = selectedIndex == index;
+              final center = index == 2;
+              return Expanded(
+                child: Semantics(
+                  selected: selected,
+                  button: true,
+                  label: item.$1,
+                  child: InkResponse(
+                    onTap: () => onSelected(index),
+                    radius: 34,
+                    child: AnimatedScale(
+                      scale: selected ? 1 : .96,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (center)
+                            Container(
+                              width: 58,
+                              height: 58,
+                              transform: Matrix4.translationValues(0, -12, 0),
+                              decoration: BoxDecoration(
+                                gradient: AppGradients.brand,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 4),
+                                boxShadow: const [
+                                  BoxShadow(
+                                      color: Color(0x357222E3),
+                                      blurRadius: 18,
+                                      offset: Offset(0, 8)),
+                                ],
+                              ),
+                              child:
+                                  Icon(item.$2, color: Colors.white, size: 27),
+                            )
+                          else
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? AppColors.purple.withValues(alpha: .1)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(selected ? item.$3 : item.$2,
+                                  color: selected
+                                      ? AppColors.purple
+                                      : AppColors.textMuted,
+                                  size: 23),
+                            ),
+                          SizedBox(height: center ? 0 : 2),
+                          Text(item.$1,
+                              maxLines: 1,
+                              style: TextStyle(
+                                  color: selected
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: selected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ),
       );
@@ -90,6 +191,14 @@ GoRouter buildAppRouter({
                   path: '/tickets',
                   pageBuilder: (_, __) => NoTransitionPage(
                       child: TicketsScreen(authRepository: authRepository)))
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                  path: '/explore',
+                  pageBuilder: (_, __) => NoTransitionPage(
+                      child: HomeScreen(
+                          savedEventsRepository: savedEventsRepository,
+                          preferencesRepository: discoveryPreferences)))
             ]),
             StatefulShellBranch(routes: [
               GoRoute(

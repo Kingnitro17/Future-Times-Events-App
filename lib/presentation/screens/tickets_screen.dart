@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/wallet_ticket.dart';
@@ -17,7 +18,7 @@ class TicketsScreen extends StatefulWidget {
 class _TicketsScreenState extends State<TicketsScreen> {
   late final TicketRepository _repository;
   Future<List<WalletTicket>>? _future;
-  String _filter = 'All';
+  String _filter = 'Upcoming';
 
   @override
   void initState() {
@@ -31,7 +32,9 @@ class _TicketsScreenState extends State<TicketsScreen> {
     if (mounted) _refresh();
   }
 
-  void _refresh() => setState(() => _future = _repository.getMyTickets());
+  void _refresh() => setState(() {
+        _future = _repository.getMyTickets();
+      });
 
   @override
   void dispose() {
@@ -57,9 +60,8 @@ class _TicketsScreenState extends State<TicketsScreen> {
           final all = snapshot.data ?? const [];
           final tickets = all
               .where((ticket) =>
-                  _filter == 'All' ||
-                  (_filter == 'Active' && ticket.isActive) ||
-                  (_filter == 'Used' && ticket.isUsed))
+                  (_filter == 'Upcoming' && ticket.isActive) ||
+                  (_filter == 'Past' && !ticket.isActive))
               .toList();
           return RefreshIndicator(
             onRefresh: () async {
@@ -69,12 +71,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                if (all.isNotEmpty)
-                  SliverToBoxAdapter(
-                      child: _Filters(
-                          value: _filter,
-                          onChanged: (value) =>
-                              setState(() => _filter = value))),
+                SliverToBoxAdapter(
+                    child: _Filters(
+                        value: _filter,
+                        onChanged: (value) => setState(() => _filter = value))),
                 if (tickets.isEmpty)
                   const SliverFillRemaining(
                       hasScrollBody: false, child: _EmptyTickets())
@@ -102,20 +102,22 @@ class _Filters extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
   @override
-  Widget build(BuildContext context) => SizedBox(
-      height: 62,
-      child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-          children: ['All', 'Active', 'Used']
-              .map((filter) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                        label: Text(filter),
-                        selected: value == filter,
-                        onSelected: (_) => onChanged(filter)),
-                  ))
-              .toList()));
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        child: SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 'Upcoming', label: Text('Upcoming')),
+            ButtonSegment(value: 'Past', label: Text('Past')),
+          ],
+          selected: {value},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+          style: ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 54)),
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)))),
+        ),
+      );
 }
 
 class _TicketCard extends StatelessWidget {
@@ -292,41 +294,80 @@ String _status(String value) => switch (value) {
 class _EmptyTickets extends StatelessWidget {
   const _EmptyTickets();
   @override
-  Widget build(BuildContext context) => const _EmptyState(
+  Widget build(BuildContext context) => _EmptyState(
       icon: Icons.confirmation_number_outlined,
-      title: 'No tickets yet',
-      detail: 'Tickets you claim or buy will appear here automatically.');
+      title: 'Your tickets',
+      detail: 'When you book events, your tickets will appear here.',
+      primaryLabel: 'Explore Events',
+      onPrimary: () => context.go('/explore'));
 }
 
 class _SignedOut extends StatelessWidget {
   const _SignedOut();
   @override
-  Widget build(BuildContext context) => const Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       body: _EmptyState(
-          icon: Icons.lock_outline_rounded,
-          title: 'Your tickets, in one place',
-          detail:
-              'Sign in from Profile to securely access tickets linked to your account.'));
+          icon: Icons.confirmation_number_outlined,
+          title: 'Your tickets',
+          detail: 'Book an event or sign in to sync tickets from your account.',
+          primaryLabel: 'Explore Events',
+          onPrimary: () => context.go('/explore'),
+          secondaryLabel: 'Sign in',
+          onSecondary: () => context.go('/profile')));
 }
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState(
-      {required this.icon, required this.title, required this.detail});
+      {required this.icon,
+      required this.title,
+      required this.detail,
+      this.primaryLabel,
+      this.onPrimary,
+      this.secondaryLabel,
+      this.onSecondary});
   final IconData icon;
   final String title;
   final String detail;
+  final String? primaryLabel;
+  final VoidCallback? onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
   @override
   Widget build(BuildContext context) => Center(
       child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 64, color: AppColors.purple),
-            const SizedBox(height: 18),
+            Container(
+                width: 128,
+                height: 128,
+                decoration: BoxDecoration(
+                    color: AppColors.purple.withValues(alpha: .07),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: AppColors.purple.withValues(alpha: .14))),
+                child: Icon(icon, size: 48, color: AppColors.purple)),
+            const SizedBox(height: 24),
             Text(title,
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(detail, textAlign: TextAlign.center),
+            Text(detail,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.textMuted, fontSize: 16, height: 1.5)),
+            if (primaryLabel != null) ...[
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                  onPressed: onPrimary,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  iconAlignment: IconAlignment.end,
+                  label: Text(primaryLabel!)),
+            ],
+            if (secondaryLabel != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton(
+                  onPressed: onSecondary, child: Text(secondaryLabel!)),
+            ],
           ])));
 }
 

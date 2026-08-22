@@ -53,6 +53,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await widget.authRepository
           .signIn(email: _email.text, password: _password.text);
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     } on AppFailure catch (failure) {
       if (mounted) setState(() => _error = failure.message);
     } finally {
@@ -65,11 +68,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = widget.authRepository;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+              onPressed: () => context.push('/onboarding'),
+              tooltip: 'Discovery preferences',
+              icon: const Icon(Icons.tune_rounded)),
+        ],
+      ),
       body: SafeArea(
           child: Center(
               child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 32),
         child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
             child: auth.isSignedIn ? _signedIn(auth) : _signedOut()),
@@ -79,39 +90,223 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _signedOut() =>
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Icon(Icons.account_circle_outlined,
-            size: 72, color: AppTheme.electricIndigo),
-        const SizedBox(height: 16),
-        Text('Welcome to Future Times',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        const Text('Sign in to access your tickets and account.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.subtleGrey)),
+        _identityCard(
+          name: 'Future Times',
+          detail:
+              'Sign in to sync tickets, saved events and discovery preferences across your devices.',
+          status: 'Browsing mode',
+        ),
         const SizedBox(height: 28),
-        TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(labelText: 'Email')),
-        const SizedBox(height: 12),
-        TextField(
-            controller: _password,
-            obscureText: true,
-            autofillHints: const [AutofillHints.password],
-            onSubmitted: (_) => _signIn(),
-            decoration: const InputDecoration(labelText: 'Password')),
-        if (_error != null)
-          Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(_error!,
-                  style: const TextStyle(color: Colors.redAccent))),
-        const SizedBox(height: 20),
-        FilledButton(
-            onPressed: _submitting ? null : _signIn,
-            child: Text(_submitting ? 'Signing in...' : 'Sign In')),
+        _sectionIntro('DISCOVERY',
+            'Shape what you see and keep the events you care about close.'),
+        _actionGroup([
+          _ProfileAction(
+              Icons.bookmark_outline_rounded,
+              'Saved Events',
+              'Build your shortlist for what happens next.',
+              () => context.push('/saved')),
+          _ProfileAction(
+              Icons.tune_rounded,
+              'Interests & Location',
+              '${widget.preferencesRepository.city} · ${widget.preferencesRepository.interests.length} interests',
+              () => context.push('/onboarding')),
+        ]),
+        const SizedBox(height: 26),
+        _sectionIntro('SUPPORT', 'Help, privacy and product information.'),
+        _actionGroup([
+          _ProfileAction(Icons.help_outline_rounded, 'Help & Support',
+              'Get help with tickets and account access.', _emailSupport),
+          _ProfileAction(
+              Icons.privacy_tip_outlined,
+              'Privacy & Terms',
+              'How Future Times protects your information.',
+              () => _openWeb('/privacy-policy')),
+        ]),
+        const SizedBox(height: 26),
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+              boxShadow: const [
+                BoxShadow(
+                    color: Color(0x120A0A14),
+                    blurRadius: 20,
+                    offset: Offset(0, 8))
+              ]),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Unlock your full profile',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text(
+                'Save events, sync tickets and keep your plans available everywhere.',
+                style: TextStyle(color: AppColors.textMuted, height: 1.45)),
+            const SizedBox(height: 18),
+            SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                    onPressed: _showSignIn, child: const Text('Sign in'))),
+          ]),
+        ),
       ]);
+
+  Widget _identityCard(
+      {required String name, required String detail, required String status}) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            colors: [Color(0xFFF0ECFF), Color(0xFFFFEFF9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.purple.withValues(alpha: .18)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x180A0A14), blurRadius: 24, offset: Offset(0, 10))
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                  color: AppColors.purple.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.purple)),
+              child: const Icon(Icons.person_rounded,
+                  size: 38, color: AppColors.purple)),
+          const Spacer(),
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .58),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.border)),
+              child: Text(status,
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 20),
+        Text(name,
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        Text(detail,
+            style: const TextStyle(
+                color: AppColors.textSecondary, height: 1.45, fontSize: 15)),
+        const SizedBox(height: 18),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _metric(
+              Icons.location_on_outlined, widget.preferencesRepository.city),
+          _metric(Icons.favorite_border_rounded,
+              '${widget.preferencesRepository.interests.length} interests'),
+          _metric(Icons.bookmark_outline_rounded,
+              '${widget.savedEventsRepository.ids.length} saved'),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _metric(IconData icon, String label) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .6),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.border)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 16, color: AppColors.purple),
+        const SizedBox(width: 6),
+        Text(label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      ]));
+
+  Widget _sectionIntro(String title, String detail) => Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.3)),
+        const SizedBox(height: 6),
+        Text(detail, style: const TextStyle(color: AppColors.textMuted)),
+      ]));
+
+  Widget _actionGroup(List<_ProfileAction> actions) => Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border)),
+      child: Column(children: [
+        for (var index = 0; index < actions.length; index++) ...[
+          ListTile(
+            minTileHeight: 76,
+            onTap: actions[index].onTap,
+            leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(14)),
+                child:
+                    Icon(actions[index].icon, color: AppColors.textSecondary)),
+            title: Text(actions[index].title,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text(actions[index].detail),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textMuted),
+          ),
+          if (index != actions.length - 1) const Divider(height: 1, indent: 76),
+        ]
+      ]));
+
+  Future<void> _showSignIn() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            22, 0, 22, MediaQuery.viewInsetsOf(sheetContext).bottom + 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('Welcome back',
+              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 18),
+          TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(labelText: 'Email')),
+          const SizedBox(height: 12),
+          TextField(
+              controller: _password,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              onSubmitted: (_) => _signIn(),
+              decoration: const InputDecoration(labelText: 'Password')),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(_error!,
+                    style: const TextStyle(color: Colors.redAccent))),
+          const SizedBox(height: 18),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                  onPressed: _submitting ? null : _signIn,
+                  child: Text(_submitting ? 'Signing in…' : 'Sign in'))),
+        ]),
+      ),
+    );
+  }
 
   Widget _signedIn(AuthRepository auth) {
     final name = auth.profile?['display_name']?.toString() ??
@@ -271,4 +466,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           content: Text('Email support@futuretimesevents.com for help.')));
     }
   }
+}
+
+class _ProfileAction {
+  const _ProfileAction(this.icon, this.title, this.detail, this.onTap);
+  final IconData icon;
+  final String title;
+  final String detail;
+  final VoidCallback onTap;
 }
