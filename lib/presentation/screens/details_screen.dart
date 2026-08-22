@@ -11,6 +11,7 @@ import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/social_repository.dart';
+import '../../data/repositories/ticket_repository.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
@@ -36,6 +37,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   TicketClass? _selectedTicket;
   bool _going = false;
   bool _rsvpLoading = false;
+  bool _ownsTicket = false;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -49,6 +51,23 @@ class _DetailsScreenState extends State<DetailsScreen> {
     final tickets = widget.event.ticketClasses.where((t) => !t.hidden);
     if (tickets.isNotEmpty) _selectedTicket = tickets.first;
     _loadGoing();
+    _loadOwnedTicket();
+  }
+
+  Future<void> _loadOwnedTicket() async {
+    if (!widget.authRepository.isSignedIn ||
+        widget.authRepository.isQaMockSession) {
+      return;
+    }
+    try {
+      final ownsTicket = await TicketRepository(
+        authRepository: widget.authRepository,
+      ).hasViewableTicketForEvent(widget.event.id);
+      if (mounted) setState(() => _ownsTicket = ownsTicket);
+    } catch (_) {
+      // Ticket ownership is an enhancement to the CTA. The wallet remains the
+      // authoritative retry surface when this lightweight check is offline.
+    }
   }
 
   Future<void> _loadGoing() async {
@@ -532,11 +551,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
         SizedBox(
           width: 170,
           child: FilledButton(
-            onPressed: _eventEnded || _soldOut
-                ? null
-                : ticket == null
-                    ? (_rsvpLoading ? null : _toggleGoing)
-                    : _openCheckout,
+            onPressed: _ownsTicket
+                ? () => context.go('/tickets')
+                : _eventEnded || _soldOut
+                    ? null
+                    : ticket == null
+                        ? (_rsvpLoading ? null : _toggleGoing)
+                        : _openCheckout,
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.pink,
                 shape: RoundedRectangleBorder(
@@ -570,6 +591,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   String get _ctaLabel {
+    if (_ownsTicket) return 'View Ticket';
     if (_eventEnded) return 'Event Ended';
     if (_soldOut) return 'Sold Out';
     final ticket = _selectedTicket;

@@ -34,6 +34,7 @@ class WalletTicket {
 
   bool get isActive => status == 'issued';
   bool get isUsed => status == 'checked_in';
+  bool get isViewable => isActive || isUsed;
 
   factory WalletTicket.fromSupabase(Map<String, dynamic> row) {
     final event = row['events'] as Map<String, dynamic>? ?? const {};

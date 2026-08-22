@@ -49,4 +49,11 @@ class TicketRepository {
       throw const DataFailure('Your tickets could not be loaded. Try again.');
     }
   }
+
+  Future<bool> hasViewableTicketForEvent(String eventId) async {
+    final tickets = await getMyTickets();
+    return tickets.any(
+      (ticket) => ticket.eventId == eventId && ticket.isViewable,
+    );
+  }
 }

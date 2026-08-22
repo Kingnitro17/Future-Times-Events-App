@@ -27,6 +27,7 @@ void main() {
     expect(ticket.eventTitle, 'Future Summit');
     expect(ticket.ticketType, 'General Admission');
     expect(ticket.isActive, isTrue);
+    expect(ticket.isViewable, isTrue);
   });
 
   test('supports legacy holder fields and never invents a QR payload', () {
@@ -42,5 +43,18 @@ void main() {
     expect(ticket.attendeeEmail, 'legacy@example.com');
     expect(ticket.qrPayload, isNull);
     expect(ticket.ticketNumber, 'legacy-ticket');
+    expect(ticket.isViewable, isTrue);
+  });
+
+  test('cancelled and revoked tickets are not treated as viewable admission',
+      () {
+    for (final status in ['cancelled', 'revoked']) {
+      final ticket = WalletTicket.fromSupabase({
+        'id': status,
+        'event_id': 'event-id',
+        'status': status,
+      });
+      expect(ticket.isViewable, isFalse);
+    }
   });
 }
