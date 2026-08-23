@@ -368,8 +368,7 @@ class ZimbabweLocationsRepository {
     final copy = List<ZimbabweLocation>.from(allLocations);
     copy.sort((a, b) {
       int rank(ZimbabweLocation loc) {
-        if (preferredClean.isNotEmpty &&
-            loc.normalizedName == preferredClean) {
+        if (preferredClean.isNotEmpty && loc.normalizedName == preferredClean) {
           return 1;
         }
         if (activeClean.contains(loc.normalizedName)) {
@@ -396,7 +395,8 @@ class ZimbabweLocationsRepository {
     double minDistance = double.infinity;
 
     for (final loc in allLocations) {
-      final distance = _haversineDistance(lat, lng, loc.latitude, loc.longitude);
+      final distance =
+          _haversineDistance(lat, lng, loc.latitude, loc.longitude);
       if (distance < minDistance) {
         minDistance = distance;
         nearest = loc;

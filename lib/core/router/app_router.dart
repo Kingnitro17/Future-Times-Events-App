@@ -17,6 +17,7 @@ import '../../presentation/screens/event_map_screen.dart';
 import '../../presentation/screens/explore_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/map_discovery_screen.dart';
+import '../../presentation/screens/launch_screen.dart';
 import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
@@ -278,8 +279,12 @@ GoRouter buildAppRouter({
   required DiscoveryPreferencesRepository discoveryPreferences,
 }) =>
     GoRouter(
-      initialLocation: showOnboarding ? '/onboarding' : '/',
+      initialLocation: '/launch',
       routes: [
+        GoRoute(
+          path: '/launch',
+          builder: (_, __) => LaunchScreen(showOnboarding: showOnboarding),
+        ),
         GoRoute(
           path: '/onboarding',
           builder: (_, __) =>

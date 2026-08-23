@@ -286,7 +286,6 @@ class _TopNavigation extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
       child: Row(
         children: [
-          // Small branded badge for screens 2 & 3
           if (page > 0) ...[
             Container(
               width: 32,
@@ -295,8 +294,8 @@ class _TopNavigation extends StatelessWidget {
                 gradient: AppGradients.brand,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.bolt_rounded,
-                  color: Colors.white, size: 18),
+              child:
+                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
             const Text(
@@ -320,7 +319,7 @@ class _TopNavigation extends StatelessWidget {
               ),
               child: const Text(
                 'Sign In',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
               ),
             )
           else
@@ -353,7 +352,7 @@ class _WelcomeScreen extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 540),
@@ -361,36 +360,21 @@ class _WelcomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 12),
-                  // Branded Android Logo Component - never crop, stretch, touch edge
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.purple.withValues(alpha: 0.08),
-                          blurRadius: 28,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+                  // SECTION 8: Clean Natural Logo (NO giant white squircle card, NO black box)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 160,
+                      maxHeight: 130,
                     ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 240,
-                        maxHeight: 120,
-                      ),
-                      child: Image.asset(
-                        'assets/images/androidlogo.png',
-                        fit: BoxFit.contain,
-                        alignment: Alignment.center,
-                        filterQuality: FilterQuality.high,
-                      ),
+                    child: Image.asset(
+                      'assets/images/androidlogo.png',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                      filterQuality: FilterQuality.high,
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  // Eyebrow
+                  const SizedBox(height: 28),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -413,7 +397,7 @@ class _WelcomeScreen extends StatelessWidget {
                     "Find what's happening around you.",
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: 34,
+                          fontSize: 32,
                           fontWeight: FontWeight.w900,
                           height: 1.1,
                           letterSpacing: -1.2,
@@ -426,11 +410,12 @@ class _WelcomeScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 16,
+                      fontSize: 15,
                       height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 36),
+                  // SECTION 9: Single primary CTA button on Screen 1
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -474,7 +459,7 @@ class _WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   TextButton(
                     onPressed: onSignIn,
                     child: const Text(
@@ -576,7 +561,8 @@ class _InterestsScreen extends StatelessWidget {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: AppColors.purple.withValues(alpha: 0.28),
+                                  color:
+                                      AppColors.purple.withValues(alpha: 0.28),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 )
@@ -589,16 +575,13 @@ class _InterestsScreen extends StatelessWidget {
                           Icon(
                             cat.$2,
                             size: 18,
-                            color:
-                                isSelected ? Colors.white : AppColors.purple,
+                            color: isSelected ? Colors.white : AppColors.purple,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             cat.$1,
                             style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppColors.text,
+                              color: isSelected ? Colors.white : AppColors.text,
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),
@@ -790,8 +773,8 @@ class _LocationScreen extends StatelessWidget {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(99),
-                      borderSide: const BorderSide(
-                          color: AppColors.purple, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.purple, width: 2),
                     ),
                   ),
                 ),
@@ -978,8 +961,7 @@ class _BottomBar extends StatelessWidget {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         gradient: index == page ? AppGradients.brand : null,
-                        color:
-                            index == page ? null : AppColors.surfaceMuted,
+                        color: index == page ? null : AppColors.surfaceMuted,
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -987,46 +969,48 @@ class _BottomBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 170,
-                height: 48,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.purple,
-                    disabledBackgroundColor:
-                        AppColors.purple.withValues(alpha: 0.35),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  onPressed: enabled && !saving ? onNext : null,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        saving
-                            ? 'Saving...'
-                            : page == 2
-                                ? 'Explore events'
-                                : page == 0
-                                    ? 'Get Started'
-                                    : 'Continue',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
+              // On page 0, the main body already has the primary "Get Started" CTA, so bottom bar displays clean step indicators without a duplicate button
+              if (page == 0)
+                const SizedBox(width: 48)
+              else
+                SizedBox(
+                  width: 170,
+                  height: 48,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.purple,
+                      disabledBackgroundColor:
+                          AppColors.purple.withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(99),
                       ),
-                      if (!saving) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.arrow_forward_rounded,
-                            size: 18, color: Colors.white),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: enabled && !saving ? onNext : null,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          saving
+                              ? 'Saving...'
+                              : page == 2
+                                  ? 'Explore events'
+                                  : 'Continue',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (!saving) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded,
+                              size: 18, color: Colors.white),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
