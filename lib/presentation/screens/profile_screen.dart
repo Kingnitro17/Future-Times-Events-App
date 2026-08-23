@@ -47,10 +47,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _changed() {
-    if (mounted) {
-      setState(() {});
-      _loadStats();
-    }
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+        _loadStats();
+      }
+    });
   }
 
   Future<void> _loadStats() async {
@@ -111,14 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = widget.authRepository;
-    Widget content;
-    if (auth.isLoading) {
-      content = _buildLoading();
-    } else if (auth.isSignedIn) {
-      content = _buildSignedIn(auth);
-    } else {
-      content = _buildSignedOut();
-    }
+    final content = auth.isSignedIn ? _buildSignedIn(auth) : _buildSignedOut();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -147,26 +143,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLoading() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 60),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(strokeWidth: 2.5),
-          SizedBox(height: 16),
-          Text(
-            'Connecting to Future Times…',
-            style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 13,
-                fontWeight: FontWeight.w600),
-          ),
-        ],
       ),
     );
   }
@@ -203,8 +179,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: 54,
                     height: 54,
-                    child: Image.asset('assets/images/appicon.png',
-                        fit: BoxFit.contain),
+                    child: Image.asset(
+                      'assets/images/appicon.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.stars_rounded,
+                        color: AppColors.purple,
+                        size: 40,
+                      ),
+                    ),
                   ),
                   const Spacer(),
                   Container(
