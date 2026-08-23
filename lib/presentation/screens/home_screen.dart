@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_gradients.dart';
 import '../../core/utils/event_discovery.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -15,6 +14,7 @@ import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/save_event_button.dart';
+import '../../core/utils/responsive_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -230,6 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ],
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 100),
+                      ),
                     ],
                   ],
                 ),
@@ -238,6 +241,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+}
+
+String _formatLocationSubtitle(String city) {
+  final trimmed = city.trim();
+  if (trimmed.isEmpty || trimmed.toLowerCase() == 'all zimbabwe') {
+    return 'All Zimbabwe';
+  }
+  if (trimmed.toLowerCase().endsWith(', zimbabwe')) {
+    return trimmed;
+  }
+  return '$trimmed, Zimbabwe';
 }
 
 class _HomeHeader extends StatelessWidget {
@@ -251,86 +265,85 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = authRepository.user?.email?.split('@').first ?? '';
-    final greeting = displayName.isEmpty
-        ? "Discover what's happening"
-        : 'Hi ${_displayName(displayName)}';
+    final locationText = _formatLocationSubtitle(preferredCity);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              gradient: AppGradients.brand,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              color: Colors.white,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
+    return Align(
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1040),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: Image.asset(
+                  'assets/images/appicon.png',
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 4),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.location_on_rounded,
-                      size: 15,
-                      color: AppColors.purple,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      preferredCity.isEmpty
-                          ? 'Harare, Zimbabwe'
-                          : '$preferredCity, Zimbabwe',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
+                    const Text(
+                      "Discover what's\nhappening near",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.text,
+                        height: 1.15,
+                        letterSpacing: -0.5,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_rounded,
+                          size: 14,
+                          color: AppColors.purple,
+                        ),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            locationText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _HeaderButton(
+                icon: Icons.calendar_month_outlined,
+                tooltip: 'Calendar',
+                onTap: () => context.push('/calendar'),
+              ),
+              const SizedBox(width: 8),
+              _HeaderButton(
+                icon: Icons.search_rounded,
+                tooltip: 'Explore events',
+                onTap: () => context.push('/explore'),
+              ),
+            ],
           ),
-          _HeaderButton(
-            icon: Icons.calendar_month_outlined,
-            tooltip: 'Calendar',
-            onTap: () => context.push('/calendar'),
-          ),
-          const SizedBox(width: 8),
-          _HeaderButton(
-            icon: Icons.search_rounded,
-            tooltip: 'Explore events',
-            onTap: () => context.push('/explore'),
-          ),
-        ],
+        ),
       ),
     );
   }
-}
-
-String _displayName(String emailLocal) {
-  final cleaned = emailLocal.split(RegExp(r'[._-]')).first;
-  if (cleaned.isEmpty) return 'there';
-  return '${cleaned[0].toUpperCase()}${cleaned.substring(1)}';
 }
 
 class _HeaderButton extends StatelessWidget {
@@ -382,16 +395,47 @@ class _FeaturedRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = (MediaQuery.sizeOf(context).width * 0.78).clamp(280.0, 340.0);
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = ResponsiveUtils.responsiveCardWidth(viewportWidth);
+    final isExpanded = ResponsiveUtils.isExpanded(context);
+
+    if (isExpanded) {
+      final columns = ResponsiveUtils.responsiveGridColumns(viewportWidth);
+      return Align(
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1040),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.82,
+              ),
+              itemCount: events.length,
+              itemBuilder: (_, index) => _Featured(
+                event: events[index],
+                savedEventsRepository: savedEventsRepository,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
-      height: 330,
+      height: 360,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         scrollDirection: Axis.horizontal,
         itemCount: events.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (_, index) => SizedBox(
-          width: width,
+          width: cardWidth,
           child: _Featured(
             event: events[index],
             savedEventsRepository: savedEventsRepository,
@@ -426,28 +470,34 @@ class _Featured extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                _Artwork(event: event, height: 190),
-                Positioned(
-                  left: 12,
-                  top: 12,
-                  child: _Pill(value: event.categoryLabel ?? event.categoryId),
-                ),
-                Positioned(
-                  right: 9,
-                  top: 9,
-                  child: SaveEventButton(
-                    eventId: event.id,
-                    repository: savedEventsRepository,
-                    onSurface: true,
+            AspectRatio(
+              aspectRatio: 1.6,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: _Artwork(event: event, height: 180),
                   ),
-                ),
-              ],
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child:
+                        _Pill(value: event.categoryLabel ?? event.categoryId),
+                  ),
+                  Positioned(
+                    right: 9,
+                    top: 9,
+                    child: SaveEventButton(
+                      eventId: event.id,
+                      repository: savedEventsRepository,
+                      onSurface: true,
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -457,7 +507,7 @@ class _Featured extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.text,
-                        fontSize: 17,
+                        fontSize: 16,
                         height: 1.18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -467,17 +517,17 @@ class _Featured extends StatelessWidget {
                       icon: Icons.location_on_outlined,
                       text: event.venue?.address?.city ?? 'Harare',
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     _Meta(
                       icon: Icons.schedule_rounded,
                       text: DateFormat('EEE, d MMM • h:mm a').format(date),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       event.isFree ? 'Free' : 'Paid',
                       style: const TextStyle(
                         color: AppColors.purple,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

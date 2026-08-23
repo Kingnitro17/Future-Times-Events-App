@@ -64,95 +64,103 @@ class _FutureTimesNavigation extends StatelessWidget {
   Widget build(BuildContext context) => SafeArea(
         top: false,
         minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        child: Container(
-          height: 78,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: .97),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x260A0A14),
-                  blurRadius: 24,
-                  offset: Offset(0, 10)),
-            ],
-          ),
-          child: Row(
-            children: List.generate(_items.length, (index) {
-              final item = _items[index];
-              final selected = selectedIndex == index;
-              final center = index == 2;
-              return Expanded(
-                child: Semantics(
-                  selected: selected,
-                  button: true,
-                  label: item.$1,
-                  child: InkResponse(
-                    onTap: () => onSelected(index),
-                    radius: 34,
-                    child: AnimatedScale(
-                      scale: selected ? 1 : .96,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (center)
-                            Container(
-                              width: 58,
-                              height: 58,
-                              transform: Matrix4.translationValues(0, -12, 0),
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.brand,
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 4),
-                                boxShadow: const [
-                                  BoxShadow(
-                                      color: Color(0x357222E3),
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8)),
-                                ],
-                              ),
-                              child:
-                                  Icon(item.$2, color: Colors.white, size: 27),
-                            )
-                          else
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? AppColors.purple.withValues(alpha: .1)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(selected ? item.$3 : item.$2,
-                                  color: selected
-                                      ? AppColors.purple
-                                      : AppColors.textMuted,
-                                  size: 23),
-                            ),
-                          SizedBox(height: center ? 0 : 2),
-                          Text(item.$1,
-                              maxLines: 1,
-                              style: TextStyle(
-                                  color: selected
-                                      ? AppColors.text
-                                      : AppColors.textMuted,
-                                  fontSize: 11,
-                                  fontWeight: selected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600)),
-                        ],
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Container(
+              height: 78,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: .97),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x260A0A14),
+                    blurRadius: 24,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: List.generate(_items.length, (index) {
+                  final item = _items[index];
+                  final selected = selectedIndex == index;
+                  final center = index == 2;
+                  return Expanded(
+                    child: Semantics(
+                      selected: selected,
+                      button: true,
+                      label: item.$1,
+                      child: InkResponse(
+                        onTap: () => onSelected(index),
+                        radius: 34,
+                        child: AnimatedScale(
+                          scale: selected ? 1 : .96,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (center)
+                                Container(
+                                  width: 58,
+                                  height: 58,
+                                  transform:
+                                      Matrix4.translationValues(0, -12, 0),
+                                  decoration: BoxDecoration(
+                                    gradient: AppGradients.brand,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 4),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                          color: Color(0x357222E3),
+                                          blurRadius: 18,
+                                          offset: Offset(0, 8)),
+                                    ],
+                                  ),
+                                  child: Icon(item.$2,
+                                      color: Colors.white, size: 27),
+                                )
+                              else
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? AppColors.purple.withValues(alpha: .1)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(selected ? item.$3 : item.$2,
+                                      color: selected
+                                          ? AppColors.purple
+                                          : AppColors.textMuted,
+                                      size: 23),
+                                ),
+                              SizedBox(height: center ? 0 : 2),
+                              Text(item.$1,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                      color: selected
+                                          ? AppColors.text
+                                          : AppColors.textMuted,
+                                      fontSize: 11,
+                                      fontWeight: selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600)),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            }),
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       );

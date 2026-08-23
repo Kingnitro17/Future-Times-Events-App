@@ -287,15 +287,13 @@ class _TopNavigation extends StatelessWidget {
       child: Row(
         children: [
           if (page > 0) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                gradient: AppGradients.brand,
-                shape: BoxShape.circle,
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: Image.asset(
+                'assets/images/appicon.png',
+                fit: BoxFit.contain,
               ),
-              child:
-                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
             const Text(
@@ -716,9 +714,9 @@ class _LocationScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // View all toggle & Search header
-              Row(
-                children: [
-                  Text(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final titleWidget = Text(
                     showAllLocations || searchQuery.isNotEmpty
                         ? 'All Zimbabwe Locations (${displayedLocations.length})'
                         : 'Major Cities & Towns',
@@ -727,10 +725,15 @@ class _LocationScreen extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
+                  );
+
+                  final actionWidget = TextButton.icon(
                     onPressed: onToggleShowAll,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 4),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     icon: Icon(
                       showAllLocations
                           ? Icons.unfold_less_rounded
@@ -741,8 +744,26 @@ class _LocationScreen extends StatelessWidget {
                       showAllLocations ? 'Show major' : 'View all locations',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                ],
+                  );
+
+                  if (constraints.maxWidth > 380) {
+                    return Row(
+                      children: [
+                        Expanded(child: titleWidget),
+                        actionWidget,
+                      ],
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleWidget,
+                      const SizedBox(height: 2),
+                      actionWidget,
+                    ],
+                  );
+                },
               ),
 
               if (showAllLocations || searchQuery.isNotEmpty) ...[
