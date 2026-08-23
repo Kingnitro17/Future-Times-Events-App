@@ -34,6 +34,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _displayName = TextEditingController();
   bool _submitting = false;
   String? _error;
   SocialStats _socialStats = const SocialStats();
@@ -67,16 +68,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     widget.authRepository.removeListener(_changed);
     _email.dispose();
     _password.dispose();
+    _displayName.dispose();
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+  Future<void> _submitAuth({required bool isSignUp}) async {
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
-      await widget.authRepository.signIn(email: _email.text, password: _password.text);
+      if (isSignUp) {
+        await widget.authRepository.signUp(
+          email: _email.text,
+          password: _password.text,
+          displayName: _displayName.text,
+        );
+      } else {
+        await widget.authRepository.signIn(
+          email: _email.text,
+          password: _password.text,
+        );
+      }
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
@@ -192,7 +205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: _showSignIn,
+                  onPressed: () => _showSignIn(true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
@@ -472,59 +485,145 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _showSignIn() async {
+  Future<void> _showSignIn([bool initialSignUp = false]) => _showAuthModal(isSignUp: initialSignUp);
+
+  Future<void> _showAuthModal({bool isSignUp = false}) async {
+    setState(() => _error = null);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          22, 0, 22, MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Welcome back to Future Times', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email address'),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              22, 0, 22, MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              autofillHints: const [AutofillHints.password],
-              onSubmitted: (_) => _signIn(),
-              decoration: const InputDecoration(labelText: 'Password'),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    isSignUp ? 'Create your Account' : 'Welcome back',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.text,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isSignUp
+                        ? 'Connect with events, friends, and organizers.'
+                        : 'Sign in to access tickets, saved events, and friends.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (isSignUp) ...[
+                    TextField(
+                      controller: _displayName,
+                      textCapitalization: TextCapitalization.words,
+                      autofillHints: const [AutofillHints.name],
+                      decoration: const InputDecoration(
+                        labelText: 'Full name / Display name',
+                        hintText: 'e.g. Tariro Moyo',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    decoration: const InputDecoration(
+                      labelText: 'Email address',
+                      hintText: 'name@example.com',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => _submitAuth(isSignUp: isSignUp),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      hintText: isSignUp ? 'At least 6 characters' : 'Enter password',
+                    ),
+                  ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 22),
+                  Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.brand,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.purple.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _submitting ? null : () => _submitAuth(isSignUp: isSignUp),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      ),
+                      child: Text(
+                        _submitting
+                            ? (isSignUp ? 'Creating account…' : 'Signing in…')
+                            : (isSignUp ? 'Create Account' : 'Sign In'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() => _error = null);
+                        setSheetState(() => isSignUp = !isSignUp);
+                      },
+                      child: Text(
+                        isSignUp
+                            ? 'Already have an account? Sign In'
+                            : 'New to Future Times? Create Account',
+                        style: const TextStyle(
+                          color: AppColors.purple,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-              ),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: AppGradients.brand,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: ElevatedButton(
-                onPressed: _submitting ? null : _signIn,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                ),
-                child: Text(_submitting ? 'Signing in…' : 'Sign In', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

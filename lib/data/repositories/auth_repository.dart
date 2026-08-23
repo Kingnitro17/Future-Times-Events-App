@@ -70,6 +70,29 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
+  Future<void> signUp({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    try {
+      final response = await _client.auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: displayName != null && displayName.trim().isNotEmpty
+            ? {'display_name': displayName.trim()}
+            : null,
+      );
+      await _synchronize(response.session);
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw AuthFailure(
+          'Unable to reach Future Times. Check your connection and try again.',
+          cause: error);
+    }
+  }
+
   Future<void> signOut() async {
     try {
       await _client.auth.signOut();
@@ -103,6 +126,14 @@ class AuthRepository extends ChangeNotifier {
       return AuthFailure('Incorrect email or password.',
           code: error.code, cause: error);
     }
+    if (message.contains('user already registered') || message.contains('already in use') || message.contains('already registered')) {
+      return AuthFailure('An account with this email already exists. Try signing in.',
+          code: error.code, cause: error);
+    }
+    if (message.contains('password') && (message.contains('short') || message.contains('6') || message.contains('weak'))) {
+      return AuthFailure('Password must be at least 6 characters long.',
+          code: error.code, cause: error);
+    }
     if (message.contains('email not confirmed')) {
       return AuthFailure('Confirm your email before signing in.',
           code: error.code, cause: error);
@@ -111,7 +142,7 @@ class AuthRepository extends ChangeNotifier {
       return AuthFailure('Too many attempts. Please wait and try again.',
           code: error.code, cause: error);
     }
-    return AuthFailure('Sign in could not be completed. Please try again.',
+    return AuthFailure(error.message.isNotEmpty ? error.message : 'Authentication could not be completed. Please try again.',
         code: error.code, cause: error);
   }
 
