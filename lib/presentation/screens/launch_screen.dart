@@ -234,7 +234,7 @@ class _LaunchScreenState extends State<LaunchScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'FUTURE TIMES EVENTS',
                     style: TextStyle(
                       color: AppColors.purple,
@@ -243,8 +243,8 @@ class _LaunchScreenState extends State<LaunchScreen>
                       letterSpacing: 2.5,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const SizedBox(
+                  SizedBox(height: 14),
+                  SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(

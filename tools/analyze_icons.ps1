@@ -13,5 +13,5 @@ function Check-Img ($path) {
     $img.Dispose()
 }
 
-Check-Img "assets/images/androidlogo_clean.png"
-Check-Img "assets/images/appicon_clean.png"
+Check-Img "appicon.png"
+Check-Img "assets/images/appicon.png"
