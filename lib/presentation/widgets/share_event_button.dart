@@ -72,9 +72,11 @@ class _ShareEventButtonState extends State<ShareEventButton> {
     final slug = event.slug;
     final url = 'https://futuretimesevents.com/events/$slug';
     final dateStr = DateFormat('EEE, d MMM • h:mm a').format(event.startsAt);
-    final venueStr = event.venue?.name ?? event.venue?.address?.city ?? 'Zimbabwe';
+    final venueStr =
+        event.venue?.name ?? event.venue?.address?.city ?? 'Zimbabwe';
 
-    final text = 'Join me at ${event.name.text}!\n\n📅 $dateStr\n📍 $venueStr\n\n$url';
+    final text =
+        'Join me at ${event.name.text}!\n\n📅 $dateStr\n📍 $venueStr\n\n$url';
 
     await SharePlus.instance.share(
       ShareParams(

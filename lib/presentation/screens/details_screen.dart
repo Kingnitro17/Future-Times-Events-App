@@ -293,8 +293,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                               child: const Icon(Icons.people_outline_rounded,
                                   color: AppColors.purple))
                           : Stack(
-                              children:
-                                  List.generate(attendees.take(3).length, (index) {
+                              children: List.generate(attendees.take(3).length,
+                                  (index) {
                                 final attendee = attendees[index];
                                 return Positioned(
                                   left: index * 24,
@@ -305,8 +305,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                         ? null
                                         : NetworkImage(attendee.avatarUrl!),
                                     child: attendee.avatarUrl == null
-                                        ? Text(attendee.displayName[0].toUpperCase(),
-                                            style: const TextStyle(color: Colors.white, fontSize: 13))
+                                        ? Text(
+                                            attendee.displayName[0]
+                                                .toUpperCase(),
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13))
                                         : null,
                                   ),
                                 );
@@ -319,7 +323,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            goingCount == 0 ? 'Be the first to go' : '$goingCount Going',
+                            goingCount == 0
+                                ? 'Be the first to go'
+                                : '$goingCount Going',
                             style: const TextStyle(
                               color: AppColors.text,
                               fontWeight: FontWeight.w800,

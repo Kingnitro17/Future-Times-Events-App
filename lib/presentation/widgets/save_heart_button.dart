@@ -96,7 +96,8 @@ class _SaveHeartButtonState extends State<SaveHeartButton> {
   void _promptAuth(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Sign in or sign up to save events to your shortlist.'),
+        content:
+            const Text('Sign in or sign up to save events to your shortlist.'),
         action: SnackBarAction(
           label: 'Sign In',
           onPressed: () {

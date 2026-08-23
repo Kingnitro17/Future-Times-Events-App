@@ -126,11 +126,18 @@ class AuthRepository extends ChangeNotifier {
       return AuthFailure('Incorrect email or password.',
           code: error.code, cause: error);
     }
-    if (message.contains('user already registered') || message.contains('already in use') || message.contains('already registered')) {
-      return AuthFailure('An account with this email already exists. Try signing in.',
-          code: error.code, cause: error);
+    if (message.contains('user already registered') ||
+        message.contains('already in use') ||
+        message.contains('already registered')) {
+      return AuthFailure(
+          'An account with this email already exists. Try signing in.',
+          code: error.code,
+          cause: error);
     }
-    if (message.contains('password') && (message.contains('short') || message.contains('6') || message.contains('weak'))) {
+    if (message.contains('password') &&
+        (message.contains('short') ||
+            message.contains('6') ||
+            message.contains('weak'))) {
       return AuthFailure('Password must be at least 6 characters long.',
           code: error.code, cause: error);
     }
@@ -142,8 +149,12 @@ class AuthRepository extends ChangeNotifier {
       return AuthFailure('Too many attempts. Please wait and try again.',
           code: error.code, cause: error);
     }
-    return AuthFailure(error.message.isNotEmpty ? error.message : 'Authentication could not be completed. Please try again.',
-        code: error.code, cause: error);
+    return AuthFailure(
+        error.message.isNotEmpty
+            ? error.message
+            : 'Authentication could not be completed. Please try again.',
+        code: error.code,
+        cause: error);
   }
 
   @override

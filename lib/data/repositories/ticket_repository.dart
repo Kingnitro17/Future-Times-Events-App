@@ -30,7 +30,8 @@ class TicketRepository {
       final rpcRes = await _client.rpc('get_my_ticket_wallet');
       if (rpcRes is List && rpcRes.isNotEmpty) {
         return rpcRes
-            .map((row) => WalletTicket.fromSupabase(row as Map<String, dynamic>))
+            .map(
+                (row) => WalletTicket.fromSupabase(row as Map<String, dynamic>))
             .toList()
           ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
       }

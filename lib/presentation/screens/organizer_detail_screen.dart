@@ -60,7 +60,10 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                 ),
                 child: ClipOval(
                   child: org.logoUrl != null
-                      ? Image.network(org.logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatarFallback(org.name))
+                      ? Image.network(org.logoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _avatarFallback(org.name))
                       : _avatarFallback(org.name),
                 ),
               ),
@@ -70,11 +73,15 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                 children: [
                   Text(
                     org.name,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.text),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.text),
                   ),
                   if (org.isVerified) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.verified_rounded, color: AppColors.purple, size: 20),
+                    const Icon(Icons.verified_rounded,
+                        color: AppColors.purple, size: 20),
                   ],
                 ],
               ),
@@ -82,13 +89,17 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '📍 ${org.location}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
               const SizedBox(height: 16),
               // Followers pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(999),
@@ -96,7 +107,10 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                 ),
                 child: Text(
                   '${org.followersCount} Followers',
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.purple, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.purple,
+                      fontSize: 13),
                 ),
               ),
               const SizedBox(height: 20),
@@ -126,7 +140,10 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                           ),
-                          child: const Text('Follow Organizer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          child: const Text('Follow Organizer',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800)),
                         ),
                       ),
               ),
@@ -136,7 +153,11 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'ABOUT ORGANIZER',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -150,7 +171,10 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                   ),
                   child: Text(
                     org.description!,
-                    style: const TextStyle(color: AppColors.textSecondary, height: 1.45, fontSize: 14),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.45,
+                        fontSize: 14),
                   ),
                 ),
               ],
@@ -166,7 +190,8 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
     return Center(
       child: Text(
         initial,
-        style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 32),
+        style: const TextStyle(
+            color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 32),
       ),
     );
   }

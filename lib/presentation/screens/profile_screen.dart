@@ -55,11 +55,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadStats() async {
     if (!widget.authRepository.isSignedIn) return;
-    final stats = await widget.socialRepository.getSocialStats();
-    if (mounted) {
-      setState(() {
-        _socialStats = stats;
-      });
+    try {
+      final stats = await widget.socialRepository.getSocialStats();
+      if (mounted) {
+        setState(() {
+          _socialStats = stats;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _socialStats = const SocialStats();
+        });
+      }
     }
   }
 
@@ -103,6 +111,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = widget.authRepository;
+    Widget content;
+    if (auth.isLoading) {
+      content = _buildLoading();
+    } else if (auth.isSignedIn) {
+      content = _buildSignedIn(auth);
+    } else {
+      content = _buildSignedOut();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -126,10 +143,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 640),
-              child: auth.isSignedIn ? _buildSignedIn(auth) : _buildSignedOut(),
+              child: content,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 60),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(strokeWidth: 2.5),
+          SizedBox(height: 16),
+          Text(
+            'Connecting to Future Times…',
+            style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -152,7 +189,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(26),
             border: Border.all(color: AppColors.purple.withValues(alpha: 0.18)),
             boxShadow: const [
-              BoxShadow(color: Color(0x180A0A14), blurRadius: 24, offset: Offset(0, 10)),
+              BoxShadow(
+                  color: Color(0x180A0A14),
+                  blurRadius: 24,
+                  offset: Offset(0, 10)),
             ],
           ),
           child: Column(
@@ -163,29 +203,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: 54,
                     height: 54,
-                    child: Image.asset('assets/images/appicon.png', fit: BoxFit.contain),
+                    child: Image.asset('assets/images/appicon.png',
+                        fit: BoxFit.contain),
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: AppColors.border),
                     ),
-                    child: const Text('Browsing mode', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                    child: const Text('Browsing mode',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 12)),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
               const Text(
                 'Unlock the full Future Times experience',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.text, letterSpacing: -0.5),
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.text,
+                    letterSpacing: -0.5),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Sign up to save events, see friends attending, manage tickets, follow organizers and keep your preferences synced.',
-                style: TextStyle(color: AppColors.textSecondary, height: 1.45, fontSize: 14),
+                style: TextStyle(
+                    color: AppColors.textSecondary, height: 1.45, fontSize: 14),
               ),
               const SizedBox(height: 20),
 
@@ -209,11 +258,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999)),
                   ),
                   child: const Text(
                     'Sign Up',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16),
                   ),
                 ),
               ),
@@ -225,10 +278,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: OutlinedButton(
                   onPressed: _showSignIn,
                   style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999)),
                     side: const BorderSide(color: AppColors.purple),
                   ),
-                  child: const Text('Sign In', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.w800)),
+                  child: const Text('Sign In',
+                      style: TextStyle(
+                          color: AppColors.purple,
+                          fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
@@ -242,18 +299,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'PREVIEW WHAT YOU UNLOCK',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+            style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2),
           ),
         ),
 
         _buildGroup([
-          _buildRow(Icons.confirmation_number_outlined, 'My Tickets', 'Access active and past ticket QR codes', _showSignIn),
-          _buildRow(Icons.favorite_border_rounded, 'Saved Events', 'Shortlist events you want to attend', _showSignIn),
-          _buildRow(Icons.people_outline_rounded, 'Friends', 'See which friends are going to live events', _showSignIn),
-          _buildRow(Icons.groups_outlined, "Who's Going", 'Discover attendees and RSVP to events', _showSignIn),
-          _buildRow(Icons.tune_rounded, 'Interests', '${widget.preferencesRepository.interests.length} selected interests', () => context.push('/onboarding')),
-          _buildRow(Icons.verified_outlined, 'Organizers I Follow', 'Stay updated on new event hosts', _showSignIn),
-          _buildRow(Icons.notifications_none_rounded, 'Notifications', 'Get updates on tickets and followers', _showSignIn),
+          _buildRow(Icons.confirmation_number_outlined, 'My Tickets',
+              'Access active and past ticket QR codes', _showSignIn),
+          _buildRow(Icons.favorite_border_rounded, 'Saved Events',
+              'Shortlist events you want to attend', _showSignIn),
+          _buildRow(Icons.people_outline_rounded, 'Friends',
+              'See which friends are going to live events', _showSignIn),
+          _buildRow(Icons.groups_outlined, "Who's Going",
+              'Discover attendees and RSVP to events', _showSignIn),
+          _buildRow(
+              Icons.tune_rounded,
+              'Interests',
+              '${widget.preferencesRepository.interests.length} selected interests',
+              () => context.push('/onboarding')),
+          _buildRow(Icons.verified_outlined, 'Organizers I Follow',
+              'Stay updated on new event hosts', _showSignIn),
+          _buildRow(Icons.notifications_none_rounded, 'Notifications',
+              'Get updates on tickets and followers', _showSignIn),
         ]),
       ],
     );
@@ -263,9 +334,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSignedIn(AuthRepository auth) {
     final name = auth.profile?['display_name']?.toString() ??
-        (auth.displayEmail.isNotEmpty ? auth.displayEmail.split('@').first : 'User');
+        (auth.displayEmail.isNotEmpty
+            ? auth.displayEmail.split('@').first
+            : 'User');
     final avatarUrl = auth.profile?['avatar_url']?.toString();
-    final city = widget.preferencesRepository.city.isEmpty ? 'Zimbabwe' : widget.preferencesRepository.city;
+    final city = widget.preferencesRepository.city.isEmpty
+        ? 'Zimbabwe'
+        : widget.preferencesRepository.city;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -278,7 +353,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppColors.border),
             boxShadow: const [
-              BoxShadow(color: Color(0x0C0A0A14), blurRadius: 16, offset: Offset(0, 4)),
+              BoxShadow(
+                  color: Color(0x0C0A0A14),
+                  blurRadius: 16,
+                  offset: Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -295,7 +373,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: ClipOval(
                       child: avatarUrl != null
-                          ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatarInitial(name))
+                          ? Image.network(avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _avatarInitial(name))
                           : _avatarInitial(name),
                     ),
                   ),
@@ -306,21 +387,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.text),
+                          style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.text),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           auth.displayEmail,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.textMuted, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.location_on_rounded, size: 14, color: AppColors.purple),
+                            const Icon(Icons.location_on_rounded,
+                                size: 14, color: AppColors.purple),
                             const SizedBox(width: 2),
                             Text(
                               city,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textMuted),
                             ),
                           ],
                         ),
@@ -329,7 +418,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   IconButton(
                     onPressed: () => _editName(name),
-                    icon: const Icon(Icons.edit_outlined, color: AppColors.purple),
+                    icon: const Icon(Icons.edit_outlined,
+                        color: AppColors.purple),
                     tooltip: 'Edit Profile',
                   ),
                 ],
@@ -344,8 +434,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _statItem('Events', '${_socialStats.eventsAttended}'),
-                  _statItem('Following', '${_socialStats.followingCount}', onTap: () => context.push('/friends')),
-                  _statItem('Followers', '${_socialStats.followersCount}', onTap: () => context.push('/friends')),
+                  _statItem('Following', '${_socialStats.followingCount}',
+                      onTap: () => context.push('/friends')),
+                  _statItem('Followers', '${_socialStats.followersCount}',
+                      onTap: () => context.push('/friends')),
                 ],
               ),
             ],
@@ -357,9 +449,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // ACCOUNT
         _sectionHeader('ACCOUNT'),
         _buildGroup([
-          _buildRow(Icons.edit_outlined, 'Edit Profile', 'Update display name and avatar', () => _editName(name)),
-          _buildRow(Icons.confirmation_number_outlined, 'My Tickets', 'View active and past event tickets', () => context.go('/tickets')),
-          _buildRow(Icons.favorite_border_rounded, 'Saved Events', 'Your shortlist for what happens next', () => context.push('/saved')),
+          _buildRow(Icons.edit_outlined, 'Edit Profile',
+              'Update display name and avatar', () => _editName(name)),
+          _buildRow(
+              Icons.confirmation_number_outlined,
+              'My Tickets',
+              'View active and past event tickets',
+              () => context.go('/tickets')),
+          _buildRow(
+              Icons.favorite_border_rounded,
+              'Saved Events',
+              'Your shortlist for what happens next',
+              () => context.push('/saved')),
         ]),
 
         const SizedBox(height: 20),
@@ -367,8 +468,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // SOCIAL
         _sectionHeader('SOCIAL'),
         _buildGroup([
-          _buildRow(Icons.people_outline_rounded, 'Friends & Connections', 'Mutual friends, following and followers', () => context.push('/friends')),
-          _buildRow(Icons.verified_outlined, 'Organizers You Follow', 'Event hosts and organizers', () => context.push('/organizers')),
+          _buildRow(
+              Icons.people_outline_rounded,
+              'Friends & Connections',
+              'Mutual friends, following and followers',
+              () => context.push('/friends')),
+          _buildRow(Icons.verified_outlined, 'Organizers You Follow',
+              'Event hosts and organizers', () => context.push('/organizers')),
         ]),
 
         const SizedBox(height: 20),
@@ -376,8 +482,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // PREFERENCES
         _sectionHeader('PREFERENCES'),
         _buildGroup([
-          _buildRow(Icons.tune_rounded, 'Interests & Location', '${widget.preferencesRepository.city} · ${widget.preferencesRepository.interests.length} interests', () => context.push('/onboarding')),
-          _buildRow(Icons.notifications_none_rounded, 'Notifications', 'Ticket status, updates and follower alerts', () => context.push('/notifications')),
+          _buildRow(
+              Icons.tune_rounded,
+              'Interests & Location',
+              '${widget.preferencesRepository.city} · ${widget.preferencesRepository.interests.length} interests',
+              () => context.push('/onboarding')),
+          _buildRow(
+              Icons.notifications_none_rounded,
+              'Notifications',
+              'Ticket status, updates and follower alerts',
+              () => context.push('/notifications')),
         ]),
 
         const SizedBox(height: 20),
@@ -385,10 +499,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // SUPPORT
         _sectionHeader('SUPPORT'),
         _buildGroup([
-          _buildRow(Icons.help_outline_rounded, 'Help & Support', 'Get help with tickets and account access', _emailSupport),
-          _buildRow(Icons.privacy_tip_outlined, 'Privacy Policy', 'How Future Times protects your information', () => _openWeb('/privacy-policy')),
-          _buildRow(Icons.description_outlined, 'Terms of Service', 'Platform terms and conditions', () => _openWeb('/terms')),
-          _buildRow(Icons.info_outline_rounded, 'About Future Times Events', 'Version 1.0.0+1', () {}),
+          _buildRow(Icons.help_outline_rounded, 'Help & Support',
+              'Get help with tickets and account access', _emailSupport),
+          _buildRow(
+              Icons.privacy_tip_outlined,
+              'Privacy Policy',
+              'How Future Times protects your information',
+              () => _openWeb('/privacy-policy')),
+          _buildRow(Icons.description_outlined, 'Terms of Service',
+              'Platform terms and conditions', () => _openWeb('/terms')),
+          _buildRow(Icons.info_outline_rounded, 'About Future Times Events',
+              'Version 1.0.0+1', () {}),
         ]),
 
         const SizedBox(height: 20),
@@ -396,7 +517,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // SESSION
         _sectionHeader('SESSION'),
         _buildGroup([
-          _buildRow(Icons.logout_rounded, 'Sign Out', 'Log out of your account', () async {
+          _buildRow(Icons.logout_rounded, 'Sign Out', 'Log out of your account',
+              () async {
             await auth.signOut();
           }, isDestructive: true),
         ]),
@@ -412,9 +534,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Column(
           children: [
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.text)),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.text)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted)),
           ],
         ),
       ),
@@ -426,7 +556,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Center(
       child: Text(
         initial,
-        style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 24),
+        style: const TextStyle(
+            color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 24),
       ),
     );
   }
@@ -436,7 +567,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+        style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2),
       ),
     );
   }
@@ -460,17 +595,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildRow(IconData icon, String title, String subtitle, VoidCallback onTap, {bool isDestructive = false}) {
+  Widget _buildRow(
+      IconData icon, String title, String subtitle, VoidCallback onTap,
+      {bool isDestructive = false}) {
     return ListTile(
       onTap: onTap,
       leading: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.withValues(alpha: 0.1) : AppColors.purple.withValues(alpha: 0.08),
+          color: isDestructive
+              ? Colors.red.withValues(alpha: 0.1)
+              : AppColors.purple.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: isDestructive ? Colors.red : AppColors.purple, size: 20),
+        child: Icon(icon,
+            color: isDestructive ? Colors.red : AppColors.purple, size: 20),
       ),
       title: Text(
         title,
@@ -480,12 +620,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: isDestructive ? Colors.red : AppColors.text,
         ),
       ),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-      trailing: Icon(Icons.chevron_right_rounded, color: isDestructive ? Colors.red : AppColors.textMuted),
+      subtitle: Text(subtitle,
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+      trailing: Icon(Icons.chevron_right_rounded,
+          color: isDestructive ? Colors.red : AppColors.textMuted),
     );
   }
 
-  Future<void> _showSignIn([bool initialSignUp = false]) => _showAuthModal(isSignUp: initialSignUp);
+  Future<void> _showSignIn([bool initialSignUp = false]) =>
+      _showAuthModal(isSignUp: initialSignUp);
 
   Future<void> _showAuthModal({bool isSignUp = false}) async {
     setState(() => _error = null);
@@ -498,7 +641,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context, setSheetState) {
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              22, 0, 22, MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+              22,
+              0,
+              22,
+              MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -517,10 +663,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     isSignUp
                         ? 'Connect with events, friends, and organizers.'
                         : 'Sign in to access tickets, saved events, and friends.',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 13),
                   ),
                   const SizedBox(height: 20),
-
                   if (isSignUp) ...[
                     TextField(
                       controller: _displayName,
@@ -533,7 +679,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
@@ -551,22 +696,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onSubmitted: (_) => _submitAuth(isSignUp: isSignUp),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: isSignUp ? 'At least 6 characters' : 'Enter password',
+                      hintText:
+                          isSignUp ? 'At least 6 characters' : 'Enter password',
                     ),
                   ),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           _error!,
-                          style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -586,17 +737,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: _submitting ? null : () => _submitAuth(isSignUp: isSignUp),
+                      onPressed: _submitting
+                          ? null
+                          : () => _submitAuth(isSignUp: isSignUp),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999)),
                       ),
                       child: Text(
                         _submitting
                             ? (isSignUp ? 'Creating account…' : 'Signing in…')
                             : (isSignUp ? 'Create Account' : 'Sign In'),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16),
                       ),
                     ),
                   ),
@@ -641,8 +798,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: const InputDecoration(labelText: 'Display name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text), child: const Text('Save')),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              child: const Text('Save')),
         ],
       ),
     );
@@ -653,15 +814,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadStats();
     } on AppFailure catch (failure) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(failure.message)));
       }
     }
   }
 
   Future<void> _openWeb(String path) async {
     final uri = Uri.https('futuretimesevents.com', path);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this page.')));
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open this page.')));
     }
   }
 
@@ -672,7 +836,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       queryParameters: {'subject': 'Future Times app support'},
     );
     if (!await launchUrl(uri) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email support@futuretimesevents.com for help.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Email support@futuretimesevents.com for help.')));
     }
   }
 }

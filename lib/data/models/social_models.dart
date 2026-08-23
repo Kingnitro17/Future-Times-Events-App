@@ -11,9 +11,12 @@ class SocialStats {
 
   factory SocialStats.fromJson(Map<String, dynamic> json) {
     return SocialStats(
-      eventsAttended: int.tryParse(json['events_attended']?.toString() ?? '0') ?? 0,
-      followingCount: int.tryParse(json['following_count']?.toString() ?? '0') ?? 0,
-      followersCount: int.tryParse(json['followers_count']?.toString() ?? '0') ?? 0,
+      eventsAttended:
+          int.tryParse(json['events_attended']?.toString() ?? '0') ?? 0,
+      followingCount:
+          int.tryParse(json['following_count']?.toString() ?? '0') ?? 0,
+      followersCount:
+          int.tryParse(json['followers_count']?.toString() ?? '0') ?? 0,
     );
   }
 }
@@ -72,12 +75,15 @@ class OrganizerModel {
   factory OrganizerModel.fromJson(Map<String, dynamic> json) {
     return OrganizerModel(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? json['organization_name']?.toString() ?? 'Organizer',
+      name: json['name']?.toString() ??
+          json['organization_name']?.toString() ??
+          'Organizer',
       description: json['description']?.toString(),
       logoUrl: json['logo_url']?.toString() ?? json['avatar_url']?.toString(),
       location: json['location']?.toString() ?? json['city']?.toString(),
       isVerified: json['is_verified'] == true || json['verified'] == true,
-      followersCount: int.tryParse(json['followers_count']?.toString() ?? '0') ?? 0,
+      followersCount:
+          int.tryParse(json['followers_count']?.toString() ?? '0') ?? 0,
       isFollowing: json['is_following'] == true,
     );
   }
@@ -101,7 +107,9 @@ class UserProfileCard {
   factory UserProfileCard.fromJson(Map<String, dynamic> json) {
     return UserProfileCard(
       userId: json['user_id']?.toString() ?? json['id']?.toString() ?? '',
-      displayName: json['display_name']?.toString() ?? json['name']?.toString() ?? 'User',
+      displayName: json['display_name']?.toString() ??
+          json['name']?.toString() ??
+          'User',
       avatarUrl: json['avatar_url']?.toString(),
       isFollowing: json['is_following'] == true,
       isFriend: json['is_friend'] == true,
@@ -131,7 +139,9 @@ class NotificationModel {
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? json['heading']?.toString() ?? 'Notification',
+      title: json['title']?.toString() ??
+          json['heading']?.toString() ??
+          'Notification',
       body: json['body']?.toString() ?? json['message']?.toString() ?? '',
       type: json['type']?.toString(),
       eventId: json['event_id']?.toString(),

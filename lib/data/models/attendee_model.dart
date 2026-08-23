@@ -1,22 +1,33 @@
-// ignore_for_file: invalid_annotation_target
-import 'package:freezed_annotation/freezed_annotation.dart';
+class AttendeeModel {
+  const AttendeeModel({
+    required this.userId,
+    required this.eventId,
+    required this.displayName,
+    this.avatarUrl,
+    this.checkedInAt,
+    this.isFriend = false,
+  });
 
-part 'attendee_model.freezed.dart';
-part 'attendee_model.g.dart';
+  final String userId;
+  final String eventId;
+  final String displayName;
+  final String? avatarUrl;
+  final DateTime? checkedInAt;
+  final bool isFriend;
 
-/// Public Future Times attendee card backed by Supabase RSVP data.
-@freezed
-class AttendeeModel with _$AttendeeModel {
-  const AttendeeModel._();
-
-  const factory AttendeeModel({
-    required String userId,
-    required String eventId,
-    required String displayName,
-    String? avatarUrl,
-    @JsonKey(name: 'checkedInAt') DateTime? checkedInAt,
-  }) = _AttendeeModel;
-
-  factory AttendeeModel.fromJson(Map<String, dynamic> json) =>
-      _$AttendeeModelFromJson(json);
+  factory AttendeeModel.fromJson(Map<String, dynamic> json) {
+    return AttendeeModel(
+      userId: json['user_id']?.toString() ?? json['userId']?.toString() ?? '',
+      eventId:
+          json['event_id']?.toString() ?? json['eventId']?.toString() ?? '',
+      displayName: json['display_name']?.toString() ??
+          json['displayName']?.toString() ??
+          'Attendee',
+      avatarUrl:
+          json['avatar_url']?.toString() ?? json['avatarUrl']?.toString(),
+      checkedInAt: DateTime.tryParse(
+          json['checkedInAt']?.toString() ?? json['rsvp_at']?.toString() ?? ''),
+      isFriend: json['is_friend'] == true || json['is_following'] == true,
+    );
+  }
 }

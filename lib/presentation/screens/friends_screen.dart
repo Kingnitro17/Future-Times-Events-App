@@ -111,7 +111,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                 onChanged: _search,
                 decoration: InputDecoration(
                   hintText: 'Search people by name...',
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.purple),
+                  prefixIcon:
+                      const Icon(Icons.search_rounded, color: AppColors.purple),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear_rounded),
@@ -129,15 +130,19 @@ class _FriendsScreenState extends State<FriendsScreen>
               Expanded(child: _buildUserList(_searchResults, isSearch: true))
             else if (_loading)
               const Expanded(
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+                child:
+                    Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
               )
             else
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildUserList(_friends, emptyMsg: 'No mutual friends yet. Follow users back to become friends!'),
-                    _buildUserList(_following, emptyMsg: 'You are not following anyone yet.'),
+                    _buildUserList(_friends,
+                        emptyMsg:
+                            'No mutual friends yet. Follow users back to become friends!'),
+                    _buildUserList(_following,
+                        emptyMsg: 'You are not following anyone yet.'),
                     _buildUserList(_followers, emptyMsg: 'No followers yet.'),
                   ],
                 ),
@@ -148,7 +153,8 @@ class _FriendsScreenState extends State<FriendsScreen>
     );
   }
 
-  Widget _buildUserList(List<UserProfileCard> users, {String emptyMsg = 'No users found.', bool isSearch = false}) {
+  Widget _buildUserList(List<UserProfileCard> users,
+      {String emptyMsg = 'No users found.', bool isSearch = false}) {
     if (users.isEmpty) {
       return Center(
         child: Padding(
@@ -156,12 +162,14 @@ class _FriendsScreenState extends State<FriendsScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.people_outline_rounded, size: 48, color: AppColors.textMuted),
+              const Icon(Icons.people_outline_rounded,
+                  size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
               Text(
                 emptyMsg,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                style:
+                    const TextStyle(color: AppColors.textMuted, fontSize: 14),
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
@@ -192,7 +200,10 @@ class _FriendsScreenState extends State<FriendsScreen>
             ),
             child: ClipOval(
               child: user.avatarUrl != null
-                  ? Image.network(user.avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatarFallback(user.displayName))
+                  ? Image.network(user.avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _avatarFallback(user.displayName))
                   : _avatarFallback(user.displayName),
             ),
           ),
@@ -201,7 +212,11 @@ class _FriendsScreenState extends State<FriendsScreen>
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           subtitle: user.isFriend
-              ? const Text('🤝 Mutual Friend', style: TextStyle(color: AppColors.purple, fontWeight: FontWeight.w700, fontSize: 12))
+              ? const Text('🤝 Mutual Friend',
+                  style: TextStyle(
+                      color: AppColors.purple,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12))
               : null,
           trailing: SizedBox(
             height: 34,
@@ -214,7 +229,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
-                    child: const Text('Following', style: TextStyle(fontSize: 12)),
+                    child:
+                        const Text('Following', style: TextStyle(fontSize: 12)),
                   )
                 : FilledButton(
                     onPressed: () async {
@@ -225,7 +241,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       backgroundColor: AppColors.purple,
                     ),
-                    child: const Text('Follow', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                    child: const Text('Follow',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w800)),
                   ),
           ),
         );
@@ -238,13 +256,15 @@ class _FriendsScreenState extends State<FriendsScreen>
     return Center(
       child: Text(
         initial,
-        style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 17),
+        style: const TextStyle(
+            color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 17),
       ),
     );
   }
 
   Future<void> _shareInvite() async {
-    const text = 'Join me on Future Times Events to discover live concerts, sports, and festivals near you!\n\nhttps://futuretimesevents.com/invite';
+    const text =
+        'Join me on Future Times Events to discover live concerts, sports, and festivals near you!\n\nhttps://futuretimesevents.com/invite';
     await SharePlus.instance.share(
       ShareParams(
         text: text,

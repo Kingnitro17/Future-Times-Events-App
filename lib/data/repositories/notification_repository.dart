@@ -34,7 +34,8 @@ class NotificationRepository extends ChangeNotifier {
           .limit(40);
 
       _notifications = (rows as List)
-          .map((row) => NotificationModel.fromJson(Map<String, dynamic>.from(row as Map)))
+          .map((row) =>
+              NotificationModel.fromJson(Map<String, dynamic>.from(row as Map)))
           .toList();
     } catch (e) {
       if (kDebugMode) debugPrint('[notifications] query error: $e');
@@ -49,8 +50,7 @@ class NotificationRepository extends ChangeNotifier {
     try {
       await _client
           .from('notifications')
-          .update({'read': true})
-          .eq('id', notificationId);
+          .update({'read': true}).eq('id', notificationId);
       _notifications = _notifications.map((n) {
         if (n.id == notificationId) {
           return NotificationModel(

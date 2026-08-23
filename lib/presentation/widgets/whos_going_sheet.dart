@@ -13,6 +13,23 @@ class WhosGoingSheet extends StatefulWidget {
   final String eventId;
   final SocialRepository socialRepository;
 
+  static Future<void> show(
+    BuildContext context, {
+    required String eventId,
+    required SocialRepository socialRepository,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => WhosGoingSheet(
+        eventId: eventId,
+        socialRepository: socialRepository,
+      ),
+    );
+  }
+
   @override
   State<WhosGoingSheet> createState() => _WhosGoingSheetState();
 }
@@ -28,7 +45,8 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
   }
 
   Future<void> _load() async {
-    final list = await widget.socialRepository.getEventVisibleAttendees(widget.eventId);
+    final list =
+        await widget.socialRepository.getEventVisibleAttendees(widget.eventId);
     if (mounted) {
       setState(() {
         _attendees = list;
@@ -62,7 +80,8 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.people_alt_rounded, color: AppColors.purple, size: 22),
+              const Icon(Icons.people_alt_rounded,
+                  color: AppColors.purple, size: 22),
               const SizedBox(width: 8),
               const Text(
                 "Who's Going",
@@ -110,7 +129,8 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _attendees.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, indent: 56),
                 itemBuilder: (context, index) {
                   final attendee = _attendees[index];
                   return ListTile(
@@ -128,18 +148,44 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
                             ? Image.network(
                                 attendee.avatarUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _avatarFallback(attendee.displayName),
+                                errorBuilder: (_, __, ___) =>
+                                    _avatarFallback(attendee.displayName),
                               )
                             : _avatarFallback(attendee.displayName),
                       ),
                     ),
-                    title: Text(
-                      attendee.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          attendee.displayName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 15),
+                        ),
+                        if (attendee.isFriend) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.purple.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text('Friend',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.purple)),
+                          ),
+                        ],
+                      ],
                     ),
                     subtitle: const Text(
                       'Going',
-                      style: TextStyle(color: AppColors.purple, fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: AppColors.purple,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
                     ),
                   );
                 },

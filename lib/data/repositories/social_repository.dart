@@ -50,7 +50,7 @@ class SocialRepository {
     }
   }
 
-  /// Get event social summary for home cards and details screen
+  /// Get event social summary for home cards and details screen using get_event_social_summary RPC
   Future<EventSocialSummary> getEventSocialSummary(String eventId) async {
     if (_summaryCache.containsKey(eventId)) {
       return _summaryCache[eventId]!;
@@ -66,29 +66,19 @@ class SocialRepository {
         return summary;
       }
     } on PostgrestException catch (e) {
-      if (kDebugMode) debugPrint('[social] get_event_social_summary failed: $e');
+      if (kDebugMode) {
+        debugPrint('[social] get_event_social_summary failed: $e');
+      }
     } catch (e) {
-      if (kDebugMode) debugPrint('[social] summary error: $e');
+      if (kDebugMode) {
+        debugPrint('[social] summary error: $e');
+      }
     }
 
-    // Fallback: direct count query
-    try {
-      final countRes = await _client
-          .from('rsvps')
-          .select('id')
-          .eq('event_id', eventId)
-          .eq('status', 'going')
-          .eq('is_public', true);
-      final count = (countRes as List).length;
-      final summary = EventSocialSummary(goingCount: count);
-      _summaryCache[eventId] = summary;
-      return summary;
-    } catch (_) {
-      return const EventSocialSummary();
-    }
+    return const EventSocialSummary();
   }
 
-  /// Get visible attendees for Who's Going sheet (friends prioritized)
+  /// Get visible attendees for Who's Going sheet using get_event_visible_attendees RPC
   Future<List<AttendeeModel>> getEventVisibleAttendees(
     String eventId, {
     int limit = 50,
@@ -112,43 +102,26 @@ class SocialRepository {
             displayName: map['display_name']?.toString() ?? 'Attendee',
             avatarUrl: map['avatar_url']?.toString(),
             checkedInAt: DateTime.tryParse(map['rsvp_at']?.toString() ?? ''),
+            isFriend: map['is_friend'] == true || map['is_following'] == true,
           );
         }).toList();
       }
     } on PostgrestException catch (e) {
-      if (kDebugMode) debugPrint('[social] get_event_visible_attendees failed: $e');
+      if (kDebugMode) {
+        debugPrint('[social] get_event_visible_attendees failed: $e');
+      }
     } catch (e) {
-      if (kDebugMode) debugPrint('[social] visible attendees error: $e');
+      if (kDebugMode) {
+        debugPrint('[social] visible attendees error: $e');
+      }
     }
 
-    // Fallback
-    return getAttendees(eventId);
-  }
-
-  /// Get attendees from rsvps table
-  Future<List<AttendeeModel>> getAttendees(String eventId) async {
-    try {
-      final rows = await _client
-          .from('rsvps')
-          .select('user_id, profiles(display_name, avatar_url), rsvp_at')
-          .eq('event_id', eventId)
-          .eq('status', 'going')
-          .eq('is_public', true)
-          .limit(50);
-      final list = rows as List;
-      return list.map((row) {
-        final profile = row['profiles'] as Map<String, dynamic>? ?? {};
-        return AttendeeModel(
-          userId: row['user_id']?.toString() ?? '',
-          eventId: eventId,
-          displayName: profile['display_name']?.toString() ?? 'Attendee',
-          avatarUrl: profile['avatar_url']?.toString(),
-          checkedInAt: DateTime.tryParse(row['rsvp_at']?.toString() ?? ''),
-        );
-      }).toList();
-    } catch (_) {}
     return const [];
   }
+
+  /// Legacy helper — delegates to [getEventVisibleAttendees]
+  Future<List<AttendeeModel>> getAttendees(String eventId) =>
+      getEventVisibleAttendees(eventId);
 
   /// Check if user has RSVPed 'going' to an event
   Future<bool> hasRSVPed(String eventId) async {
@@ -227,7 +200,9 @@ class SocialRepository {
             .toList();
       }
     } on PostgrestException catch (e) {
-      if (kDebugMode) debugPrint('[social] get_my_following_organizers failed: $e');
+      if (kDebugMode) {
+        debugPrint('[social] get_my_following_organizers failed: $e');
+      }
     } catch (_) {}
     return const [];
   }
@@ -270,7 +245,8 @@ class SocialRepository {
     try {
       final rows = await _client
           .from('user_follows')
-          .select('following_id, profiles!user_follows_following_id_fkey(display_name, avatar_url)')
+          .select(
+              'following_id, profiles!user_follows_following_id_fkey(display_name, avatar_url)')
           .eq('follower_id', userId);
       final list = rows as List;
       return list.map((row) {
@@ -295,7 +271,8 @@ class SocialRepository {
     try {
       final rows = await _client
           .from('user_follows')
-          .select('follower_id, profiles!user_follows_follower_id_fkey(display_name, avatar_url)')
+          .select(
+              'follower_id, profiles!user_follows_follower_id_fkey(display_name, avatar_url)')
           .eq('following_id', userId);
       final list = rows as List;
       return list.map((row) {
@@ -359,14 +336,14 @@ class SocialRepository {
         }
       }
       return list.map((row) {
-          final id = row['id'].toString();
-          return UserProfileCard(
-            userId: id,
-            displayName: row['display_name']?.toString() ?? 'User',
-            avatarUrl: row['avatar_url']?.toString(),
-            isFollowing: followingSet.contains(id),
-          );
-        }).toList();
+        final id = row['id'].toString();
+        return UserProfileCard(
+          userId: id,
+          displayName: row['display_name']?.toString() ?? 'User',
+          avatarUrl: row['avatar_url']?.toString(),
+          isFollowing: followingSet.contains(id),
+        );
+      }).toList();
     } catch (e) {
       if (kDebugMode) debugPrint('[social] searchUsers failed: $e');
     }

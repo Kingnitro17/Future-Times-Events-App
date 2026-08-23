@@ -395,6 +395,7 @@ class _Section extends StatelessWidget {
         ),
       );
 }
+
 class _FeaturedRail extends StatelessWidget {
   const _FeaturedRail({
     required this.events,

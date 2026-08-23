@@ -67,7 +67,8 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                           side: const BorderSide(color: AppColors.border),
                         ),
                         child: InkWell(
-                          onTap: () => context.push('/organizer/${org.id}', extra: org),
+                          onTap: () =>
+                              context.push('/organizer/${org.id}', extra: org),
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
                             padding: const EdgeInsets.all(14),
@@ -78,40 +79,52 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                                   height: 52,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.purple.withValues(alpha: 0.1),
+                                    color:
+                                        AppColors.purple.withValues(alpha: 0.1),
                                     border: Border.all(color: AppColors.border),
                                   ),
                                   child: ClipOval(
                                     child: org.logoUrl != null
-                                        ? Image.network(org.logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _logoFallback(org.name))
+                                        ? Image.network(org.logoUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                _logoFallback(org.name))
                                         : _logoFallback(org.name),
                                   ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Flexible(
                                             child: Text(
                                               org.name,
-                                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 16),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                           if (org.isVerified) ...[
                                             const SizedBox(width: 4),
-                                            const Icon(Icons.verified_rounded, color: AppColors.purple, size: 16),
+                                            const Icon(Icons.verified_rounded,
+                                                color: AppColors.purple,
+                                                size: 16),
                                           ],
                                         ],
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
                                         '${org.followersCount} followers • ${org.location ?? "Zimbabwe"}',
-                                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600),
                                       ),
                                     ],
                                   ),
@@ -122,18 +135,26 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                                   child: org.isFollowing
                                       ? OutlinedButton(
                                           onPressed: () async {
-                                            await widget.socialRepository.unfollowUser(org.id);
+                                            await widget.socialRepository
+                                                .unfollowUser(org.id);
                                             _load();
                                           },
-                                          child: const Text('Following', style: TextStyle(fontSize: 12)),
+                                          child: const Text('Following',
+                                              style: TextStyle(fontSize: 12)),
                                         )
                                       : FilledButton(
                                           onPressed: () async {
-                                            await widget.socialRepository.followUser(org.id);
+                                            await widget.socialRepository
+                                                .followUser(org.id);
                                             _load();
                                           },
-                                          style: FilledButton.styleFrom(backgroundColor: AppColors.purple),
-                                          child: const Text('Follow', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                                          style: FilledButton.styleFrom(
+                                              backgroundColor:
+                                                  AppColors.purple),
+                                          child: const Text('Follow',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w800)),
                                         ),
                                 ),
                               ],
@@ -152,7 +173,8 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
     return Center(
       child: Text(
         initial,
-        style: const TextStyle(color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 18),
+        style: const TextStyle(
+            color: AppColors.purple, fontWeight: FontWeight.w900, fontSize: 18),
       ),
     );
   }

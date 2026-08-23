@@ -36,7 +36,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           builder: (context, _) {
             final repo = widget.notificationRepository;
             if (repo.isLoading) {
-              return const Center(child: CircularProgressIndicator(strokeWidth: 2.5));
+              return const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2.5));
             }
 
             final items = repo.notifications;
@@ -47,17 +48,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.notifications_none_rounded, size: 52, color: AppColors.textMuted),
+                      Icon(Icons.notifications_none_rounded,
+                          size: 52, color: AppColors.textMuted),
                       SizedBox(height: 12),
                       Text(
                         'No notifications yet.',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.text),
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.text),
                       ),
                       SizedBox(height: 6),
                       Text(
                         'Updates about your tickets, followed organizers, and friends will appear here.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        style:
+                            TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                     ],
                   ),
@@ -72,11 +78,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemBuilder: (context, index) {
                 final item = items[index];
                 return Material(
-                  color: item.read ? AppColors.surface : AppColors.purple.withValues(alpha: 0.05),
+                  color: item.read
+                      ? AppColors.surface
+                      : AppColors.purple.withValues(alpha: 0.05),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
-                      color: item.read ? AppColors.border : AppColors.purple.withValues(alpha: 0.3),
+                      color: item.read
+                          ? AppColors.border
+                          : AppColors.purple.withValues(alpha: 0.3),
                     ),
                   ),
                   child: InkWell(
@@ -113,7 +123,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 Text(
                                   item.title,
                                   style: TextStyle(
-                                    fontWeight: item.read ? FontWeight.w700 : FontWeight.w900,
+                                    fontWeight: item.read
+                                        ? FontWeight.w700
+                                        : FontWeight.w900,
                                     fontSize: 14,
                                     color: AppColors.text,
                                   ),
@@ -130,7 +142,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 if (item.createdAt != null) ...[
                                   const SizedBox(height: 6),
                                   Text(
-                                    DateFormat('MMM d, h:mm a').format(item.createdAt!),
+                                    DateFormat('MMM d, h:mm a')
+                                        .format(item.createdAt!),
                                     style: const TextStyle(
                                       color: AppColors.textMuted,
                                       fontSize: 11,

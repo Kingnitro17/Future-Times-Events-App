@@ -49,8 +49,7 @@ void main() async {
   final socialRepository = SocialRepository();
   final savedEventsRepository =
       SavedEventsRepository(authRepository: authRepository);
-  final ticketRepository =
-      TicketRepository(authRepository: authRepository);
+  final ticketRepository = TicketRepository(authRepository: authRepository);
   final notificationRepository = NotificationRepository();
 
   if (authRepository.isSignedIn) {

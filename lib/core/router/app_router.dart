@@ -339,7 +339,8 @@ GoRouter buildAppRouter({
         ),
         GoRoute(
           path: '/organizers',
-          builder: (_, __) => OrganizersScreen(socialRepository: socialRepository),
+          builder: (_, __) =>
+              OrganizersScreen(socialRepository: socialRepository),
         ),
         GoRoute(
           path: '/organizer/:id',
@@ -350,7 +351,8 @@ GoRouter buildAppRouter({
         ),
         GoRoute(
           path: '/notifications',
-          builder: (_, __) => NotificationsScreen(notificationRepository: notificationRepository),
+          builder: (_, __) => NotificationsScreen(
+              notificationRepository: notificationRepository),
         ),
         GoRoute(
           path: '/calendar',
