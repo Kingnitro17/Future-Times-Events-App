@@ -1,53 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../data/models/zimbabwe_location.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
+import '../../data/repositories/zimbabwe_locations_repository.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key, required this.preferencesRepository});
+  const OnboardingScreen({
+    super.key,
+    required this.preferencesRepository,
+    this.locationsRepository = const ZimbabweLocationsRepository(),
+  });
+
   final DiscoveryPreferencesRepository preferencesRepository;
+  final ZimbabweLocationsRepository locationsRepository;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final _controller = PageController();
+  final PageController _controller = PageController();
+  final TextEditingController _searchController = TextEditingController();
+
   int _page = 0;
   late String _city;
+  double? _latitude;
+  double? _longitude;
   late Set<String> _interests;
-  bool _saving = false;
 
-  static const _cities = ['Harare', 'Bulawayo', 'Victoria Falls', 'Mutare'];
-  static const _interestsList = <(String, IconData)>[
+  bool _saving = false;
+  bool _isLocating = false;
+  bool _showAllLocations = false;
+  String _searchQuery = '';
+  String? _statusMessage;
+
+  // Real supported Future Times event categories
+  static const List<(String, IconData)> _categories = [
     ('Music', Icons.music_note_rounded),
-    ('Nightlife', Icons.nightlife_rounded),
-    ('Performing & Visual Arts', Icons.palette_outlined),
-    ('Food & Drink', Icons.restaurant_rounded),
-    ('Business', Icons.business_center_outlined),
+    ('Concerts', Icons.confirmation_number_outlined),
     ('Sports', Icons.sports_soccer_rounded),
-    ('Holidays', Icons.flight_takeoff_rounded),
-    ('Hobbies', Icons.sports_esports_outlined),
-    ('Dating', Icons.favorite_border_rounded),
+    ('Comedy', Icons.theater_comedy_outlined),
+    ('Festivals', Icons.festival_outlined),
+    ('Nightlife', Icons.nightlife_rounded),
+    ('Business', Icons.business_center_outlined),
+    ('Culture', Icons.palette_outlined),
+    ('Community', Icons.groups_outlined),
+    ('Family', Icons.family_restroom_rounded),
   ];
 
   @override
   void initState() {
     super.initState();
-    _city = widget.preferencesRepository.city;
+    _city = widget.preferencesRepository.city.isEmpty
+        ? 'Harare'
+        : widget.preferencesRepository.city;
+    _latitude = widget.preferencesRepository.latitude;
+    _longitude = widget.preferencesRepository.longitude;
     _interests = widget.preferencesRepository.interests.isEmpty
-        ? {'Music', 'Performing & Visual Arts'}
+        ? {'Music', 'Concerts', 'Festivals'}
         : widget.preferencesRepository.interests.toSet();
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _finish() async {
     if (_saving) return;
     setState(() => _saving = true);
-    await widget.preferencesRepository.save(city: _city, interests: _interests);
-    if (mounted) context.go('/');
+    await widget.preferencesRepository.save(
+      city: _city,
+      interests: _interests,
+      latitude: _latitude,
+      longitude: _longitude,
+    );
+    if (mounted) {
+      context.go('/');
+    }
   }
 
   void _next() {
@@ -57,623 +100,937 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     _controller.nextPage(
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 380),
       curve: Curves.easeOutCubic,
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void _previous() {
+    HapticFeedback.selectionClick();
+    _controller.previousPage(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _locateUser() async {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isLocating = true;
+      _statusMessage = null;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage = 'Location services are disabled on your device.';
+          });
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _isLocating = false;
+              _statusMessage =
+                  'Location permission denied. Please select a city manually.';
+            });
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+            _statusMessage =
+                'Location permission permanently denied in settings.';
+          });
+        }
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+
+      final nearest = widget.locationsRepository.findNearestLocation(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _city = nearest.displayName;
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          _statusMessage = 'Resolved to nearest city: ${nearest.displayName}';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _statusMessage =
+              'Could not determine location. Please select a city.';
+        });
+      }
+    }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _TopBar(page: _page, onSkip: _finish),
-              Expanded(
-                child: PageView(
-                  controller: _controller,
-                  onPageChanged: (value) => setState(() => _page = value),
-                  children: [
-                    const _WelcomePage(),
-                    _PreferencePage(
-                      interests: _interests,
-                      options: _interestsList,
-                      onInterest: (value) => setState(() {
-                        _interests.contains(value)
-                            ? _interests.remove(value)
-                            : _interests.add(value);
-                      }),
-                    ),
-                    _LocationPage(
-                      city: _city,
-                      cities: _cities,
-                      onCity: (value) => setState(() => _city = value),
-                    ),
-                  ],
-                ),
+  Widget build(BuildContext context) {
+    final canProceed = _page != 1 || _interests.length >= 2;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _TopNavigation(
+              page: _page,
+              onSkip: _finish,
+              onSignIn: () => context.push('/auth/login'),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _controller,
+                physics: const ClampingScrollPhysics(),
+                onPageChanged: (value) => setState(() => _page = value),
+                children: [
+                  _WelcomeScreen(
+                    onGetStarted: _next,
+                    onSignIn: () => context.push('/auth/login'),
+                  ),
+                  _InterestsScreen(
+                    selectedInterests: _interests,
+                    categories: _categories,
+                    onToggle: (interest) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        if (_interests.contains(interest)) {
+                          _interests.remove(interest);
+                        } else {
+                          _interests.add(interest);
+                        }
+                      });
+                    },
+                  ),
+                  _LocationScreen(
+                    selectedCity: _city,
+                    isLocating: _isLocating,
+                    statusMessage: _statusMessage,
+                    showAllLocations: _showAllLocations,
+                    searchQuery: _searchQuery,
+                    searchController: _searchController,
+                    locationsRepository: widget.locationsRepository,
+                    onSelectCity: (cityName, {double? lat, double? lng}) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _city = cityName;
+                        _latitude = lat;
+                        _longitude = lng;
+                      });
+                    },
+                    onUseMyLocation: _locateUser,
+                    onToggleShowAll: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _showAllLocations = !_showAllLocations;
+                      });
+                    },
+                  ),
+                ],
               ),
-              _BottomBar(
-                page: _page,
-                enabled: _page != 1 || _interests.length >= 2,
-                saving: _saving,
-                onBack: () => _controller.previousPage(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutCubic,
-                ),
-                onNext: _next,
-              ),
-            ],
-          ),
+            ),
+            _BottomBar(
+              page: _page,
+              enabled: canProceed,
+              saving: _saving,
+              onBack: _previous,
+              onNext: _next,
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.page, required this.onSkip});
+// ── Top Navigation Bar ───────────────────────────────────────────────────────
+
+class _TopNavigation extends StatelessWidget {
+  const _TopNavigation({
+    required this.page,
+    required this.onSkip,
+    required this.onSignIn,
+  });
+
   final int page;
   final VoidCallback onSkip;
+  final VoidCallback onSignIn;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 16, 14, 8),
-        child: Row(
-          children: [
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
+      child: Row(
+        children: [
+          // Small branded badge for screens 2 & 3
+          if (page > 0) ...[
             Container(
-              width: 38,
-              height: 38,
+              width: 32,
+              height: 32,
               decoration: const BoxDecoration(
                 gradient: AppGradients.brand,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  color: Colors.white, size: 19),
+              child: const Icon(Icons.bolt_rounded,
+                  color: Colors.white, size: 18),
             ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text('FUTURE TIMES',
-                  style: TextStyle(
-                      color: AppColors.text,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1)),
+            const SizedBox(width: 8),
+            const Text(
+              'FUTURE TIMES',
+              style: TextStyle(
+                color: AppColors.text,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                letterSpacing: 1.1,
+              ),
             ),
-            TextButton(onPressed: onSkip, child: const Text('Skip for now')),
           ],
-        ),
-      );
+          const Spacer(),
+          if (page == 0)
+            TextButton(
+              onPressed: onSignIn,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.purple,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+              child: const Text(
+                'Sign In',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onSkip,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textMuted,
+              ),
+              child: const Text('Skip for now'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
-class _WelcomePage extends StatelessWidget {
-  const _WelcomePage();
+// ── SCREEN 1: WELCOME ────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) => const _PageFrame(
-        visual: _DiscoveryVisual(),
-        eyebrow: 'FUTURE TIMES EVENTS',
-        title: "Find what's happening\naround you.",
-        body:
-            'Discover the concerts, culture, food, sport and ideas shaping Zimbabwe—curated around you, not a generic popularity list.',
-        trust: 'Real organisers  •  Secure tickets  •  Local discovery',
-      );
-}
-
-class _PreferencePage extends StatelessWidget {
-  const _PreferencePage({
-    required this.interests,
-    required this.options,
-    required this.onInterest,
+class _WelcomeScreen extends StatelessWidget {
+  const _WelcomeScreen({
+    required this.onGetStarted,
+    required this.onSignIn,
   });
-  final Set<String> interests;
-  final List<(String, IconData)> options;
-  final ValueChanged<String> onInterest;
+
+  final VoidCallback onGetStarted;
+  final VoidCallback onSignIn;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const _Eyebrow('MAKE IT YOURS'),
-              const SizedBox(height: 12),
-              Text('What are you into?',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontSize: 38, height: 1.02, letterSpacing: -1.4)),
-              const SizedBox(height: 12),
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 12),
+                  // Branded Android Logo Component - never crop, stretch, touch edge
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.purple.withValues(alpha: 0.08),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 240,
+                        maxHeight: 120,
+                      ),
+                      child: Image.asset(
+                        'assets/images/androidlogo.png',
+                        fit: BoxFit.contain,
+                        alignment: Alignment.center,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Eyebrow
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.purple.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'FUTURE TIMES EVENTS',
+                      style: TextStyle(
+                        color: AppColors.purple,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Find what's happening around you.",
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                          letterSpacing: -1.2,
+                          color: AppColors.text,
+                        ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Discover concerts, sports, festivals, nightlife, culture and experiences across Zimbabwe.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.brand,
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.purple.withValues(alpha: 0.35),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: onGetStarted,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Get Started',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded,
+                                color: Colors.white, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: onSignIn,
+                    child: const Text(
+                      'Already have an account? Sign In',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── SCREEN 2: INTERESTS ──────────────────────────────────────────────────────
+
+class _InterestsScreen extends StatelessWidget {
+  const _InterestsScreen({
+    required this.selectedInterests,
+    required this.categories,
+    required this.onToggle,
+  });
+
+  final Set<String> selectedInterests;
+  final List<(String, IconData)> categories;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = selectedInterests.length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const Text(
-                'Choose at least two interests. You can change these anytime.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                'MAKE IT YOURS',
+                style: TextStyle(
+                  color: AppColors.purple,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'What are you into?',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.text,
+                      letterSpacing: -1,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                count < 2
+                    ? 'Select at least 2 interests to personalize your feed.'
+                    : 'Great choice! Select more or continue when ready.',
+                style: TextStyle(
+                  color: count < 2 ? AppColors.purple : AppColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: count < 2 ? FontWeight.w700 : FontWeight.w400,
+                ),
               ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final option in options)
-                    FilterChip(
-                      selected: interests.contains(option.$1),
-                      onSelected: (_) => onInterest(option.$1),
-                      avatar: Icon(option.$2,
-                          size: 18,
-                          color: interests.contains(option.$1)
-                              ? Colors.white
-                              : AppColors.purple),
-                      label: Text(option.$1),
-                      labelStyle: TextStyle(
-                        color: interests.contains(option.$1)
-                            ? Colors.white
-                            : AppColors.text,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      selectedColor: AppColors.purple,
-                      backgroundColor: AppColors.surface,
-                      side: BorderSide(
-                        color: interests.contains(option.$1)
-                            ? AppColors.purple
-                            : AppColors.border,
-                      ),
+                runSpacing: 12,
+                children: categories.map((cat) {
+                  final isSelected = selectedInterests.contains(cat.$1);
+                  return GestureDetector(
+                    onTap: () => onToggle(cat.$1),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 12),
-                      showCheckmark: false,
-                    ),
-                ],
-              ),
-            ]),
-          ),
-        ),
-      );
-}
-
-class _LocationPage extends StatelessWidget {
-  const _LocationPage(
-      {required this.city, required this.cities, required this.onCity});
-  final String city;
-  final List<String> cities;
-  final ValueChanged<String> onCity;
-
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _Eyebrow('DISCOVER NEARBY'),
-                const SizedBox(height: 12),
-                Text('Where should we look?',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontSize: 38, height: 1.02, letterSpacing: -1.4)),
-                const SizedBox(height: 12),
-                const Text(
-                  'Choose your home city now. You can use precise location later from the Map, only when you ask us to.',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, fontSize: 16),
-                ),
-                const SizedBox(height: 28),
-                RadioGroup<String>(
-                  groupValue: city,
-                  onChanged: (selected) {
-                    if (selected != null) onCity(selected);
-                  },
-                  child: Column(
-                    children: [
-                      for (final value in cities)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: RadioListTile<String>(
-                            value: value,
-                            title: Text(value,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800)),
-                            subtitle: const Text('Zimbabwe'),
-                            secondary: const Icon(Icons.location_city_rounded,
-                                color: AppColors.purple),
-                            tileColor: city == value
-                                ? AppColors.purple.withValues(alpha: .08)
-                                : AppColors.surface,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                  color: city == value
-                                      ? AppColors.purple
-                                      : AppColors.border),
+                          horizontal: 18, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: isSelected ? AppGradients.brand : null,
+                        color: isSelected ? null : AppColors.surface,
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.transparent
+                              : AppColors.border,
+                          width: 1.5,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.purple.withValues(alpha: 0.28),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            cat.$2,
+                            size: 18,
+                            color:
+                                isSelected ? Colors.white : AppColors.purple,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            cat.$1,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.text,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Row(children: [
-                  Icon(Icons.notifications_none_rounded,
-                      color: AppColors.textMuted),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'We will ask about event reminders later, when the benefit is clear.',
-                      style: TextStyle(color: AppColors.textMuted),
+                          if (isSelected) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.check_rounded,
+                                size: 16, color: Colors.white),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ]),
-              ],
-            ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
-class _PageFrame extends StatelessWidget {
-  const _PageFrame(
-      {required this.visual,
-      required this.eyebrow,
-      required this.title,
-      required this.body,
-      required this.trust});
-  final Widget visual;
-  final String eyebrow;
-  final String title;
-  final String body;
-  final String trust;
+// ── SCREEN 3: LOCATION ───────────────────────────────────────────────────────
+
+class _LocationScreen extends StatelessWidget {
+  const _LocationScreen({
+    required this.selectedCity,
+    required this.isLocating,
+    required this.statusMessage,
+    required this.showAllLocations,
+    required this.searchQuery,
+    required this.searchController,
+    required this.locationsRepository,
+    required this.onSelectCity,
+    required this.onUseMyLocation,
+    required this.onToggleShowAll,
+  });
+
+  final String selectedCity;
+  final bool isLocating;
+  final String? statusMessage;
+  final bool showAllLocations;
+  final String searchQuery;
+  final TextEditingController searchController;
+  final ZimbabweLocationsRepository locationsRepository;
+  final Function(String name, {double? lat, double? lng}) onSelectCity;
+  final VoidCallback onUseMyLocation;
+  final VoidCallback onToggleShowAll;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(builder: (context, size) {
-        final wide = size.maxWidth >= 780;
-        final content = Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Eyebrow(eyebrow),
-            const SizedBox(height: 14),
-            Text(title,
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontSize: wide ? 54 : 42, height: .98, letterSpacing: -2)),
-            const SizedBox(height: 18),
-            Text(body,
-                style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                    height: 1.55)),
-            const SizedBox(height: 20),
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.verified_user_outlined,
-                  color: AppColors.success, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(trust,
-                      style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                          height: 1.4))),
-            ]),
-          ],
-        );
-        if (wide) {
-          return Center(
-              child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1040),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
-              child: Row(children: [
-                Expanded(child: visual),
-                const SizedBox(width: 70),
-                Expanded(child: content)
-              ]),
-            ),
-          ));
-        }
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-          child: Column(children: [
-            SizedBox(height: 270, child: visual),
-            const SizedBox(height: 28),
-            content
-          ]),
-        );
-      });
-}
+  Widget build(BuildContext context) {
+    final List<ZimbabweLocation> displayedLocations;
+    if (showAllLocations || searchQuery.trim().isNotEmpty) {
+      displayedLocations = locationsRepository.searchLocations(searchQuery);
+    } else {
+      displayedLocations = ZimbabweLocationsRepository.curatedMajorLocations;
+    }
 
-class _Eyebrow extends StatelessWidget {
-  const _Eyebrow(this.value);
-  final String value;
-  @override
-  Widget build(BuildContext context) => Text(value,
-      style: const TextStyle(
-          color: AppColors.purple,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.5));
-}
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'DISCOVER NEARBY',
+                style: TextStyle(
+                  color: AppColors.purple,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Where do you want to discover events?',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.text,
+                      letterSpacing: -1,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choose a city or town. You can change this anytime.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 20),
 
-class _DiscoveryVisual extends StatelessWidget {
-  const _DiscoveryVisual();
-  @override
-  Widget build(BuildContext context) => const _VisualStage(children: [
-        Positioned(
-            left: 8,
-            right: 62,
-            top: 24,
-            bottom: 28,
-            child: _EventPoster(
-              color: Color(0xFF23143D),
-              icon: Icons.graphic_eq_rounded,
-              category: 'LIVE • HARARE',
-              title: 'WHAT\'S\nNEXT',
-              subtitle: 'FRIDAY  •  20:00',
-            )),
-        Positioned(
-            right: 8,
-            top: 4,
-            child: _FloatBadge(
-                icon: Icons.explore_rounded,
-                title: 'Discover locally',
-                detail: 'Built around you')),
-        Positioned(
-            right: 0,
-            bottom: 8,
-            child: _FloatBadge(
-                icon: Icons.verified_outlined,
-                title: 'Real events',
-                detail: 'Trusted details')),
-      ]);
-}
-
-// Kept as a reusable branded ticket illustration for future contextual prompts.
-// ignore: unused_element
-class _TicketVisual extends StatelessWidget {
-  const _TicketVisual();
-  @override
-  Widget build(BuildContext context) => _VisualStage(children: [
-        Positioned(
-            left: 12,
-            right: 40,
-            top: 20,
-            bottom: 20,
-            child: Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: const Color(0xFF171322),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Color(0x337222E3),
-                      blurRadius: 34,
-                      offset: Offset(0, 16))
+              // Quick Action Oval Pills: All Zimbabwe & Use My Location
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _StadiumPill(
+                    label: 'All Zimbabwe',
+                    icon: Icons.public_rounded,
+                    isSelected: selectedCity == 'All Zimbabwe',
+                    onTap: () => onSelectCity('All Zimbabwe'),
+                  ),
+                  _StadiumPill(
+                    label: isLocating ? 'Locating...' : '📍 Use my location',
+                    icon: isLocating ? null : null,
+                    isLoading: isLocating,
+                    isSelected: false,
+                    onTap: isLocating ? null : onUseMyLocation,
+                  ),
                 ],
               ),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(children: [
-                      Icon(Icons.auto_awesome_rounded, color: AppColors.pink),
-                      Spacer(),
-                      Text('ADMIT ONE',
-                          style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 10,
-                              letterSpacing: 1.4,
-                              fontWeight: FontWeight.w800))
-                    ]),
-                    const Spacer(),
-                    const Text('CITY\nSUNDAYS',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 29,
-                            height: .95,
-                            fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 14),
-                    Container(height: 1, color: Colors.white12),
-                    const SizedBox(height: 14),
-                    const Row(children: [
-                      Text('24 AUG  •  14:00',
-                          style: TextStyle(
-                              color: AppColors.pink,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800)),
-                      Spacer(),
-                      Icon(Icons.qr_code_2_rounded,
-                          color: Colors.white, size: 36)
-                    ]),
-                  ]),
-            )),
-        const Positioned(
-            right: 0,
-            top: 0,
-            child: _FloatBadge(
-                icon: Icons.notifications_active_outlined,
-                title: 'Doors in 1 hour',
-                detail: 'Right on time')),
-      ]);
-}
 
-class _VisualStage extends StatelessWidget {
-  const _VisualStage({required this.children});
-  final List<Widget> children;
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          gradient: const RadialGradient(
-              colors: [Color(0x297222E3), Colors.transparent]),
-          borderRadius: BorderRadius.circular(36),
+              if (statusMessage != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  statusMessage!,
+                  style: TextStyle(
+                    color: statusMessage!.startsWith('Resolved')
+                        ? AppColors.success
+                        : AppColors.error,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              // View all toggle & Search header
+              Row(
+                children: [
+                  Text(
+                    showAllLocations || searchQuery.isNotEmpty
+                        ? 'All Zimbabwe Locations (${displayedLocations.length})'
+                        : 'Major Cities & Towns',
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: onToggleShowAll,
+                    icon: Icon(
+                      showAllLocations
+                          ? Icons.unfold_less_rounded
+                          : Icons.travel_explore_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      showAllLocations ? 'Show major' : 'View all locations',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+
+              if (showAllLocations || searchQuery.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search city or town (e.g. Vic, Bind, Sham)...',
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: AppColors.purple),
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () => searchController.clear(),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(99),
+                      borderSide: const BorderSide(
+                          color: AppColors.purple, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Oval City Stadium Pills
+              if (displayedLocations.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'No matching Zimbabwe towns found.',
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 12,
+                  children: displayedLocations.map((loc) {
+                    final isSelected = selectedCity == loc.displayName;
+                    return _StadiumPill(
+                      label: loc.displayName,
+                      isSelected: isSelected,
+                      onTap: () => onSelectCity(
+                        loc.displayName,
+                        lat: loc.latitude,
+                        lng: loc.longitude,
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
         ),
-        child: Stack(clipBehavior: Clip.none, children: children),
-      );
+      ),
+    );
+  }
 }
 
-class _EventPoster extends StatelessWidget {
-  const _EventPoster(
-      {required this.color,
-      required this.icon,
-      required this.category,
-      required this.title,
-      required this.subtitle});
-  final Color color;
-  final IconData icon;
-  final String category;
-  final String title;
-  final String subtitle;
+// ── Stadium Oval Pill Widget ─────────────────────────────────────────────────
+
+class _StadiumPill extends StatelessWidget {
+  const _StadiumPill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.icon,
+    this.isLoading = false,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback? onTap;
+  final IconData? icon;
+  final bool isLoading;
+
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(22),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        constraints: const BoxConstraints(minHeight: 46),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x2E1A0C2E),
-                  blurRadius: 38,
-                  offset: Offset(0, 18))
-            ]),
-        child: Stack(children: [
-          Positioned(
-              right: -18,
-              top: -10,
-              child: Icon(icon,
-                  color: AppColors.pink.withValues(alpha: .34), size: 150)),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(category,
-                style: const TextStyle(
-                    color: AppColors.pink,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2)),
-            const Spacer(),
-            Text(title,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    height: .88,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1)),
-            const SizedBox(height: 13),
-            Text(subtitle,
-                style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1)),
-          ]),
-        ]),
-      );
+          gradient: isSelected ? AppGradients.brand : null,
+          color: isSelected ? null : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : AppColors.border,
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.purple.withValues(alpha: 0.3),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading) ...[
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.purple,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ] else if (icon != null) ...[
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected ? Colors.white : AppColors.purple,
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppColors.text,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+            if (isSelected && !isLoading) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _FloatBadge extends StatelessWidget {
-  const _FloatBadge(
-      {required this.icon, required this.title, required this.detail});
-  final IconData icon;
-  final String title;
-  final String detail;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x1F0A0A14),
-                  blurRadius: 22,
-                  offset: Offset(0, 9))
-            ]),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                  color: AppColors.purple.withValues(alpha: .1),
-                  shape: BoxShape.circle),
-              child: Icon(icon, color: AppColors.purple, size: 18)),
-          const SizedBox(width: 9),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800)),
-            Text(detail,
-                style:
-                    const TextStyle(color: AppColors.textMuted, fontSize: 9)),
-          ]),
-        ]),
-      );
-}
+// ── Bottom Action Bar ────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
-  const _BottomBar(
-      {required this.page,
-      required this.enabled,
-      required this.saving,
-      required this.onBack,
-      required this.onNext});
+  const _BottomBar({
+    required this.page,
+    required this.enabled,
+    required this.saving,
+    required this.onBack,
+    required this.onNext,
+  });
+
   final int page;
   final bool enabled;
   final bool saving;
   final VoidCallback onBack;
   final VoidCallback onNext;
+
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
-        decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.border))),
-        child: Center(
-            child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: Row(children: [
-            if (page > 0)
-              IconButton(
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Row(
+            children: [
+              if (page > 0)
+                IconButton(
                   onPressed: onBack,
                   tooltip: 'Previous',
-                  icon: const Icon(Icons.arrow_back_rounded))
-            else
-              const SizedBox(width: 48),
-            const SizedBox(width: 10),
-            Expanded(
+                  icon: const Icon(Icons.arrow_back_rounded,
+                      color: AppColors.text),
+                )
+              else
+                const SizedBox(width: 48),
+              const SizedBox(width: 8),
+              Expanded(
                 child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                        3,
-                        (index) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              width: index == page ? 24 : 7,
-                              height: 7,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              decoration: BoxDecoration(
-                                  color: index == page
-                                      ? AppColors.purple
-                                      : AppColors.surfaceMuted,
-                                  borderRadius: BorderRadius.circular(99)),
-                            )))),
-            SizedBox(
-                width: 176,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    3,
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 240),
+                      width: index == page ? 24 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        gradient: index == page ? AppGradients.brand : null,
+                        color:
+                            index == page ? null : AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 170,
+                height: 48,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12)),
+                    backgroundColor: AppColors.purple,
+                    disabledBackgroundColor:
+                        AppColors.purple.withValues(alpha: 0.35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
                   onPressed: enabled && !saving ? onNext : null,
                   child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(saving
-                            ? 'Opening…'
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        saving
+                            ? 'Saving...'
                             : page == 2
                                 ? 'Explore events'
                                 : page == 0
                                     ? 'Get Started'
-                                    : 'Continue'),
-                        if (!saving) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, size: 18)
-                        ],
-                      ]),
-                )),
-          ]),
-        )),
-      );
+                                    : 'Continue',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (!saving) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_rounded,
+                            size: 18, color: Colors.white),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

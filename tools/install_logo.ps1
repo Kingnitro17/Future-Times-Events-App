@@ -1,5 +1,5 @@
 param(
-  [string]$SourcePath = "C:\Users\User\OneDrive\Desktop\applogo.png",
+  [string]$SourcePath = "C:\Users\User\OneDrive\Desktop\Future Times Events App\androidlogo.png",
   [string]$ProjectDir = "C:\Users\User\OneDrive\Desktop\Future Times Events App"
 )
 
@@ -9,12 +9,12 @@ if (-not (Test-Path $SourcePath)) {
   throw "Source image not found at $SourcePath"
 }
 
-# 1. Copy to assets/images/applogo.png
+# 1. Copy to assets/images/androidlogo.png
 $assetsDir = Join-Path $ProjectDir "assets\images"
 if (-not (Test-Path $assetsDir)) {
   New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
 }
-$targetAsset = Join-Path $assetsDir "applogo.png"
+$targetAsset = Join-Path $assetsDir "androidlogo.png"
 Copy-Item -Path $SourcePath -Destination $targetAsset -Force
 Write-Host "Copied logo to $targetAsset"
 
