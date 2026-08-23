@@ -170,7 +170,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     _FilterSection(
                       title: 'Location',
                       child: DropdownButtonFormField<String?>(
-                        value: city,
+                        initialValue: city,
                         isExpanded: true,
                         decoration: const InputDecoration(labelText: 'City'),
                         items: [

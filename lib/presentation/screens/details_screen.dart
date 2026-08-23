@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -16,7 +15,9 @@ import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
 import '../widgets/event_network_image.dart';
-import '../widgets/save_event_button.dart';
+import '../widgets/save_heart_button.dart';
+import '../widgets/share_event_button.dart';
+import '../widgets/whos_going_sheet.dart';
 
 class DetailsScreen extends StatefulWidget {
   const DetailsScreen(
@@ -183,17 +184,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       fontWeight: FontWeight.w800,
                       shadows: [Shadow(color: Colors.black38, blurRadius: 8)])),
               const Spacer(),
-              _circleButton(Icons.ios_share_rounded, _shareEvent),
+              ShareEventButton(event: widget.event, size: 42),
               const SizedBox(width: 8),
-              Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: SaveEventButton(
-                  eventId: widget.event.id,
-                  repository: widget.savedEventsRepository,
-                ),
+              SaveHeartButton(
+                eventId: widget.event.id,
+                repository: widget.savedEventsRepository,
+                authRepository: widget.authRepository,
+                size: 42,
               ),
             ]),
           ),
@@ -254,23 +251,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
         ]),
       );
 
-  Future<void> _shareEvent() async {
-    final uri = Uri.https(
-        'futuretimesevents.com', '/events/${widget.event.url.trim()}');
-    await Clipboard.setData(ClipboardData(text: uri.toString()));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Event link copied. Share it anywhere.')));
-    }
-  }
-
   Widget _circleButton(IconData icon, VoidCallback onPressed) => Container(
         decoration:
             const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
         child: IconButton(
             onPressed: onPressed,
             icon: Icon(icon, color: AppColors.text),
-            tooltip: icon == Icons.arrow_back_rounded ? 'Back' : 'Save event'),
+            tooltip: 'Back'),
       );
 
   Widget _attendance() => BlocBuilder<SocialBloc, SocialState>(
@@ -278,45 +265,83 @@ class _DetailsScreenState extends State<DetailsScreen> {
           final attendees = state is SocialLoaded ? state.attendees : const [];
           final goingCount = state is SocialLoaded ? state.goingCount : 0;
           return Row(children: [
-            SizedBox(
-              width: attendees.isEmpty ? 46 : 94,
-              height: 42,
-              child: attendees.isEmpty
-                  ? Container(
-                      decoration: const BoxDecoration(
-                          color: AppColors.surfaceMuted,
-                          shape: BoxShape.circle),
-                      child: const Icon(Icons.people_outline_rounded,
-                          color: AppColors.purple))
-                  : Stack(
-                      children:
-                          List.generate(attendees.take(3).length, (index) {
-                        final attendee = attendees[index];
-                        return Positioned(
-                          left: index * 26,
-                          child: CircleAvatar(
-                            radius: 21,
-                            backgroundColor: AppColors.purpleLight,
-                            backgroundImage: attendee.avatarUrl == null
-                                ? null
-                                : NetworkImage(attendee.avatarUrl!),
-                            child: attendee.avatarUrl == null
-                                ? Text(attendee.displayName[0].toUpperCase(),
-                                    style: const TextStyle(color: Colors.white))
-                                : null,
-                          ),
-                        );
-                      }),
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => WhosGoingSheet(
+                      eventId: widget.event.id,
+                      socialRepository: widget.socialRepository,
                     ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(children: [
+                    SizedBox(
+                      width: attendees.isEmpty ? 42 : 88,
+                      height: 40,
+                      child: attendees.isEmpty
+                          ? Container(
+                              decoration: const BoxDecoration(
+                                  color: AppColors.surfaceMuted,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.people_outline_rounded,
+                                  color: AppColors.purple))
+                          : Stack(
+                              children:
+                                  List.generate(attendees.take(3).length, (index) {
+                                final attendee = attendees[index];
+                                return Positioned(
+                                  left: index * 24,
+                                  child: CircleAvatar(
+                                    radius: 19,
+                                    backgroundColor: AppColors.purpleLight,
+                                    backgroundImage: attendee.avatarUrl == null
+                                        ? null
+                                        : NetworkImage(attendee.avatarUrl!),
+                                    child: attendee.avatarUrl == null
+                                        ? Text(attendee.displayName[0].toUpperCase(),
+                                            style: const TextStyle(color: Colors.white, fontSize: 13))
+                                        : null,
+                                  ),
+                                );
+                              }),
+                            ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            goingCount == 0 ? 'Be the first to go' : '$goingCount Going',
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const Text(
+                            'Tap to see who\'s going',
+                            style: TextStyle(
+                              color: AppColors.purple,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                  goingCount == 0 ? 'Be the first to go' : '$goingCount Going',
-                  style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700)),
-            ),
             SizedBox(
               height: 40,
               child: FilledButton(

@@ -118,3 +118,17 @@ class EventCost with _$EventCost {
   factory EventCost.fromJson(Map<String, dynamic> json) =>
       _$EventCostFromJson(json);
 }
+
+// ─── Convenience extension ───────────────────────────────────────────────────
+
+/// Getters that can't live inside the freezed factory.
+extension EventModelX on EventModel {
+  /// URL-safe slug — currently just the Eventbrite ID.
+  String get slug => id;
+
+  /// Parsed start date/time in local timezone.
+  DateTime get startsAt => EventDateTime.toDateTime(start);
+
+  /// Alias for [startsAt] used in newer UI code.
+  DateTime get date => startsAt;
+}

@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:future_times_events/data/models/attendee_model.dart';
+import 'package:future_times_events/data/models/social_models.dart';
 import 'package:future_times_events/data/repositories/social_repository.dart';
 import 'package:future_times_events/logic/blocs/social/social_bloc.dart';
 import 'package:future_times_events/logic/blocs/social/social_event.dart';
 import 'package:future_times_events/logic/blocs/social/social_state.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   test('uses authoritative count instead of capped preview length', () async {
@@ -35,8 +37,11 @@ void main() {
   });
 }
 
-class _FakeSocialRepository implements SocialRepository {
-  _FakeSocialRepository({required this.attendees, required this.goingCount});
+class _FakeSupabaseClient extends Fake implements SupabaseClient {}
+
+class _FakeSocialRepository extends SocialRepository {
+  _FakeSocialRepository({required this.attendees, required this.goingCount})
+      : super(client: _FakeSupabaseClient());
 
   final List<AttendeeModel> attendees;
   final int goingCount;
@@ -45,7 +50,10 @@ class _FakeSocialRepository implements SocialRepository {
   Future<List<AttendeeModel>> getAttendees(String eventId) async => attendees;
 
   @override
-  Future<int> getAttendeeCount(String eventId) async => goingCount;
+  Future<EventSocialSummary> getEventSocialSummary(String eventId) async =>
+      EventSocialSummary(
+        goingCount: goingCount,
+      );
 
   @override
   Future<bool> hasCheckedIn(

@@ -10,6 +10,9 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/social_repository.dart';
 import 'data/repositories/saved_events_repository.dart';
 import 'data/repositories/discovery_preferences_repository.dart';
+import 'data/repositories/ticket_repository.dart';
+import 'data/repositories/notification_repository.dart';
+import 'data/services/realtime_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,9 +49,24 @@ void main() async {
   final socialRepository = SocialRepository();
   final savedEventsRepository =
       SavedEventsRepository(authRepository: authRepository);
+  final ticketRepository =
+      TicketRepository(authRepository: authRepository);
+  final notificationRepository = NotificationRepository();
+
   if (authRepository.isSignedIn) {
     await savedEventsRepository.load();
+    await notificationRepository.fetchNotifications();
   }
+
+  // Centralized Supabase Realtime Service
+  RealtimeService(
+    authRepository: authRepository,
+    savedEventsRepository: savedEventsRepository,
+    socialRepository: socialRepository,
+    ticketRepository: ticketRepository,
+    notificationRepository: notificationRepository,
+  );
+
   final discoveryPreferences = await DiscoveryPreferencesRepository.create();
   final preferences = await SharedPreferences.getInstance();
   final showOnboarding =
@@ -62,6 +80,7 @@ void main() async {
     showOnboarding: showOnboarding,
     savedEventsRepository: savedEventsRepository,
     discoveryPreferences: discoveryPreferences,
+    notificationRepository: notificationRepository,
   ));
 }
 
@@ -116,6 +135,7 @@ class FutureTimesApp extends StatelessWidget {
     required this.showOnboarding,
     required this.savedEventsRepository,
     required this.discoveryPreferences,
+    required this.notificationRepository,
   });
 
   final EventRepository eventRepository;
@@ -124,6 +144,7 @@ class FutureTimesApp extends StatelessWidget {
   final bool showOnboarding;
   final SavedEventsRepository savedEventsRepository;
   final DiscoveryPreferencesRepository discoveryPreferences;
+  final NotificationRepository notificationRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -134,6 +155,7 @@ class FutureTimesApp extends StatelessWidget {
       showOnboarding: showOnboarding,
       savedEventsRepository: savedEventsRepository,
       discoveryPreferences: discoveryPreferences,
+      notificationRepository: notificationRepository,
     );
 
     return MaterialApp.router(
@@ -141,8 +163,6 @@ class FutureTimesApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,
-
-      // ── Meta ──────────────────────────────────────────────────────────────
       builder: (context, child) {
         return child!;
       },

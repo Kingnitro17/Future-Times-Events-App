@@ -12,9 +12,12 @@ import '../../data/repositories/saved_events_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
-import '../widgets/event_network_image.dart';
-import '../widgets/save_event_button.dart';
 import '../../core/utils/responsive_utils.dart';
+import '../../data/repositories/social_repository.dart';
+import '../widgets/event_network_image.dart';
+import '../widgets/save_heart_button.dart';
+import '../widgets/share_event_button.dart';
+import '../widgets/event_social_row.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -22,11 +25,13 @@ class HomeScreen extends StatefulWidget {
     required this.authRepository,
     required this.savedEventsRepository,
     required this.preferencesRepository,
+    required this.socialRepository,
   });
 
   final AuthRepository authRepository;
   final SavedEventsRepository savedEventsRepository;
   final DiscoveryPreferencesRepository preferencesRepository;
+  final SocialRepository socialRepository;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -162,6 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _FeaturedRail(
                             events: recommended.take(5).toList(),
                             savedEventsRepository: widget.savedEventsRepository,
+                            authRepository: widget.authRepository,
+                            socialRepository: widget.socialRepository,
                           ),
                         ),
                       ],
@@ -179,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               event: soon[index],
                               savedEventsRepository:
                                   widget.savedEventsRepository,
+                              authRepository: widget.authRepository,
                             ),
                           ),
                         ),
@@ -197,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               event: weekend[index],
                               savedEventsRepository:
                                   widget.savedEventsRepository,
+                              authRepository: widget.authRepository,
                             ),
                           ),
                         ),
@@ -209,6 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _FeaturedRail(
                             events: free,
                             savedEventsRepository: widget.savedEventsRepository,
+                            authRepository: widget.authRepository,
+                            socialRepository: widget.socialRepository,
                           ),
                         ),
                       ],
@@ -226,6 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               event: saved[index],
                               savedEventsRepository:
                                   widget.savedEventsRepository,
+                              authRepository: widget.authRepository,
                             ),
                           ),
                         ),
@@ -383,15 +395,18 @@ class _Section extends StatelessWidget {
         ),
       );
 }
-
 class _FeaturedRail extends StatelessWidget {
   const _FeaturedRail({
     required this.events,
     required this.savedEventsRepository,
+    required this.authRepository,
+    required this.socialRepository,
   });
 
   final List<EventModel> events;
   final SavedEventsRepository savedEventsRepository;
+  final AuthRepository authRepository;
+  final SocialRepository socialRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -420,6 +435,8 @@ class _FeaturedRail extends StatelessWidget {
               itemBuilder: (_, index) => _Featured(
                 event: events[index],
                 savedEventsRepository: savedEventsRepository,
+                authRepository: authRepository,
+                socialRepository: socialRepository,
               ),
             ),
           ),
@@ -439,6 +456,8 @@ class _FeaturedRail extends StatelessWidget {
           child: _Featured(
             event: events[index],
             savedEventsRepository: savedEventsRepository,
+            authRepository: authRepository,
+            socialRepository: socialRepository,
           ),
         ),
       ),
@@ -450,10 +469,14 @@ class _Featured extends StatelessWidget {
   const _Featured({
     required this.event,
     required this.savedEventsRepository,
+    required this.authRepository,
+    required this.socialRepository,
   });
 
   final EventModel event;
   final SavedEventsRepository savedEventsRepository;
+  final AuthRepository authRepository;
+  final SocialRepository socialRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -486,10 +509,18 @@ class _Featured extends StatelessWidget {
                   Positioned(
                     right: 9,
                     top: 9,
-                    child: SaveEventButton(
-                      eventId: event.id,
-                      repository: savedEventsRepository,
-                      onSurface: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ShareEventButton(event: event, size: 36),
+                        const SizedBox(width: 6),
+                        SaveHeartButton(
+                          eventId: event.id,
+                          repository: savedEventsRepository,
+                          authRepository: authRepository,
+                          size: 36,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -511,6 +542,11 @@ class _Featured extends StatelessWidget {
                         height: 1.18,
                         fontWeight: FontWeight.w800,
                       ),
+                    ),
+                    EventSocialRow(
+                      eventId: event.id,
+                      socialRepository: socialRepository,
+                      isSignedIn: authRepository.isSignedIn,
                     ),
                     const Spacer(),
                     _Meta(
@@ -546,10 +582,12 @@ class _Upcoming extends StatelessWidget {
   const _Upcoming({
     required this.event,
     required this.savedEventsRepository,
+    required this.authRepository,
   });
 
   final EventModel event;
   final SavedEventsRepository savedEventsRepository;
+  final AuthRepository authRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -619,9 +657,11 @@ class _Upcoming extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        SaveEventButton(
+                        SaveHeartButton(
                           eventId: event.id,
                           repository: savedEventsRepository,
+                          authRepository: authRepository,
+                          size: 36,
                         ),
                       ],
                     ),

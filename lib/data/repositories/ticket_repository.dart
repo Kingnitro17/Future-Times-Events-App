@@ -10,6 +10,7 @@ class TicketRepository {
       {required AuthRepository authRepository, SupabaseClient? client})
       : _auth = authRepository,
         _client = client ?? Supabase.instance.client;
+
   final AuthRepository _auth;
   final SupabaseClient _client;
 
@@ -24,6 +25,22 @@ class TicketRepository {
   Future<List<WalletTicket>> getMyTickets() async {
     final user = _auth.user;
     if (user == null) return const [];
+    try {
+      // 1. Try RPC get_my_ticket_wallet() first
+      final rpcRes = await _client.rpc('get_my_ticket_wallet');
+      if (rpcRes is List && rpcRes.isNotEmpty) {
+        return rpcRes
+            .map((row) => WalletTicket.fromSupabase(row as Map<String, dynamic>))
+            .toList()
+          ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[tickets] get_my_ticket_wallet RPC fallback: $error');
+      }
+    }
+
+    // 2. Direct query fallback
     try {
       final byId = await _client
           .from('tickets')

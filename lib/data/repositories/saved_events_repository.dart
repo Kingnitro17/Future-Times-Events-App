@@ -139,6 +139,12 @@ class SavedEventsRepository extends ChangeNotifier {
     }
   }
 
+  /// Alias for [toggle] — used by SaveHeartButton
+  Future<void> toggleSave(String eventId) => toggle(eventId);
+
+  /// Alias for [load] — used by RealtimeService
+  Future<void> sync() => load();
+
   @override
   void dispose() {
     _auth?.removeListener(_handleAuthChange);

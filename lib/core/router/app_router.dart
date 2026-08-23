@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
+import '../../data/models/social_models.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
+import '../../data/repositories/notification_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
@@ -22,6 +24,10 @@ import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
 import '../../presentation/screens/saved_events_screen.dart';
+import '../../presentation/screens/friends_screen.dart';
+import '../../presentation/screens/organizers_screen.dart';
+import '../../presentation/screens/organizer_detail_screen.dart';
+import '../../presentation/screens/notifications_screen.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -188,64 +194,35 @@ class _EventDetailsLoader extends StatefulWidget {
 }
 
 class _EventDetailsLoaderState extends State<_EventDetailsLoader> {
-  late Future<EventModel> _future;
+  Future<EventModel>? _future;
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  void _load() {
     _future = widget.eventRepository.getEventById(widget.eventId);
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<EventModel>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done &&
-              widget.summary == null) {
-            return const _EventDetailsSkeleton();
-          }
-          final event = snapshot.data ?? widget.summary;
-          if (event == null) {
-            return Scaffold(
-              appBar: AppBar(),
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.event_busy_outlined,
-                        size: 58, color: AppColors.textMuted),
-                    const SizedBox(height: 16),
-                    const Text('This event could not be loaded.'),
-                    const SizedBox(height: 16),
-                    FilledButton.tonal(
-                      onPressed: () => setState(_load),
-                      child: const Text('Try again'),
-                    ),
-                  ]),
-                ),
-              ),
-            );
-          }
-          return MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                create: (_) =>
-                    SocialBloc(socialRepository: widget.socialRepository),
-              ),
-            ],
-            child: DetailsScreen(
-              event: event,
-              savedEventsRepository: widget.savedEventsRepository,
-              authRepository: widget.authRepository,
-              socialRepository: widget.socialRepository,
-            ),
-          );
-        },
-      );
+  Widget build(BuildContext context) {
+    return FutureBuilder<EventModel>(
+      future: _future,
+      builder: (context, snapshot) {
+        final event = snapshot.data ?? widget.summary;
+        if (event == null) {
+          return const _EventDetailsSkeleton();
+        }
+        return BlocProvider(
+          create: (_) => SocialBloc(socialRepository: widget.socialRepository),
+          child: DetailsScreen(
+            event: event,
+            savedEventsRepository: widget.savedEventsRepository,
+            authRepository: widget.authRepository,
+            socialRepository: widget.socialRepository,
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _EventDetailsSkeleton extends StatelessWidget {
@@ -285,6 +262,7 @@ GoRouter buildAppRouter({
   required bool showOnboarding,
   required SavedEventsRepository savedEventsRepository,
   required DiscoveryPreferencesRepository discoveryPreferences,
+  required NotificationRepository notificationRepository,
 }) =>
     GoRouter(
       initialLocation: '/launch',
@@ -311,7 +289,8 @@ GoRouter buildAppRouter({
                       child: HomeScreen(
                           authRepository: authRepository,
                           savedEventsRepository: savedEventsRepository,
-                          preferencesRepository: discoveryPreferences)))
+                          preferencesRepository: discoveryPreferences,
+                          socialRepository: socialRepository)))
             ]),
             StatefulShellBranch(routes: [
               GoRoute(
@@ -341,7 +320,9 @@ GoRouter buildAppRouter({
                       child: ProfileScreen(
                           authRepository: authRepository,
                           savedEventsRepository: savedEventsRepository,
-                          preferencesRepository: discoveryPreferences)))
+                          preferencesRepository: discoveryPreferences,
+                          socialRepository: socialRepository,
+                          notificationRepository: notificationRepository)))
             ]),
           ],
         ),
@@ -351,6 +332,25 @@ GoRouter buildAppRouter({
             eventRepository: eventRepository,
             savedEventsRepository: savedEventsRepository,
           ),
+        ),
+        GoRoute(
+          path: '/friends',
+          builder: (_, __) => FriendsScreen(socialRepository: socialRepository),
+        ),
+        GoRoute(
+          path: '/organizers',
+          builder: (_, __) => OrganizersScreen(socialRepository: socialRepository),
+        ),
+        GoRoute(
+          path: '/organizer/:id',
+          builder: (_, state) => OrganizerDetailScreen(
+            organizer: state.extra as OrganizerModel,
+            socialRepository: socialRepository,
+          ),
+        ),
+        GoRoute(
+          path: '/notifications',
+          builder: (_, __) => NotificationsScreen(notificationRepository: notificationRepository),
         ),
         GoRoute(
           path: '/calendar',
