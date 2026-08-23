@@ -37,21 +37,29 @@ class AuthRepository extends ChangeNotifier {
     _user = session?.user;
     _profile = null;
     _profileError = null;
-    if (_user == null) {
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
+    // Immediately make the UI renderable — never leave isLoading=true
+    // for a user that is already known to be signed in or signed out.
+    _isLoading = false;
     notifyListeners();
+
+    if (_user == null) return;
+
+    // Profile enrichment in the background — UI already shows signed-in state.
     try {
-      final result = await _client.rpc('get_my_profile');
+      final result = await _client
+          .rpc('get_my_profile')
+          .timeout(const Duration(seconds: 8));
       if (result is Map<String, dynamic>) _profile = result;
     } on PostgrestException catch (error) {
       _profileError =
           'Your session is active, but profile details are unavailable.';
       if (kDebugMode) debugPrint('[profile] query failed: ${error.code}');
+    } catch (error) {
+      // Timeout, network error, etc. — profile stays null, user stays signed in.
+      if (kDebugMode) {
+        debugPrint('[profile] profile fetch failed: ${error.runtimeType}');
+      }
     } finally {
-      _isLoading = false;
       notifyListeners();
     }
   }
