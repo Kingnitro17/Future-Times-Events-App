@@ -46,22 +46,58 @@ class AuthRepository extends ChangeNotifier {
 
     // Profile enrichment in the background — UI already shows signed-in state.
     try {
+      // 1. Try RPC get_my_profile
       final result = await _client
           .rpc('get_my_profile')
-          .timeout(const Duration(seconds: 8));
-      if (result is Map<String, dynamic>) _profile = result;
-    } on PostgrestException catch (error) {
-      _profileError =
-          'Your session is active, but profile details are unavailable.';
-      if (kDebugMode) debugPrint('[profile] query failed: ${error.code}');
-    } catch (error) {
-      // Timeout, network error, etc. — profile stays null, user stays signed in.
-      if (kDebugMode) {
-        debugPrint('[profile] profile fetch failed: ${error.runtimeType}');
+          .timeout(const Duration(seconds: 5));
+      if (result is Map<String, dynamic>) {
+        _profile = result;
       }
-    } finally {
-      notifyListeners();
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[profile] RPC get_my_profile fallback: $error');
+      }
     }
+
+    // 2. Direct table fallback if RPC did not populate profile
+    if (_profile == null) {
+      try {
+        final row = await _client
+            .from('profiles')
+            .select()
+            .eq('id', _user!.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 5));
+        if (row != null) {
+          _profile = row;
+        } else {
+          // 3. Auto-bootstrap profile if missing
+          final fallbackName = _user!.userMetadata?['display_name']?.toString() ??
+              _user!.userMetadata?['full_name']?.toString() ??
+              (_user!.email != null ? _user!.email!.split('@').first : 'User');
+          final bootstrap = {
+            'id': _user!.id,
+            'display_name': fallbackName,
+            'city': 'Harare',
+          };
+          await _client.from('profiles').upsert(bootstrap);
+          _profile = bootstrap;
+        }
+      } catch (error) {
+        if (kDebugMode) {
+          debugPrint('[profile] direct query/bootstrap failed: $error');
+        }
+        // Ensure UI always has at least a fallback map
+        _profile = {
+          'id': _user!.id,
+          'display_name': _user!.userMetadata?['display_name']?.toString() ??
+              (_user!.email != null ? _user!.email!.split('@').first : 'User'),
+          'city': 'Harare',
+        };
+      }
+    }
+
+    notifyListeners();
   }
 
   Future<void> signIn({required String email, required String password}) async {
@@ -117,9 +153,10 @@ class AuthRepository extends ChangeNotifier {
       throw const AuthFailure('Enter a name with at least two characters.');
     }
     try {
-      await _client
-          .from('profiles')
-          .update({'display_name': value}).eq('id', user.id);
+      await _client.from('profiles').upsert({
+        'id': user.id,
+        'display_name': value,
+      });
       _profile = {...?_profile, 'display_name': value};
       notifyListeners();
     } on PostgrestException catch (error) {

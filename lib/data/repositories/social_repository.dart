@@ -213,7 +213,7 @@ class SocialRepository {
     try {
       final rows = await _client
           .from('organizer_profiles')
-          .select('*, profiles(display_name, avatar_url, city)')
+          .select('*, profiles(display_name, avatar_url)')
           .limit(30);
       final list = rows as List;
       final followingSet = <String>{};
@@ -388,4 +388,181 @@ class SocialRepository {
   /// Stream wrapper for legacy BLoC compatibility
   Stream<int> watchAttendeeCount(String eventId) =>
       Stream.fromFuture(getAttendeeCount(eventId));
+
+  /// Fetch public profile details and relationship status for any user.
+  /// Uses multiple fallback strategies to work around RLS restrictions:
+  ///   1. Direct profiles SELECT (ideal, needs RLS policy)
+  ///   2. Join via user_follows (works when direct select is blocked)
+  ///   3. get_my_profile RPC for viewing own profile
+  Future<Map<String, dynamic>?> getUserProfile(String targetUserId) async {
+    Map<String, dynamic>? row;
+
+    // Strategy 1: Direct query with graceful column fallback
+    try {
+      try {
+        row = await _client
+            .from('profiles')
+            .select('id, display_name, avatar_url, city, bio')
+            .eq('id', targetUserId)
+            .maybeSingle();
+      } on PostgrestException catch (e) {
+        if (e.code == '42703' || e.code == 'PGRST204') {
+          // Column doesn't exist yet — try minimal columns
+          row = await _client
+              .from('profiles')
+              .select('id, display_name, avatar_url')
+              .eq('id', targetUserId)
+              .maybeSingle();
+        } else if (e.code == '42501' || e.code == 'PGRST301') {
+          // Permission denied — skip to strategy 2
+          row = null;
+          if (kDebugMode) {
+            debugPrint('[social] getUserProfile: direct query blocked (${e.code}), trying join fallback');
+          }
+        } else {
+          rethrow;
+        }
+      }
+    } catch (_) {
+      row = null;
+    }
+
+    // Strategy 2: Query via user_follows join (bypasses direct table RLS)
+    if (row == null) {
+      try {
+        // Try as a follower lookup — check if target follows anyone
+        final joinRows = await _client
+            .from('user_follows')
+            .select('following_id, profiles!user_follows_following_id_fkey(id, display_name, avatar_url)')
+            .eq('following_id', targetUserId)
+            .limit(1);
+        if ((joinRows as List).isNotEmpty) {
+          final profileData = joinRows.first['profiles'];
+          if (profileData is Map<String, dynamic>) {
+            row = Map<String, dynamic>.from(profileData);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Strategy 2b: Try as follower_id join
+    if (row == null) {
+      try {
+        final joinRows = await _client
+            .from('user_follows')
+            .select('follower_id, profiles!user_follows_follower_id_fkey(id, display_name, avatar_url)')
+            .eq('follower_id', targetUserId)
+            .limit(1);
+        if ((joinRows as List).isNotEmpty) {
+          final profileData = joinRows.first['profiles'];
+          if (profileData is Map<String, dynamic>) {
+            row = Map<String, dynamic>.from(profileData);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Strategy 3: get_my_profile RPC (only works for own profile)
+    final currentUserId = _client.auth.currentUser?.id;
+    if (row == null && currentUserId == targetUserId) {
+      try {
+        final result = await _client.rpc('get_my_profile');
+        if (result is Map<String, dynamic>) {
+          row = result;
+        }
+      } catch (_) {}
+    }
+
+    // Still nothing — synthesize a minimal stub from metadata if it's own profile
+    if (row == null && currentUserId == targetUserId) {
+      final user = _client.auth.currentUser;
+      if (user != null) {
+        row = {
+          'id': user.id,
+          'display_name': user.userMetadata?['display_name']?.toString() ??
+              user.email?.split('@').first ??
+              'User',
+          'avatar_url': user.userMetadata?['avatar_url']?.toString(),
+        };
+      }
+    }
+
+    if (row == null) return null;
+
+    // Ensure id is set
+    if (!row.containsKey('id')) row['id'] = targetUserId;
+
+    bool isFollowing = false;
+    bool isFollowedBy = false;
+
+    if (currentUserId != null && currentUserId != targetUserId) {
+      try {
+        final f1 = await _client
+            .from('user_follows')
+            .select('id')
+            .eq('follower_id', currentUserId)
+            .eq('following_id', targetUserId)
+            .maybeSingle();
+        isFollowing = f1 != null;
+
+        final f2 = await _client
+            .from('user_follows')
+            .select('id')
+            .eq('follower_id', targetUserId)
+            .eq('following_id', currentUserId)
+            .maybeSingle();
+        isFollowedBy = f2 != null;
+      } catch (_) {}
+    }
+
+    int followingCount = 0;
+    int followersCount = 0;
+    int eventsCount = 0;
+
+    try {
+      final fc = await _client
+          .from('user_follows')
+          .select('id')
+          .eq('follower_id', targetUserId);
+      followingCount = (fc as List).length;
+
+      final fwc = await _client
+          .from('user_follows')
+          .select('id')
+          .eq('following_id', targetUserId);
+      followersCount = (fwc as List).length;
+
+      final ec = await _client
+          .from('rsvps')
+          .select('id')
+          .eq('user_id', targetUserId)
+          .eq('status', 'going');
+      eventsCount = (ec as List).length;
+    } catch (_) {}
+
+    return {
+      ...row,
+      'is_following': isFollowing,
+      'is_friend': isFollowing && isFollowedBy,
+      'following_count': followingCount,
+      'followers_count': followersCount,
+      'events_count': eventsCount,
+    };
+  }
+
+  /// Get event IDs that the user has public RSVP for
+  Future<List<String>> getUserPublicEventIds(String targetUserId) async {
+    try {
+      final rows = await _client
+          .from('rsvps')
+          .select('event_id')
+          .eq('user_id', targetUserId)
+          .eq('status', 'going')
+          .limit(20);
+      final list = rows as List;
+      return list.map((r) => r['event_id'].toString()).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 }

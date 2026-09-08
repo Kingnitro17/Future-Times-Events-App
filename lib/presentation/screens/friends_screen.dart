@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/social_models.dart';
@@ -190,6 +191,8 @@ class _FriendsScreenState extends State<FriendsScreen>
       itemBuilder: (context, index) {
         final user = users[index];
         return ListTile(
+          tileColor: Colors.transparent,
+          onTap: () => context.push('/user/${user.userId}', extra: user),
           leading: Container(
             width: 44,
             height: 44,
@@ -199,7 +202,7 @@ class _FriendsScreenState extends State<FriendsScreen>
               border: Border.all(color: AppColors.border),
             ),
             child: ClipOval(
-              child: user.avatarUrl != null
+              child: user.avatarUrl != null && user.avatarUrl!.trim().isNotEmpty
                   ? Image.network(user.avatarUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) =>

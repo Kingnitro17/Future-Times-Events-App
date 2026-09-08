@@ -61,3 +61,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+dependency_overrides:
+  path_provider_foundation: 2.5.1
+

@@ -28,6 +28,7 @@ import '../../presentation/screens/friends_screen.dart';
 import '../../presentation/screens/organizers_screen.dart';
 import '../../presentation/screens/organizer_detail_screen.dart';
 import '../../presentation/screens/notifications_screen.dart';
+import '../../presentation/screens/user_profile_screen.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -344,9 +345,37 @@ GoRouter buildAppRouter({
         ),
         GoRoute(
           path: '/organizer/:id',
-          builder: (_, state) => OrganizerDetailScreen(
-            organizer: state.extra as OrganizerModel,
+          builder: (_, state) {
+            final org = state.extra is OrganizerModel
+                ? state.extra as OrganizerModel
+                : OrganizerModel(
+                    id: state.pathParameters['id'] ?? '',
+                    name: 'Organizer',
+                  );
+            return OrganizerDetailScreen(
+              organizer: org,
+              socialRepository: socialRepository,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/user/:id',
+          builder: (context, state) => UserProfileScreen(
+            userId: state.pathParameters['id']!,
+            authRepository: authRepository,
             socialRepository: socialRepository,
+            eventRepository: eventRepository,
+            initialData: state.extra,
+          ),
+        ),
+        GoRoute(
+          path: '/profile/:id',
+          builder: (context, state) => UserProfileScreen(
+            userId: state.pathParameters['id']!,
+            authRepository: authRepository,
+            socialRepository: socialRepository,
+            eventRepository: eventRepository,
+            initialData: state.extra,
           ),
         ),
         GoRoute(

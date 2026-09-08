@@ -36,9 +36,29 @@ class WalletTicket {
   bool get isUsed => status == 'checked_in';
   bool get isViewable => isActive || isUsed;
 
+  /// Returns the database QR code or a deterministic fallback for viewable tickets.
+  String get effectiveQrPayload =>
+      qrPayload ?? 'FTE:$eventId:$ticketNumber';
+
   factory WalletTicket.fromSupabase(Map<String, dynamic> row) {
-    final event = row['events'] as Map<String, dynamic>? ?? const {};
-    final type = row['ticket_type'] as Map<String, dynamic>? ?? const {};
+    final eventRaw = row['events'];
+    final Map<String, dynamic> event = eventRaw is Map<String, dynamic>
+        ? eventRaw
+        : (eventRaw is List &&
+                eventRaw.isNotEmpty &&
+                eventRaw.first is Map<String, dynamic>
+            ? eventRaw.first as Map<String, dynamic>
+            : const {});
+
+    final typeRaw = row['ticket_type'] ?? row['ticket_types'];
+    final Map<String, dynamic> type = typeRaw is Map<String, dynamic>
+        ? typeRaw
+        : (typeRaw is List &&
+                typeRaw.isNotEmpty &&
+                typeRaw.first is Map<String, dynamic>
+            ? typeRaw.first as Map<String, dynamic>
+            : const {});
+
     final date = event['date']?.toString();
     final time = event['time']?.toString();
     final startsAt = event['starts_at']?.toString() ??

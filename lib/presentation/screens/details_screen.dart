@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
@@ -39,6 +40,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   bool _going = false;
   bool _rsvpLoading = false;
   bool _ownsTicket = false;
+  bool _claimingTicket = false;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -581,21 +583,159 @@ class _DetailsScreenState extends State<DetailsScreen> {
         SizedBox(
           width: 170,
           child: FilledButton(
-            onPressed: _ownsTicket
-                ? () => context.go('/tickets')
-                : _eventEnded || _soldOut
-                    ? null
-                    : ticket == null
-                        ? (_rsvpLoading ? null : _toggleGoing)
-                        : _openCheckout,
+            onPressed: _eventEnded || _soldOut || _claimingTicket
+                ? null
+                : _handleTicketAction,
             style: FilledButton.styleFrom(
                 backgroundColor: AppColors.pink,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16))),
-            child: Text(_ctaLabel),
+            child: _claimingTicket
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(_ctaLabel),
           ),
         ),
       ]),
+    );
+  }
+
+  Future<void> _handleTicketAction() async {
+    final ticket = _selectedTicket;
+    if (_ownsTicket) {
+      context.go('/tickets');
+      return;
+    }
+    if (ticket == null) {
+      if (!_rsvpLoading) _toggleGoing();
+      return;
+    }
+    if (ticket.free) {
+      await _claimFreeTicket(ticket);
+    } else {
+      await _openCheckout();
+    }
+  }
+
+  Future<void> _claimFreeTicket(TicketClass ticket) async {
+    final user = widget.authRepository.user;
+    if (user == null) {
+      _showSignInToClaim();
+      return;
+    }
+
+    setState(() => _claimingTicket = true);
+    try {
+      final name = widget.authRepository.profile?['display_name']?.toString() ??
+          user.email?.split('@').first ??
+          'Attendee';
+      final email = user.email ?? '';
+
+      final repo = TicketRepository(authRepository: widget.authRepository);
+      await repo.claimFreeTicket(
+        eventId: widget.event.id,
+        ticketTypeId: ticket.id,
+        attendeeName: name,
+        attendeeEmail: email,
+      );
+
+      if (mounted) {
+        setState(() {
+          _ownsTicket = true;
+          _going = true;
+        });
+        context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.purple,
+            duration: const Duration(seconds: 4),
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Ticket claimed! QR code is ready in your wallet.',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'View Ticket',
+              textColor: Colors.white,
+              onPressed: () => context.go('/tickets'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final message = e is AppFailure
+            ? e.message
+            : 'Could not claim free ticket. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _claimingTicket = false);
+    }
+  }
+
+  void _showSignInToClaim() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.confirmation_number_outlined,
+                size: 52, color: AppColors.purple),
+            const SizedBox(height: 14),
+            const Text(
+              'Sign In to Claim Ticket',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your free ticket will be linked directly to your account and wallet with a secure QR code.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  context.go('/profile');
+                },
+                child: const Text('Go to Sign In',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -632,7 +772,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
               ? '✓ Going'
               : "I'm Going";
     }
-    return ticket.free ? 'Get Free Ticket' : 'Get Tickets';
+    if (_claimingTicket) return 'Claiming…';
+    return ticket.free ? 'Claim Free Ticket' : 'Get Tickets';
   }
 
   String get _price {

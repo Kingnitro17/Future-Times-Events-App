@@ -44,6 +44,6 @@ if (-not $Debug) {
   $flutterArgs += '--release'
 }
 $flutterArgs += "--web-port=$Port"
-$flutterArgs += "--dart-define-from-file=$configPath"
+$flutterArgs += "--dart-define-from-file=config/app_config.local.json"
 
 & flutter @flutterArgs

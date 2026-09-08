@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/attendee_model.dart';
 import '../../data/repositories/social_repository.dart';
@@ -134,6 +135,11 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
                 itemBuilder: (context, index) {
                   final attendee = _attendees[index];
                   return ListTile(
+                    tileColor: Colors.transparent,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      context.push('/user/${attendee.userId}', extra: attendee);
+                    },
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     leading: Container(
                       width: 42,
@@ -144,7 +150,8 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: ClipOval(
-                        child: attendee.avatarUrl != null
+                        child: attendee.avatarUrl != null &&
+                                attendee.avatarUrl!.trim().isNotEmpty
                             ? Image.network(
                                 attendee.avatarUrl!,
                                 fit: BoxFit.cover,

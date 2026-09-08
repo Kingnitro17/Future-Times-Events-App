@@ -244,9 +244,7 @@ class _TicketDetail extends StatelessWidget {
           _DetailRow('Checked in',
               DateFormat('d MMM yyyy · h:mm a').format(ticket.checkedInAt!)),
         const SizedBox(height: 20),
-        if (ticket.qrPayload != null &&
-            ticket.status != 'cancelled' &&
-            ticket.status != 'revoked')
+        if (ticket.status != 'cancelled' && ticket.status != 'revoked') ...[
           Center(
             child: Semantics(
               label: 'Secure entry QR code for ${ticket.eventTitle}',
@@ -257,40 +255,94 @@ class _TicketDetail extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x100A0A14),
+                      blurRadius: 16,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: QrImageView(
-                  data: ticket.qrPayload!,
-                  version: QrVersions.auto,
-                  size: 220,
-                  backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AppColors.text,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    QrImageView(
+                      data: ticket.effectiveQrPayload,
+                      version: QrVersions.auto,
+                      size: 220,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: AppColors.text,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ticket.ticketNumber,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (ticket.isUsed)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.purple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                        color: AppColors.purple.withValues(alpha: 0.3)),
                   ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: AppColors.text,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppColors.purple, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Verified Entry · ${ticket.gate ?? 'Main Gate'}',
+                        style: const TextStyle(
+                          color: AppColors.purple,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          )
-        else
+        ] else
           Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                   color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(18)),
-              child: const Row(
+              child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.shield_outlined, color: AppColors.purple),
-                    SizedBox(width: 12),
+                    const Icon(Icons.shield_outlined, color: Colors.red),
+                    const SizedBox(width: 12),
                     Expanded(
                         child: Text(
-                            'A secure entry QR is not available for this ticket. '
-                            'Ticket references are never converted into fake QR codes.')),
+                            'This ticket has been ${ticket.status}. '
+                            'Entry QR code is no longer active for this admission.')),
                   ])),
       ]));
 }

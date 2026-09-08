@@ -355,7 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       border: Border.all(color: AppColors.purple, width: 2),
                     ),
                     child: ClipOval(
-                      child: avatarUrl != null
+                      child: avatarUrl != null && avatarUrl.trim().isNotEmpty
                           ? Image.network(avatarUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
@@ -560,13 +560,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildGroup(List<Widget> rows) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        side: const BorderSide(color: AppColors.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           for (var i = 0; i < rows.length; i++) ...[

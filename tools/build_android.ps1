@@ -21,7 +21,7 @@ if (-not $validUrl -or
 Set-Location -LiteralPath $projectRoot
 $mode = if ($Release) { 'release' } else { 'debug' }
 $logPath = Join-Path $projectRoot 'build\configured-android-build.log'
-& flutter build apk "--$mode" "--dart-define-from-file=$configPath" *> $logPath
+& flutter build apk "--$mode" "--dart-define-from-file=config/app_config.local.json" *> $logPath
 $exitCode = $LASTEXITCODE
 if ($exitCode -ne 0) {
   Get-Content -LiteralPath $logPath -Tail 40

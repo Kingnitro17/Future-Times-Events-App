@@ -30,6 +30,6 @@ if (-not [string]::IsNullOrWhiteSpace($Device)) {
 if ($Release) {
   $flutterArgs += '--release'
 }
-$flutterArgs += "--dart-define-from-file=$configPath"
+$flutterArgs += "--dart-define-from-file=config/app_config.local.json"
 
 & flutter @flutterArgs
