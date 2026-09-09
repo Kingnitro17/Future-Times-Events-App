@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/wallet_ticket.dart';
@@ -243,6 +245,8 @@ class _TicketDetail extends StatelessWidget {
         if (ticket.checkedInAt != null)
           _DetailRow('Checked in',
               DateFormat('d MMM yyyy · h:mm a').format(ticket.checkedInAt!)),
+        if (ticket.gate != null && ticket.gate!.trim().isNotEmpty)
+          _DetailRow('Gate', ticket.gate!),
         const SizedBox(height: 20),
         if (ticket.status != 'cancelled' && ticket.status != 'revoked') ...[
           Center(
@@ -327,6 +331,49 @@ class _TicketDetail extends StatelessWidget {
                 ),
               ),
             ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(
+                        ClipboardData(text: ticket.ticketNumber));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Reference copied to clipboard.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  label: const Text('Copy Ref'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => SharePlus.instance.share(
+                    ShareParams(
+                      text: 'My ticket for ${ticket.eventTitle}\n'
+                          'Ref: ${ticket.ticketNumber}\n'
+                          'Venue: ${ticket.venue}',
+                    ),
+                  ),
+                  icon: const Icon(Icons.share_rounded, size: 18),
+                  label: const Text('Share'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ] else
           Container(
               width: double.infinity,

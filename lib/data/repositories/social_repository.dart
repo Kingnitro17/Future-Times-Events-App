@@ -565,4 +565,37 @@ class SocialRepository {
       return const [];
     }
   }
+
+  /// Fetch events the given user has publicly RSVPed to.
+  /// Returns a list of event maps (id, title, slug, starts_at, date, time,
+  /// venue_name, venue, image_url, category).
+  Future<List<Map<String, dynamic>>> getUserPublicEvents(
+      String targetUserId) async {
+    try {
+      final rows = await _client
+          .from('rsvps')
+          .select(
+              'event_id, events(id,title,slug,starts_at,date,time,venue_name,venue,image_url,category)')
+          .eq('user_id', targetUserId)
+          .eq('status', 'going')
+          .eq('is_public', true)
+          .order('created_at', ascending: false)
+          .limit(20);
+      final list = rows as List;
+      return list.map((row) {
+        final eventRaw = row['events'];
+        if (eventRaw is Map<String, dynamic>) return eventRaw;
+        if (eventRaw is List &&
+            eventRaw.isNotEmpty &&
+            eventRaw.first is Map<String, dynamic>) {
+          return eventRaw.first as Map<String, dynamic>;
+        }
+        // Fallback: return just the event_id so callers can still use it
+        return <String, dynamic>{'id': row['event_id']?.toString() ?? ''};
+      }).where((e) => (e['id']?.toString() ?? '').isNotEmpty).toList();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[social] getUserPublicEvents failed: $e');
+      return const [];
+    }
+  }
 }

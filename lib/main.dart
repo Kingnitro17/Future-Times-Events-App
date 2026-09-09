@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_config.dart';
@@ -125,7 +126,7 @@ class _ConfigurationErrorApp extends StatelessWidget {
       );
 }
 
-class FutureTimesApp extends StatelessWidget {
+class FutureTimesApp extends StatefulWidget {
   const FutureTimesApp({
     super.key,
     required this.eventRepository,
@@ -146,22 +147,33 @@ class FutureTimesApp extends StatelessWidget {
   final NotificationRepository notificationRepository;
 
   @override
-  Widget build(BuildContext context) {
-    final router = buildAppRouter(
-      eventRepository: eventRepository,
-      authRepository: authRepository,
-      socialRepository: socialRepository,
-      showOnboarding: showOnboarding,
-      savedEventsRepository: savedEventsRepository,
-      discoveryPreferences: discoveryPreferences,
-      notificationRepository: notificationRepository,
-    );
+  State<FutureTimesApp> createState() => _FutureTimesAppState();
+}
 
+class _FutureTimesAppState extends State<FutureTimesApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = buildAppRouter(
+      eventRepository: widget.eventRepository,
+      authRepository: widget.authRepository,
+      socialRepository: widget.socialRepository,
+      showOnboarding: widget.showOnboarding,
+      savedEventsRepository: widget.savedEventsRepository,
+      discoveryPreferences: widget.discoveryPreferences,
+      notificationRepository: widget.notificationRepository,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Future Times Events',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      routerConfig: router,
+      routerConfig: _router,
       builder: (context, child) {
         return child!;
       },

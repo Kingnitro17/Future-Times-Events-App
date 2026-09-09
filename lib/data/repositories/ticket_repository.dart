@@ -204,7 +204,7 @@ class TicketRepository {
   /// Validate and check-in a ticket via QR code or reference
   Future<Map<String, dynamic>> validateAndCheckInTicket({
     required String qrPayload,
-    String gate = 'Main Gate',
+    String? gate,
   }) async {
     final clean = qrPayload.trim();
     if (clean.isEmpty) {
@@ -215,7 +215,7 @@ class TicketRepository {
     try {
       final res = await _client.rpc('validate_and_check_in_ticket', params: {
         'p_qr_payload': clean,
-        'p_gate': gate,
+        'p_gate': gate ?? 'Main Gate',
       });
       if (res is Map<String, dynamic>) {
         return res;
@@ -250,10 +250,11 @@ class TicketRepository {
       }
 
       final checkInTime = DateTime.now().toIso8601String();
+      final effectiveGate = gate ?? 'Main Gate';
       await _client.from('tickets').update({
         'status': 'checked_in',
         'checked_in_at': checkInTime,
-        'gate': gate,
+        'gate': effectiveGate,
       }).eq('id', row['id']);
 
       return {
@@ -263,7 +264,7 @@ class TicketRepository {
         'ticket_number': row['ticket_number'],
         'attendee_name': row['attendee_name'],
         'checked_in_at': checkInTime,
-        'gate': gate,
+        'gate': effectiveGate,
       };
     } catch (e) {
       return {

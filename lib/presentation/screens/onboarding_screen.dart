@@ -200,17 +200,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _TopNavigation(
               page: _page,
               onSkip: _finish,
-              onSignIn: () => context.push('/auth/login'),
-            ),
-            Expanded(
-              child: PageView(
-                controller: _controller,
-                physics: const ClampingScrollPhysics(),
-                onPageChanged: (value) => setState(() => _page = value),
-                children: [
-                  _WelcomeScreen(
-                    onGetStarted: _next,
-                    onSignIn: () => context.push('/auth/login'),
+            onSignIn: () => context.go('/profile'),
+          ),
+          Expanded(
+            child: PageView(
+              controller: _controller,
+              physics: const ClampingScrollPhysics(),
+              onPageChanged: (value) => setState(() => _page = value),
+              children: [
+                _WelcomeScreen(
+                  onGetStarted: _next,
+                  onSignIn: () => context.go('/profile'),
                   ),
                   _InterestsScreen(
                     selectedInterests: _interests,

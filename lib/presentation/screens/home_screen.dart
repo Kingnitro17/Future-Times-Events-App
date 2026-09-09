@@ -348,7 +348,7 @@ class _HomeHeader extends StatelessWidget {
               _HeaderButton(
                 icon: Icons.search_rounded,
                 tooltip: 'Explore events',
-                onTap: () => context.push('/explore'),
+                onTap: () => context.go('/explore'),
               ),
             ],
           ),

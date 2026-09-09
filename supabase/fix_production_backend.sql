@@ -91,6 +91,8 @@ WHERE p.id IS NULL
 ON CONFLICT (id) DO NOTHING;
 
 -- RPC: get_my_profile
+-- PostgreSQL cannot change a function's return type via CREATE OR REPLACE.
+DROP FUNCTION IF EXISTS public.get_my_profile();
 CREATE OR REPLACE FUNCTION public.get_my_profile()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -355,6 +357,8 @@ GRANT EXECUTE ON FUNCTION public.claim_free_ticket(UUID, UUID, TEXT, TEXT, TEXT)
 -- 4. RPC: get_my_ticket_wallet
 -- ============================================================================
 
+-- PostgreSQL cannot change a function's return type via CREATE OR REPLACE.
+DROP FUNCTION IF EXISTS public.get_my_ticket_wallet();
 CREATE OR REPLACE FUNCTION public.get_my_ticket_wallet()
 RETURNS JSON
 LANGUAGE plpgsql

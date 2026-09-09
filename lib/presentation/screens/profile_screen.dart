@@ -562,7 +562,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildGroup(List<Widget> rows) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: AppColors.border),

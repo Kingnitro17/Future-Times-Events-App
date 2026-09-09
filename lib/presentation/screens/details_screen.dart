@@ -652,25 +652,72 @@ class _DetailsScreenState extends State<DetailsScreen> {
         });
         context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.purple,
-            duration: const Duration(seconds: 4),
-            content: const Row(
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text('Ticket claimed! QR code is ready in your wallet.',
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w700)),
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: AppColors.purple.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle_rounded,
+                      color: AppColors.purple, size: 38),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ticket Claimed!',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.text),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Your QR code is ready in your wallet. Show it at the gate for entry.',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(color: AppColors.textMuted, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.purple,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      context.go('/tickets');
+                    },
+                    child: const Text('View Ticket',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Done',
+                        style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w700)),
+                  ),
                 ),
               ],
-            ),
-            action: SnackBarAction(
-              label: 'View Ticket',
-              textColor: Colors.white,
-              onPressed: () => context.go('/tickets'),
             ),
           ),
         );

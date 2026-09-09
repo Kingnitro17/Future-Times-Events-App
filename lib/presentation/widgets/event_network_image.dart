@@ -42,12 +42,17 @@ class EventNetworkImage extends StatelessWidget {
   final String semanticLabel;
   final IconData fallbackIcon;
 
+  static const _unavailableHosts = {
+    'b2-image-proxy.sahwigate.workers.dev',
+  };
+
   static String? normalize(String? value) {
     final source = value?.trim();
     if (source == null || source.isEmpty) return null;
     final uri = Uri.tryParse(source);
     if (uri == null || !uri.hasAuthority) return null;
     if (uri.scheme != 'https' && uri.scheme != 'http') return null;
+    if (_unavailableHosts.contains(uri.host.toLowerCase())) return null;
     return uri.toString();
   }
 
