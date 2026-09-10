@@ -20,8 +20,10 @@ import '../../presentation/screens/explore_screen.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/map_discovery_screen.dart';
 import '../../presentation/screens/launch_screen.dart';
+import '../../presentation/screens/login_screen.dart';
 import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
+import '../../presentation/screens/register_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
 import '../../presentation/screens/saved_events_screen.dart';
 import '../../presentation/screens/friends_screen.dart';
@@ -264,9 +266,24 @@ GoRouter buildAppRouter({
   required SavedEventsRepository savedEventsRepository,
   required DiscoveryPreferencesRepository discoveryPreferences,
   required NotificationRepository notificationRepository,
-}) =>
-    GoRouter(
+}) {
+  final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  return GoRouter(
+      navigatorKey: rootKey,
       initialLocation: '/launch',
+      errorBuilder: (context, state) => Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(title: const Text('Page not found')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'This screen could not be opened.\n${state.error ?? state.uri}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
       routes: [
         GoRoute(
           path: '/launch',
@@ -276,6 +293,14 @@ GoRouter buildAppRouter({
           path: '/onboarding',
           builder: (_, __) =>
               OnboardingScreen(preferencesRepository: discoveryPreferences),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => LoginScreen(authRepository: authRepository),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (_, __) => RegisterScreen(authRepository: authRepository),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) => BlocProvider(
@@ -314,17 +339,35 @@ GoRouter buildAppRouter({
                       child: MapDiscoveryScreen(
                           savedEventsRepository: savedEventsRepository)))
             ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
+            StatefulShellBranch(
+              navigatorKey: GlobalKey<NavigatorState>(debugLabel: 'profile'),
+              routes: [
+                GoRoute(
                   path: '/profile',
-                  pageBuilder: (_, __) => NoTransitionPage(
-                      child: ProfileScreen(
-                          authRepository: authRepository,
-                          savedEventsRepository: savedEventsRepository,
-                          preferencesRepository: discoveryPreferences,
-                          socialRepository: socialRepository,
-                          notificationRepository: notificationRepository)))
-            ]),
+                  name: 'profile',
+                  redirect: (_, __) {
+                    // Auth guard: force unauthenticated users onto the dedicated
+                    // login screen instead of rendering an empty profile page.
+                    // Signed-in users (or sessions still resolving) fall through
+                    // to the pageBuilder below.
+                    if (!authRepository.isSignedIn && !authRepository.isLoading) {
+                      return '/login';
+                    }
+                    return null;
+                  },
+                  pageBuilder: (context, state) => NoTransitionPage(
+                    key: state.pageKey,
+                    child: ProfileScreen(
+                      authRepository: authRepository,
+                      savedEventsRepository: savedEventsRepository,
+                      preferencesRepository: discoveryPreferences,
+                      socialRepository: socialRepository,
+                      notificationRepository: notificationRepository,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         GoRoute(
@@ -360,6 +403,7 @@ GoRouter buildAppRouter({
         ),
         GoRoute(
           path: '/user/:id',
+          parentNavigatorKey: rootKey,
           builder: (context, state) => UserProfileScreen(
             userId: state.pathParameters['id']!,
             authRepository: authRepository,
@@ -368,15 +412,10 @@ GoRouter buildAppRouter({
             initialData: state.extra,
           ),
         ),
+        // Keep old links working without overlapping the Profile tab route.
         GoRoute(
           path: '/profile/:id',
-          builder: (context, state) => UserProfileScreen(
-            userId: state.pathParameters['id']!,
-            authRepository: authRepository,
-            socialRepository: socialRepository,
-            eventRepository: eventRepository,
-            initialData: state.extra,
-          ),
+          redirect: (context, state) => '/user/${state.pathParameters['id']}',
         ),
         GoRoute(
           path: '/notifications',
@@ -413,3 +452,4 @@ GoRouter buildAppRouter({
         ),
       ],
     );
+}

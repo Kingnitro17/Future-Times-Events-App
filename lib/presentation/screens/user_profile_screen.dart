@@ -68,15 +68,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    // If viewing own profile, redirect to main profile screen
+    // If viewing own profile, redirect after this frame so the shell can paint.
     if (widget.authRepository.user?.id == widget.userId) {
-      if (mounted) {
-        context.go('/profile');
-        return;
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/profile');
+      });
+      return;
     }
 
-    setState(() => _loading = _profile == null);
+    if (mounted) {
+      setState(() => _loading = _profile == null);
+    }
     try {
       final profile =
           await widget.socialRepository.getUserProfile(widget.userId);
@@ -217,10 +219,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-          child: Center(
+          child: Align(
+            alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 640),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Profile Identity Card

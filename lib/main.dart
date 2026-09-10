@@ -174,9 +174,6 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: _router,
-      builder: (context, child) {
-        return child!;
-      },
     );
   }
 }

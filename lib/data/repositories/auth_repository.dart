@@ -12,10 +12,12 @@ class AuthRepository extends ChangeNotifier {
   Map<String, dynamic>? _profile;
   String? _profileError;
   bool _isLoading = true;
+  bool _profileLoading = false;
   User? get user => _user;
   Map<String, dynamic>? get profile => _profile;
   String? get profileError => _profileError;
   bool get isLoading => _isLoading;
+  bool get profileLoading => _profileLoading;
   bool get isSignedIn => _user != null;
   String get displayEmail => _user?.email ?? '';
 
@@ -37,6 +39,7 @@ class AuthRepository extends ChangeNotifier {
     _user = session?.user;
     _profile = null;
     _profileError = null;
+    _profileLoading = _user != null;
     // Immediately make the UI renderable — never leave isLoading=true
     // for a user that is already known to be signed in or signed out.
     _isLoading = false;
@@ -97,6 +100,9 @@ class AuthRepository extends ChangeNotifier {
       }
     }
 
+    // Profile enrichment has settled, so release the Profile screen loading state
+    // and let it paint the signed-in profile instead of the shimmer.
+    _profileLoading = false;
     notifyListeners();
   }
 
@@ -114,18 +120,46 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
+  /// Signs the user in with their Google account using Supabase OAuth.
+  ///
+  /// The platform uses the PKCE auth flow, so this launches the Google OAuth
+  /// consent screen and hands the session back through the deep-link callback.
+  /// Success is observed via the [onAuthStateChanged] listener inside
+  /// [initialize], which calls [_synchronize].
+  Future<void> signInWithGoogle() async {
+    try {
+      await _client.auth.signInWithOAuth(OAuthProvider.google);
+      // If a session token arrived synchronously (web), reflect it now.
+      // On native deep-link flows the auth-state listener completes the sync.
+      await _synchronize(_client.auth.currentSession);
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    } catch (error) {
+      throw AuthFailure(
+          'Could not start Google sign-in. Check your connection and try again.',
+          cause: error);
+    }
+  }
+
   Future<void> signUp({
     required String email,
     required String password,
     String? displayName,
+    String? phone,
   }) async {
     try {
+      final metadata = <String, dynamic>{};
+      if (displayName != null && displayName.trim().isNotEmpty) {
+        metadata['display_name'] = displayName.trim();
+        metadata['full_name'] = displayName.trim();
+      }
+      if (phone != null && phone.trim().isNotEmpty) {
+        metadata['phone'] = phone.trim();
+      }
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        data: displayName != null && displayName.trim().isNotEmpty
-            ? {'display_name': displayName.trim()}
-            : null,
+        data: metadata.isEmpty ? null : metadata,
       );
       await _synchronize(response.session);
     } on AuthException catch (error) {
