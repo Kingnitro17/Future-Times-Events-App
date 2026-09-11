@@ -13,7 +13,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
     display_name TEXT,
+    phone TEXT,
     avatar_url TEXT,
     city TEXT DEFAULT 'Harare',
     bio TEXT,
@@ -21,14 +23,23 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS email TEXT,
+    ADD COLUMN IF NOT EXISTS phone TEXT;
+
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.profiles TO authenticated;
 
 -- Profiles Policies
 DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
-CREATE POLICY "Profiles are viewable by everyone"
+
+DROP POLICY IF EXISTS "Authenticated users can view their own profile"
+    ON public.profiles;
+CREATE POLICY "Authenticated users can view their own profile"
     ON public.profiles FOR SELECT
-    USING (true);
+    TO authenticated
+    USING (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
@@ -49,20 +60,28 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    INSERT INTO public.profiles (id, display_name, avatar_url, city)
+    INSERT INTO public.profiles (id, email, display_name, phone, avatar_url, city)
     VALUES (
         NEW.id,
+        NEW.email,
         COALESCE(
-            NEW.raw_user_meta_data->>'display_name',
-            NEW.raw_user_meta_data->>'full_name',
-            split_part(NEW.email, '@', 1)
+            NULLIF(NEW.raw_user_meta_data->>'display_name', ''),
+            NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
+            NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
+            'User'
+        ),
+        COALESCE(
+            NEW.raw_user_meta_data->>'phone',
+            NEW.phone
         ),
         NEW.raw_user_meta_data->>'avatar_url',
         'Harare'
     )
     ON CONFLICT (id) DO UPDATE
     SET
+        email = COALESCE(NULLIF(public.profiles.email, ''), EXCLUDED.email),
         display_name = COALESCE(NULLIF(public.profiles.display_name, ''), EXCLUDED.display_name),
+        phone = COALESCE(NULLIF(public.profiles.phone, ''), EXCLUDED.phone),
         avatar_url = COALESCE(public.profiles.avatar_url, EXCLUDED.avatar_url),
         updated_at = NOW();
     RETURN NEW;
@@ -75,14 +94,17 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Backfill any existing auth users without a profile
-INSERT INTO public.profiles (id, display_name, avatar_url, city)
+INSERT INTO public.profiles (id, email, display_name, phone, avatar_url, city)
 SELECT
     u.id,
+    u.email,
     COALESCE(
-        u.raw_user_meta_data->>'display_name',
-        u.raw_user_meta_data->>'full_name',
-        split_part(u.email, '@', 1)
+        NULLIF(u.raw_user_meta_data->>'display_name', ''),
+        NULLIF(u.raw_user_meta_data->>'full_name', ''),
+        NULLIF(split_part(COALESCE(u.email, ''), '@', 1), ''),
+        'User'
     ),
+    COALESCE(u.raw_user_meta_data->>'phone', u.phone),
     u.raw_user_meta_data->>'avatar_url',
     'Harare'
 FROM auth.users u

@@ -384,7 +384,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── 2. REAL SIGNED-IN PROFILE ───────────────────────────────────────────────
 
   Widget _buildSignedIn(AuthRepository auth) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUser =
+        Supabase.instance.client.auth.currentUser ?? auth.user;
     final metadata = currentUser?.userMetadata ?? const <String, dynamic>{};
     final email = currentUser?.email ?? auth.displayEmail;
     final name = auth.profile?['display_name']?.toString() ??

@@ -80,7 +80,10 @@ class AuthRepository extends ChangeNotifier {
               (_user!.email != null ? _user!.email!.split('@').first : 'User');
           final bootstrap = {
             'id': _user!.id,
+            'email': _user!.email,
             'display_name': fallbackName,
+            'phone': _user!.phone ??
+                _user!.userMetadata?['phone']?.toString(),
             'city': 'Harare',
           };
           await _client.from('profiles').upsert(bootstrap);
@@ -95,8 +98,11 @@ class AuthRepository extends ChangeNotifier {
         // Ensure UI always has at least a fallback map
         _profile = {
           'id': _user!.id,
+          'email': _user!.email,
           'display_name': _user!.userMetadata?['display_name']?.toString() ??
               (_user!.email != null ? _user!.email!.split('@').first : 'User'),
+          'phone': _user!.phone ??
+              _user!.userMetadata?['phone']?.toString(),
           'city': 'Harare',
         };
       }
