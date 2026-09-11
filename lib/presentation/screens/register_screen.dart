@@ -252,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _phone,
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.tel],
+                      autofillHints: const [AutofillHints.telephoneNumber],
                       enabled: !busy,
                       validator: (value) {
                         if (value == null || !_isValidPhone(value.trim())) {
