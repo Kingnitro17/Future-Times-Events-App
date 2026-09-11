@@ -528,10 +528,11 @@ class _Featured extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       event.name.text,
@@ -549,7 +550,7 @@ class _Featured extends StatelessWidget {
                       socialRepository: socialRepository,
                       isSignedIn: authRepository.isSignedIn,
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 8),
                     _Meta(
                       icon: Icons.location_on_outlined,
                       text: event.venue?.address?.city ?? 'Harare',

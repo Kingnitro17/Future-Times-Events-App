@@ -90,6 +90,8 @@ class AuthRepository extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint('[profile] direct query/bootstrap failed: $error');
         }
+        _profileError =
+            'Your profile could not be loaded from the server right now.';
         // Ensure UI always has at least a fallback map
         _profile = {
           'id': _user!.id,

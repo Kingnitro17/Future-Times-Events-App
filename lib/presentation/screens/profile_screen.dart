@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
@@ -114,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = widget.authRepository;
-    final content = auth.isSignedIn ? _buildSignedIn(auth) : _buildSignedOut();
+    final content = _buildProfileContent(auth);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -143,6 +144,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileContent(AuthRepository auth) {
+    if (auth.isLoading || (auth.isSignedIn && auth.profileLoading)) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 96),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(strokeWidth: 3),
+              SizedBox(height: 16),
+              Text(
+                'Loading your profile...',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!auth.isSignedIn) return _buildSignedOut();
+
+    final showFallback = auth.profile == null || auth.profileError != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showFallback) _buildCachedProfileWarning(auth.profileError),
+        _buildSignedIn(auth),
+      ],
+    );
+  }
+
+  Widget _buildCachedProfileWarning(String? detail) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: Colors.deepOrange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              detail == null || detail.isEmpty
+                  ? 'Displaying cached profile data.'
+                  : 'Displaying cached profile data. $detail',
+              style: const TextStyle(
+                color: Colors.deepOrange,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -316,10 +384,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── 2. REAL SIGNED-IN PROFILE ───────────────────────────────────────────────
 
   Widget _buildSignedIn(AuthRepository auth) {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final metadata = currentUser?.userMetadata ?? const <String, dynamic>{};
+    final email = currentUser?.email ?? auth.displayEmail;
     final name = auth.profile?['display_name']?.toString() ??
-        (auth.displayEmail.isNotEmpty
-            ? auth.displayEmail.split('@').first
-            : 'User');
+        metadata['display_name']?.toString() ??
+        metadata['full_name']?.toString() ??
+        (email.isNotEmpty ? email.split('@').first : 'User');
     final avatarUrl = auth.profile?['avatar_url']?.toString();
     final city = widget.preferencesRepository.city.isEmpty
         ? 'Zimbabwe'
@@ -377,7 +448,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          auth.displayEmail,
+                          email,
                           style: const TextStyle(
                               color: AppColors.textMuted, fontSize: 13),
                         ),
