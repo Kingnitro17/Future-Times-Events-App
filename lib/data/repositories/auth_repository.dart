@@ -86,7 +86,10 @@ class AuthRepository extends ChangeNotifier {
                 _user!.userMetadata?['phone']?.toString(),
             'city': 'Harare',
           };
-          await _client.from('profiles').upsert(bootstrap);
+          await _client
+              .from('profiles')
+              .upsert(bootstrap)
+              .timeout(const Duration(seconds: 10));
           _profile = bootstrap;
         }
       } catch (error) {

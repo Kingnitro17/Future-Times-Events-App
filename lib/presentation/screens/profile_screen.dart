@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -114,38 +116,223 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = widget.authRepository;
-    final content = _buildProfileContent(auth);
+    try {
+      final auth = widget.authRepository;
+      final user = Supabase.instance.client.auth.currentUser;
+      final profileLoading = auth.profileLoading;
+      final profile = auth.profile;
+      final profileError = auth.profileError;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/notifications'),
-            tooltip: 'Notifications',
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
-            onPressed: () => context.push('/onboarding'),
-            tooltip: 'Discovery Preferences',
-            icon: const Icon(Icons.tune_rounded),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: content,
+      debugPrint('[PROFILE] build() called');
+      debugPrint(
+          '[PROFILE] currentUser = ${user?.id}');
+      debugPrint(
+          '[PROFILE] session = ${Supabase.instance.client.auth.currentSession?.user.id}');
+      debugPrint('[PROFILE] isLoading = $profileLoading');
+      debugPrint('[PROFILE] profile = $profile');
+      debugPrint('[PROFILE] error = $profileError');
+
+      if (user == null) {
+        return const Scaffold(
+          body: Center(child: Text('DEBUG: not signed in')),
+        );
+      }
+
+      if (profileLoading) {
+        return const Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 12),
+                Text('DEBUG: loading profile...'),
+              ],
             ),
           ),
+        );
+      }
+
+      final name = profile?['display_name']?.toString() ??
+          user.userMetadata?['display_name']?.toString() ??
+          user.userMetadata?['full_name']?.toString() ??
+          user.email?.split('@').first ??
+          'User';
+      final email = profile?['email']?.toString() ??
+          user.email ??
+          'no-email';
+      final avatarUrl = profile?['avatar_url']?.toString();
+      final initials = profile?['initials']?.toString() ??
+          (name.trim().isEmpty ? 'U' : name.trim()[0].toUpperCase());
+      final role = profile?['role']?.toString();
+      final eventsAttended = profile?['events_attended'] ?? 0;
+      final loyaltyPoints = profile?['loyalty_points'] ?? 0;
+      final totalSpent = profile?['total_spent'] ?? 0;
+      final phone = profile?['phone']?.toString() ?? 'Not added';
+      final city = profile?['city']?.toString() ?? 'Not added';
+      final bio = profile?['bio']?.toString() ?? 'No bio added';
+
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Profile'),
+          actions: [
+            IconButton(
+              onPressed: () => _editName(name),
+              tooltip: 'Edit profile',
+              icon: const Icon(Icons.edit_outlined),
+            ),
+          ],
         ),
-      ),
-    );
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            if (profileError != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Text(
+                  'Displaying cached profile data. $profileError',
+                  style: const TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 42,
+                    backgroundColor: AppColors.purple.withValues(alpha: 0.12),
+                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? NetworkImage(avatarUrl)
+                        : null,
+                    child: avatarUrl == null || avatarUrl.isEmpty
+                        ? Text(
+                            initials,
+                            style: const TextStyle(
+                              color: AppColors.purple,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (role != null && role.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Chip(
+                      label: Text(role),
+                      labelStyle: const TextStyle(
+                        color: AppColors.purple,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      backgroundColor:
+                          AppColors.purple.withValues(alpha: 0.1),
+                      side: BorderSide.none,
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      _profileStat('Events', eventsAttended.toString()),
+                      _profileStat('Points', loyaltyPoints.toString()),
+                      _profileStat(
+                          'Spent', '\$${_formatProfileAmount(totalSpent)}'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _sectionHeader('ACCOUNT'),
+            _buildGroup([
+              _buildRow(
+                Icons.manage_accounts_outlined,
+                'Account Settings',
+                '$phone · $city',
+                () => _editName(name),
+              ),
+              _buildRow(
+                Icons.notifications_none_rounded,
+                'Notifications',
+                'SMS and marketing preferences',
+                () => context.push('/notifications'),
+              ),
+              _buildRow(
+                Icons.lock_outline_rounded,
+                'Security',
+                'Change password and manage access',
+                () => _showSecurityMessage(),
+              ),
+            ]),
+            const SizedBox(height: 20),
+            _buildGroup([
+              _buildRow(
+                Icons.logout_rounded,
+                'Sign Out',
+                'Log out of your account',
+                () async {
+                  await auth.signOut();
+                },
+                isDestructive: true,
+              ),
+            ]),
+            const SizedBox(height: 20),
+            Text(
+              bio,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (error, stackTrace) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text('PROFILE BUILD ERROR:\n$error\n\n$stackTrace'),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildProfileContent(AuthRepository auth) {
@@ -180,6 +367,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (showFallback) _buildCachedProfileWarning(auth.profileError),
         _buildSignedIn(auth),
       ],
+    );
+  }
+
+  Widget _profileStat(String label, String value) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatProfileAmount(Object value) {
+    final amount = num.tryParse(value.toString()) ?? 0;
+    return amount % 1 == 0 ? amount.toInt().toString() : amount.toStringAsFixed(2);
+  }
+
+  void _showSecurityMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Password changes are available from your account email.'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
