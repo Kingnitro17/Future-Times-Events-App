@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_failure.dart';
@@ -80,21 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final phone = _phone.text.trim();
     final password = _password.text;
 
-    if (name.length < 2) {
-      setState(() => _error = 'Enter your full name.');
-      return;
-    }
-    if (!_emailPattern.hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email address.');
-      return;
-    }
-    if (!_isValidPhone(phone)) {
-      setState(() => _error = 'Enter a valid mobile number (e.g. +2637XXXXXXXX).');
-      return;
-    }
-    if (!_isStrongPassword(password)) {
-      setState(() => _error =
-          'Password must be at least 8 characters with letters and numbers.');
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -265,7 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 // ── Mobile number ─────────────────────────────────────────────────────────
                     TextFormField(
                       controller: _phone,
-                      keyboardType: TextInputType.phoneNumber,
+                      keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.tel],
                       enabled: !busy,

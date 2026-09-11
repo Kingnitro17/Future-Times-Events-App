@@ -270,7 +270,25 @@ GoRouter buildAppRouter({
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   return GoRouter(
       navigatorKey: rootKey,
+      refreshListenable: authRepository,
       initialLocation: '/launch',
+      redirect: (context, state) {
+        final location = state.uri.path;
+        final isAuthRoute = location == '/login' || location == '/register';
+
+        // Keep the launch animation visible while the initial session is
+        // resolving. AuthRepository is initialized before the app starts, but
+        // this also prevents a transient redirect during deep-link startup.
+        if (authRepository.isLoading || location == '/launch') return null;
+
+        if (!authRepository.isSignedIn && !isAuthRoute) {
+          return '/login';
+        }
+        if (authRepository.isSignedIn && isAuthRoute) {
+          return '/';
+        }
+        return null;
+      },
       errorBuilder: (context, state) => Scaffold(
             backgroundColor: AppColors.background,
             appBar: AppBar(title: const Text('Page not found')),
@@ -345,16 +363,6 @@ GoRouter buildAppRouter({
                 GoRoute(
                   path: '/profile',
                   name: 'profile',
-                  redirect: (_, __) {
-                    // Auth guard: force unauthenticated users onto the dedicated
-                    // login screen instead of rendering an empty profile page.
-                    // Signed-in users (or sessions still resolving) fall through
-                    // to the pageBuilder below.
-                    if (!authRepository.isSignedIn && !authRepository.isLoading) {
-                      return '/login';
-                    }
-                    return null;
-                  },
                   pageBuilder: (context, state) => NoTransitionPage(
                     key: state.pageKey,
                     child: ProfileScreen(

@@ -42,16 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final email = _email.text.trim();
-
-    if (!_emailPattern.hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email address.');
-      return;
-    }
-    if (_password.text.isEmpty) {
-      setState(() => _error = 'Enter your password.');
-      return;
-    }
 
     setState(() {
       _submitting = true;
@@ -172,6 +166,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
                       enabled: !busy,
+                      validator: (value) => value == null ||
+                              !_emailPattern.hasMatch(value.trim())
+                          ? 'Enter a valid email address'
+                          : null,
                       decoration: const InputDecoration(
                         labelText: 'Email address',
                         hintText: 'name@example.com',
@@ -188,6 +186,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       autofillHints: const [AutofillHints.password],
                       enabled: !busy,
                       onFieldSubmitted: (_) => _submit(),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Enter your password'
+                          : null,
                       decoration: InputDecoration(
                         labelText: 'Password',
                         hintText: 'Enter your password',
