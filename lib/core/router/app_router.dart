@@ -17,6 +17,7 @@ import '../../presentation/screens/organizer/organizer_events_screen.dart';
 import '../../presentation/screens/organizer/edit_event_screen.dart';
 import '../../presentation/screens/organizer/organizer_event_detail_screen.dart';
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
+import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
@@ -380,6 +381,7 @@ GoRouter buildAppRouter({
                     preferencesRepository: discoveryPreferences,
                     socialRepository: socialRepository,
                     notificationRepository: notificationRepository,
+                    organizerRepository: organizerRepository,
                   ),
                 ),
               ),
@@ -438,6 +440,15 @@ GoRouter buildAppRouter({
         path: '/notifications',
         builder: (_, __) =>
             NotificationsScreen(notificationRepository: notificationRepository),
+      ),
+      GoRoute(
+        path: '/organizer/apply',
+        redirect: (context, state) =>
+            authRepository.currentRole == 'user' ? null : '/profile',
+        builder: (_, __) => OrganizerApplicationScreen(
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
       ),
       GoRoute(
         path: '/organizer',

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_repository.dart';
+import '../models/organizer_application.dart';
 
 class OrganizerRepository {
   OrganizerRepository({
@@ -13,6 +14,48 @@ class OrganizerRepository {
 
   final AuthRepository _auth;
   final SupabaseClient _client;
+
+  Future<OrganizerApplication> submitApplication({
+    required String businessName,
+    String? businessRegistration,
+    required String contactPhone,
+    required String contactEmail,
+    required String description,
+  }) async {
+    final user = _auth.user;
+    if (user == null) {
+      throw StateError('A signed-in account is required to apply.');
+    }
+    final row = await _client
+        .from('organizer_applications')
+        .insert({
+          'user_id': user.id,
+          'business_name': businessName.trim(),
+          if (businessRegistration != null &&
+              businessRegistration.trim().isNotEmpty)
+            'business_registration': businessRegistration.trim(),
+          'contact_phone': contactPhone.trim(),
+          'contact_email': contactEmail.trim(),
+          'description': description.trim(),
+          'status': 'pending',
+        })
+        .select()
+        .single();
+    return OrganizerApplication.fromSupabase(row);
+  }
+
+  Future<OrganizerApplication?> getMyApplication() async {
+    final user = _auth.user;
+    if (user == null) return null;
+    final row = await _client
+        .from('organizer_applications')
+        .select()
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : OrganizerApplication.fromSupabase(row);
+  }
 
   Future<List<Map<String, dynamic>>> getMyEvents() async {
     final user = _auth.user;

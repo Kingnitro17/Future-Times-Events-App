@@ -13,6 +13,8 @@ import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../data/models/organizer_application.dart';
+import '../../data/repositories/organizer_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -22,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
     required this.preferencesRepository,
     required this.socialRepository,
     required this.notificationRepository,
+    required this.organizerRepository,
   });
 
   final AuthRepository authRepository;
@@ -29,6 +32,7 @@ class ProfileScreen extends StatefulWidget {
   final DiscoveryPreferencesRepository preferencesRepository;
   final SocialRepository socialRepository;
   final NotificationRepository notificationRepository;
+  final OrganizerRepository organizerRepository;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -41,12 +45,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _submitting = false;
   String? _error;
   SocialStats _socialStats = const SocialStats();
+  OrganizerApplication? _myApplication;
+  bool _applicationLoading = true;
 
   @override
   void initState() {
     super.initState();
     widget.authRepository.addListener(_changed);
     _loadStats();
+    _loadOrganizerApplication();
   }
 
   void _changed() {
@@ -55,8 +62,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {});
         _loadStats();
+        _loadOrganizerApplication();
       }
     });
+  }
+
+  Future<void> _loadOrganizerApplication() async {
+    if (!widget.authRepository.isSignedIn ||
+        widget.authRepository.currentRole != 'user') {
+      if (mounted) {
+        setState(() => _applicationLoading = false);
+      }
+      return;
+    }
+    try {
+      final application = await widget.organizerRepository.getMyApplication();
+      if (mounted) {
+        setState(() {
+          _myApplication = application;
+          _applicationLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _applicationLoading = false);
+      }
+    }
   }
 
   Future<void> _loadStats() async {
@@ -300,6 +331,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Organizer',
                   'Manage your events and tickets',
                   () => context.push('/organizer'),
+                ),
+              if (auth.currentRole == 'user' &&
+                  !_applicationLoading &&
+                  _myApplication?.isPending != true)
+                _buildRow(
+                  Icons.storefront_outlined,
+                  'Become an organizer',
+                  _myApplication?.isRejected == true
+                      ? 'Resubmit your organizer application'
+                      : 'Apply to host events and manage tickets',
+                  () => context.push('/organizer/apply'),
                 ),
             ]),
             const SizedBox(height: 20),
