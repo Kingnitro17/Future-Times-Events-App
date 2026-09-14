@@ -16,12 +16,20 @@ import '../../presentation/screens/organizer/organizer_home_screen.dart';
 import '../../presentation/screens/organizer/organizer_events_screen.dart';
 import '../../presentation/screens/organizer/edit_event_screen.dart';
 import '../../presentation/screens/organizer/organizer_event_detail_screen.dart';
+import '../../presentation/screens/organizer/venue_setup_screen.dart';
+import '../../presentation/screens/organizer/edit_table_screen.dart';
+import '../../presentation/screens/organizer/edit_menu_item_screen.dart';
+import '../../presentation/screens/venue/table_picker_screen.dart';
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../data/repositories/ride_repository.dart';
 import '../../data/repositories/attendance_group_repository.dart';
+import '../../data/repositories/venue_commerce_repository.dart';
+import '../../data/repositories/payment_repository.dart';
+import '../../data/models/menu_item.dart';
+import '../../data/models/venue_table.dart';
 import '../../presentation/screens/wallet_screen.dart';
 import '../../presentation/screens/ride/ride_booking_screen.dart';
 import '../../presentation/screens/groups/create_group_screen.dart';
@@ -206,6 +214,7 @@ class _EventDetailsLoader extends StatefulWidget {
     required this.authRepository,
     required this.socialRepository,
     required this.groupRepository,
+    required this.venueCommerceRepository,
   });
 
   final String eventId;
@@ -215,6 +224,7 @@ class _EventDetailsLoader extends StatefulWidget {
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
   final AttendanceGroupRepository groupRepository;
+  final VenueCommerceRepository venueCommerceRepository;
 
   @override
   State<_EventDetailsLoader> createState() => _EventDetailsLoaderState();
@@ -246,6 +256,7 @@ class _EventDetailsLoaderState extends State<_EventDetailsLoader> {
             authRepository: widget.authRepository,
             socialRepository: widget.socialRepository,
             groupRepository: widget.groupRepository,
+            venueCommerceRepository: widget.venueCommerceRepository,
           ),
         );
       },
@@ -296,6 +307,8 @@ GoRouter buildAppRouter({
   required WalletRepository walletRepository,
   required RideRepository rideRepository,
   required AttendanceGroupRepository groupRepository,
+  required VenueCommerceRepository venueCommerceRepository,
+  required PaymentRepository paymentRepository,
   required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -623,6 +636,48 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/organizer/events/:id/venue',
+        redirect: (context, state) {
+          final role = authRepository.currentRole;
+          return role == 'organizer' || role == 'super_admin'
+              ? null
+              : '/profile';
+        },
+        builder: (_, state) => VenueSetupScreen(
+          eventId: state.pathParameters['id']!,
+          venueRepository: venueCommerceRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/venue/table',
+        redirect: (context, state) {
+          final role = authRepository.currentRole;
+          return role == 'organizer' || role == 'super_admin'
+              ? null
+              : '/profile';
+        },
+        builder: (_, state) => EditTableScreen(
+          eventId: state.pathParameters['id']!,
+          venueRepository: venueCommerceRepository,
+          table: state.extra is VenueTable ? state.extra as VenueTable : null,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/venue/menu',
+        redirect: (context, state) {
+          final role = authRepository.currentRole;
+          return role == 'organizer' || role == 'super_admin'
+              ? null
+              : '/profile';
+        },
+        builder: (_, state) => EditMenuItemScreen(
+          eventId: state.pathParameters['id']!,
+          venueRepository: venueCommerceRepository,
+          organizerRepository: organizerRepository,
+          item: state.extra is MenuItem ? state.extra as MenuItem : null,
+        ),
+      ),
+      GoRoute(
         path: '/organizer/scan',
         redirect: (context, state) {
           final role = authRepository.currentRole;
@@ -657,6 +712,7 @@ GoRouter buildAppRouter({
             authRepository: authRepository,
             socialRepository: socialRepository,
             groupRepository: groupRepository,
+            venueCommerceRepository: venueCommerceRepository,
           );
         },
       ),
@@ -665,6 +721,14 @@ GoRouter buildAppRouter({
         builder: (_, state) => BlocProvider(
           create: (_) => SocialBloc(socialRepository: socialRepository),
           child: EventMapScreen(event: state.extra as EventModel),
+        ),
+      ),
+      GoRoute(
+        path: '/events/:id/tables',
+        builder: (_, state) => TablePickerScreen(
+          eventId: state.pathParameters['id']!,
+          venueRepository: venueCommerceRepository,
+          paymentRepository: paymentRepository,
         ),
       ),
     ],

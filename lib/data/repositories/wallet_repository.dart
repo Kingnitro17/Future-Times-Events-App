@@ -8,6 +8,7 @@ import 'auth_repository.dart';
 import 'payment_repository.dart';
 import 'ride_repository.dart';
 import 'ticket_repository.dart';
+import 'venue_commerce_repository.dart';
 
 class WalletRepository {
   WalletRepository({
@@ -15,29 +16,34 @@ class WalletRepository {
     required TicketRepository ticketRepository,
     required PaymentRepository paymentRepository,
     required RideRepository rideRepository,
+    required VenueCommerceRepository venueCommerceRepository,
     SupabaseClient? client,
   })  : _auth = authRepository,
         _tickets = ticketRepository,
         _payments = paymentRepository,
         _rides = rideRepository,
+        _venueCommerce = venueCommerceRepository,
         _client = client ?? Supabase.instance.client;
 
   final AuthRepository _auth;
   final TicketRepository _tickets;
   final PaymentRepository _payments;
   final RideRepository _rides;
+  final VenueCommerceRepository _venueCommerce;
   final SupabaseClient _client;
 
   Future<List<WalletItem>> getFeed({int limit = 50}) async {
     final tickets = await _tickets.getMyTickets();
     final payments = await _payments.getMyTransactions(limit: 20);
     final rides = await _rides.getMyRides(limit: 20);
+    final reservations = await _venueCommerce.getMyReservations(limit: 20);
     final items = <WalletItem>[
       ...tickets.map(WalletItem.fromTicket),
       ...payments
           .where((payment) => payment.status == PaymentStatus.paid)
           .map(WalletItem.fromPayment),
       ...rides.map(WalletItem.fromRide),
+      ...reservations.map(WalletItem.fromReservation),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items.take(limit).toList(growable: false);
   }
@@ -106,6 +112,17 @@ class WalletRepository {
               event: PostgresChangeEvent.all,
               schema: 'public',
               table: 'rides',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'user_id',
+                value: userId,
+              ),
+              callback: (_) => scheduleRefresh(),
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'table_reservations',
               filter: PostgresChangeFilter(
                 type: PostgresChangeFilterType.eq,
                 column: 'user_id',

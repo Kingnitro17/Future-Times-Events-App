@@ -18,6 +18,7 @@ import 'data/repositories/ride_repository.dart';
 import 'data/repositories/attendance_group_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'data/repositories/organizer_repository.dart';
+import 'data/repositories/venue_commerce_repository.dart';
 import 'data/repositories/admin_repository.dart';
 import 'data/services/realtime_service.dart';
 
@@ -60,11 +61,13 @@ void main() async {
   final paymentRepository = PaymentRepository();
   final rideRepository = RideRepository();
   final groupRepository = AttendanceGroupRepository();
+  final venueCommerceRepository = VenueCommerceRepository();
   final walletRepository = WalletRepository(
     authRepository: authRepository,
     ticketRepository: ticketRepository,
     paymentRepository: paymentRepository,
     rideRepository: rideRepository,
+    venueCommerceRepository: venueCommerceRepository,
   );
   final notificationRepository = NotificationRepository();
   final organizerRepository =
@@ -104,6 +107,8 @@ void main() async {
     walletRepository: walletRepository,
     rideRepository: rideRepository,
     groupRepository: groupRepository,
+    venueCommerceRepository: venueCommerceRepository,
+    paymentRepository: paymentRepository,
     adminRepository: adminRepository,
   ));
 }
@@ -165,6 +170,8 @@ class FutureTimesApp extends StatefulWidget {
     required this.walletRepository,
     required this.rideRepository,
     required this.groupRepository,
+    required this.venueCommerceRepository,
+    required this.paymentRepository,
     required this.adminRepository,
   });
 
@@ -180,6 +187,8 @@ class FutureTimesApp extends StatefulWidget {
   final WalletRepository walletRepository;
   final RideRepository rideRepository;
   final AttendanceGroupRepository groupRepository;
+  final VenueCommerceRepository venueCommerceRepository;
+  final PaymentRepository paymentRepository;
   final AdminRepository adminRepository;
 
   @override
@@ -205,6 +214,8 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       walletRepository: widget.walletRepository,
       rideRepository: widget.rideRepository,
       groupRepository: widget.groupRepository,
+      venueCommerceRepository: widget.venueCommerceRepository,
+      paymentRepository: widget.paymentRepository,
       adminRepository: widget.adminRepository,
     );
   }

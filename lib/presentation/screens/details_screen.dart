@@ -14,6 +14,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/attendance_group_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
+import '../../data/repositories/venue_commerce_repository.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
@@ -30,12 +31,14 @@ class DetailsScreen extends StatefulWidget {
       required this.savedEventsRepository,
       required this.authRepository,
       required this.socialRepository,
-      required this.groupRepository});
+      required this.groupRepository,
+      required this.venueCommerceRepository});
   final EventModel event;
   final SavedEventsRepository savedEventsRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
   final AttendanceGroupRepository groupRepository;
+  final VenueCommerceRepository venueCommerceRepository;
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
 }
@@ -49,6 +52,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   late Future<List<Map<String, dynamic>>> _groupsFuture;
   int? _friendsGoingCount;
   bool _suggestionDismissed = false;
+  late Future<bool> _hasTablesFuture;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -65,6 +69,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
     _loadOwnedTicket();
     _groupsFuture = widget.groupRepository.getGroupsForEvent(widget.event.id);
     _loadGroupSuggestion();
+    _hasTablesFuture = widget.venueCommerceRepository
+        .getAvailableTables(widget.event.id)
+        .then((tables) => tables.isNotEmpty);
   }
 
   Future<void> _loadGroupSuggestion() async {
@@ -189,6 +196,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
               _map(),
               const SizedBox(height: 18),
               _gettingThere(),
+              FutureBuilder<bool>(
+                future: _hasTablesFuture,
+                builder: (context, snapshot) => snapshot.data == true
+                    ? _reserveTableCard()
+                    : const SizedBox.shrink(),
+              ),
               const SizedBox(height: 28),
               _about(),
               if (widget.event.lineup.isNotEmpty) ...[
@@ -619,6 +632,18 @@ class _DetailsScreenState extends State<DetailsScreen> {
               Icon(Icons.chevron_right_rounded),
             ]),
           ),
+        ),
+      );
+
+  Widget _reserveTableCard() => Card(
+        child: ListTile(
+          leading:
+              const CircleAvatar(child: Icon(Icons.table_restaurant_outlined)),
+          title: const Text('Reserve a table',
+              style: TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: const Text('Choose a table and pay securely'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/events/${widget.event.id}/tables'),
         ),
       );
 

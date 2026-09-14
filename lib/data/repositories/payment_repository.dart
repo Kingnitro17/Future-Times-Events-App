@@ -11,6 +11,14 @@ class PaymentRepository {
 
   final SupabaseClient _client;
 
+  String get clientUserId {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('You must be signed in to make a payment.');
+    }
+    return userId;
+  }
+
   Future<PaymentTransaction> initiateCharge({
     required String userId,
     required double amount,

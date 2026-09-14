@@ -1,6 +1,7 @@
 import 'payment_transaction.dart';
 import 'wallet_ticket.dart';
 import 'ride.dart';
+import 'table_reservation.dart';
 import '../../core/geo/geo_point.dart';
 import '../../services/payments/payment_gateway.dart';
 
@@ -34,6 +35,9 @@ sealed class WalletItem {
       WalletItemPayment.fromPayment;
 
   factory WalletItem.fromRide(RideBooking ride) = WalletItemRide.fromRide;
+
+  factory WalletItem.fromReservation(TableReservation reservation) =
+      WalletItemReservation.fromReservation;
 }
 
 final class WalletItemTicket extends WalletItem {
@@ -117,6 +121,19 @@ final class WalletItemReservation extends WalletItem {
     super.qrPayload,
     super.deepLink,
   }) : super(kind: 'reservation');
+
+  factory WalletItemReservation.fromReservation(TableReservation reservation) =>
+      WalletItemReservation(
+        id: reservation.id,
+        title: reservation.eventTitle ?? 'Table reservation',
+        subtitle:
+            '${reservation.tableName ?? 'Table'} · ${reservation.partySize} ${reservation.partySize == 1 ? 'guest' : 'guests'}',
+        statusLabel: reservation.status.replaceAll('_', ' '),
+        createdAt: reservation.reservedAt,
+        eventId: reservation.eventId,
+        qrPayload: reservation.qrCode.isEmpty ? null : reservation.qrCode,
+        deepLink: '/wallet',
+      );
 }
 
 final class WalletItemOrder extends WalletItem {

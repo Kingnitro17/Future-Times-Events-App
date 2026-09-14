@@ -208,6 +208,12 @@ class _Overview extends StatelessWidget {
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('Scan Tickets'),
             ),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  context.push('/organizer/events/${event['id']}/venue'),
+              icon: const Icon(Icons.restaurant_menu_outlined),
+              label: const Text('Venue Setup'),
+            ),
           ],
         ),
         const SizedBox(height: 20),
