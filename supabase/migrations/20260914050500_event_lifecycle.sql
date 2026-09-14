@@ -399,7 +399,7 @@ GRANT EXECUTE ON FUNCTION public.validate_and_check_in_ticket(text, text)
 
   SELECT cron.schedule(
     'transition-events-every-five-minutes',
-    '*/5 * * * *',
+    '0-59/5 * * * *',
     $cron$
       UPDATE public.events
       SET status = 'live'
