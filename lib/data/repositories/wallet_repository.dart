@@ -6,6 +6,7 @@ import '../models/wallet_item.dart';
 import '../models/payment_transaction.dart';
 import 'auth_repository.dart';
 import 'payment_repository.dart';
+import 'ride_repository.dart';
 import 'ticket_repository.dart';
 
 class WalletRepository {
@@ -13,25 +14,30 @@ class WalletRepository {
     required AuthRepository authRepository,
     required TicketRepository ticketRepository,
     required PaymentRepository paymentRepository,
+    required RideRepository rideRepository,
     SupabaseClient? client,
   })  : _auth = authRepository,
         _tickets = ticketRepository,
         _payments = paymentRepository,
+        _rides = rideRepository,
         _client = client ?? Supabase.instance.client;
 
   final AuthRepository _auth;
   final TicketRepository _tickets;
   final PaymentRepository _payments;
+  final RideRepository _rides;
   final SupabaseClient _client;
 
   Future<List<WalletItem>> getFeed({int limit = 50}) async {
     final tickets = await _tickets.getMyTickets();
     final payments = await _payments.getMyTransactions(limit: 20);
+    final rides = await _rides.getMyRides(limit: 20);
     final items = <WalletItem>[
       ...tickets.map(WalletItem.fromTicket),
       ...payments
           .where((payment) => payment.status == PaymentStatus.paid)
           .map(WalletItem.fromPayment),
+      ...rides.map(WalletItem.fromRide),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items.take(limit).toList(growable: false);
   }
@@ -89,6 +95,17 @@ class WalletRepository {
               event: PostgresChangeEvent.all,
               schema: 'public',
               table: 'payment_transactions',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'user_id',
+                value: userId,
+              ),
+              callback: (_) => scheduleRefresh(),
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'rides',
               filter: PostgresChangeFilter(
                 type: PostgresChangeFilterType.eq,
                 column: 'user_id',

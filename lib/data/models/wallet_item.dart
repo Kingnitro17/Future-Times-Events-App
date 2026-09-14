@@ -1,5 +1,7 @@
 import 'payment_transaction.dart';
 import 'wallet_ticket.dart';
+import 'ride.dart';
+import '../../core/geo/geo_point.dart';
 import '../../services/payments/payment_gateway.dart';
 
 sealed class WalletItem {
@@ -30,6 +32,8 @@ sealed class WalletItem {
 
   factory WalletItem.fromPayment(PaymentTransaction payment) =
       WalletItemPayment.fromPayment;
+
+  factory WalletItem.fromRide(RideBooking ride) = WalletItemRide.fromRide;
 }
 
 final class WalletItemTicket extends WalletItem {
@@ -76,6 +80,30 @@ final class WalletItemRide extends WalletItem {
     super.qrPayload,
     super.deepLink,
   }) : super(kind: 'ride');
+
+  factory WalletItemRide.fromRide(RideBooking ride) {
+    final status = switch (ride.status) {
+      RideStatus.completed => 'Completed',
+      RideStatus.cancelled => 'Cancelled',
+      RideStatus.failed => 'Failed',
+      _ => 'Active',
+    };
+    final pickup = ride.pickup.address ?? _coordinates(ride.pickup);
+    final dropoff = ride.dropoff.address ?? _coordinates(ride.dropoff);
+    return WalletItemRide(
+      id: ride.id,
+      title:
+          '${ride.providerId == 'tap_and_go' ? 'Tap & Go' : ride.providerId} ride',
+      subtitle: '$pickup → $dropoff',
+      statusLabel: status,
+      createdAt: ride.createdAt,
+      eventId: ride.eventId,
+      deepLink: '/ride/book',
+    );
+  }
+
+  static String _coordinates(GeoPoint point) =>
+      '${point.lat.toStringAsFixed(4)}, ${point.lng.toStringAsFixed(4)}';
 }
 
 final class WalletItemReservation extends WalletItem {

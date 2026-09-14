@@ -103,9 +103,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
       if (mounted) setState(() => _going = !_going);
       if (mounted) {
-        context
-            .read<SocialBloc>()
-            .add(WatchAttendees(eventId: widget.event.id));
+        context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
       }
     } catch (_) {
       if (mounted) {
@@ -130,6 +128,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
               _facts(),
               const SizedBox(height: 28),
               _map(),
+              const SizedBox(height: 18),
+              _gettingThere(),
               const SizedBox(height: 28),
               _about(),
               if (widget.event.lineup.isNotEmpty) ...[
@@ -447,6 +447,32 @@ class _DetailsScreenState extends State<DetailsScreen> {
     ]);
   }
 
+  Widget _gettingThere() => Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => context.push('/ride/book?eventId=${widget.event.id}'),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(children: [
+              Icon(Icons.directions_car_rounded, color: AppColors.purple),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Getting there?',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                      SizedBox(height: 4),
+                      Text('Book a ride to this event',
+                          style: TextStyle(color: AppColors.textMuted)),
+                    ]),
+              ),
+              Icon(Icons.chevron_right_rounded),
+            ]),
+          ),
+        ),
+      );
+
   Widget _about() {
     final description = widget.event.description?.text.trim() ?? '';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -650,7 +676,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
           _ownsTicket = true;
           _going = true;
         });
-        context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
+        context
+            .read<SocialBloc>()
+            .add(WatchAttendees(eventId: widget.event.id));
 
         await showDialog<void>(
           context: context,

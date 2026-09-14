@@ -14,6 +14,7 @@ import 'data/repositories/discovery_preferences_repository.dart';
 import 'data/repositories/ticket_repository.dart';
 import 'data/repositories/payment_repository.dart';
 import 'data/repositories/wallet_repository.dart';
+import 'data/repositories/ride_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'data/repositories/organizer_repository.dart';
 import 'data/repositories/admin_repository.dart';
@@ -56,10 +57,12 @@ void main() async {
       SavedEventsRepository(authRepository: authRepository);
   final ticketRepository = TicketRepository(authRepository: authRepository);
   final paymentRepository = PaymentRepository();
+  final rideRepository = RideRepository();
   final walletRepository = WalletRepository(
     authRepository: authRepository,
     ticketRepository: ticketRepository,
     paymentRepository: paymentRepository,
+    rideRepository: rideRepository,
   );
   final notificationRepository = NotificationRepository();
   final organizerRepository =
@@ -97,6 +100,7 @@ void main() async {
     organizerRepository: organizerRepository,
     ticketRepository: ticketRepository,
     walletRepository: walletRepository,
+    rideRepository: rideRepository,
     adminRepository: adminRepository,
   ));
 }
@@ -156,6 +160,7 @@ class FutureTimesApp extends StatefulWidget {
     required this.organizerRepository,
     required this.ticketRepository,
     required this.walletRepository,
+    required this.rideRepository,
     required this.adminRepository,
   });
 
@@ -169,6 +174,7 @@ class FutureTimesApp extends StatefulWidget {
   final OrganizerRepository organizerRepository;
   final TicketRepository ticketRepository;
   final WalletRepository walletRepository;
+  final RideRepository rideRepository;
   final AdminRepository adminRepository;
 
   @override
@@ -192,6 +198,7 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       organizerRepository: widget.organizerRepository,
       ticketRepository: widget.ticketRepository,
       walletRepository: widget.walletRepository,
+      rideRepository: widget.rideRepository,
       adminRepository: widget.adminRepository,
     );
   }

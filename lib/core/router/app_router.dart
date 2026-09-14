@@ -20,7 +20,9 @@ import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../data/repositories/ride_repository.dart';
 import '../../presentation/screens/wallet_screen.dart';
+import '../../presentation/screens/ride/ride_booking_screen.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../presentation/screens/admin/admin_home_screen.dart';
 import '../../presentation/screens/admin/admin_reviews_screen.dart';
@@ -285,6 +287,7 @@ GoRouter buildAppRouter({
   required OrganizerRepository organizerRepository,
   required TicketRepository ticketRepository,
   required WalletRepository walletRepository,
+  required RideRepository rideRepository,
   required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -405,6 +408,15 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/tickets',
         builder: (_, __) => TicketsScreen(authRepository: authRepository),
+      ),
+      GoRoute(
+        path: '/ride/book',
+        builder: (context, state) => RideBookingScreen(
+          authRepository: authRepository,
+          rideRepository: rideRepository,
+          eventRepository: eventRepository,
+          eventId: state.uri.queryParameters['eventId'],
+        ),
       ),
       GoRoute(
         path: '/saved',
