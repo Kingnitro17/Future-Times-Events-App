@@ -19,6 +19,12 @@ import '../../presentation/screens/organizer/organizer_event_detail_screen.dart'
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
+import '../../data/repositories/admin_repository.dart';
+import '../../presentation/screens/admin/admin_home_screen.dart';
+import '../../presentation/screens/admin/admin_reviews_screen.dart';
+import '../../presentation/screens/admin/admin_events_screen.dart';
+import '../../presentation/screens/admin/admin_event_detail_screen.dart';
+import '../../services/roles/role_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
@@ -276,6 +282,7 @@ GoRouter buildAppRouter({
   required NotificationRepository notificationRepository,
   required OrganizerRepository organizerRepository,
   required TicketRepository ticketRepository,
+  required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   return GoRouter(
@@ -440,6 +447,63 @@ GoRouter buildAppRouter({
         path: '/notifications',
         builder: (_, __) =>
             NotificationsScreen(notificationRepository: notificationRepository),
+      ),
+      GoRoute(
+        path: '/events/:slug',
+        redirect: (context, state) => '/event/${state.pathParameters['slug']!}',
+      ),
+      GoRoute(
+        path: '/admin/events/:id',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, state) => AdminEventDetailScreen(
+          eventId: state.pathParameters['id']!,
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/admin/events',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, __) => AdminEventsScreen(
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/admin/reviews',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, __) => AdminReviewsScreen(
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/admin',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, __) => AdminHomeScreen(
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
       ),
       GoRoute(
         path: '/organizer/apply',

@@ -332,6 +332,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Manage your events and tickets',
                   () => context.push('/organizer'),
                 ),
+              if (auth.currentRole == 'super_admin')
+                _buildRow(
+                  Icons.admin_panel_settings_outlined,
+                  'Admin',
+                  'Manage events, users, and applications',
+                  () => context.push('/admin'),
+                ),
               if (auth.currentRole == 'user' &&
                   !_applicationLoading &&
                   _myApplication?.isPending != true)

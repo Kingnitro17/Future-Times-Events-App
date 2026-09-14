@@ -14,6 +14,7 @@ import 'data/repositories/discovery_preferences_repository.dart';
 import 'data/repositories/ticket_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'data/repositories/organizer_repository.dart';
+import 'data/repositories/admin_repository.dart';
 import 'data/services/realtime_service.dart';
 
 void main() async {
@@ -55,6 +56,7 @@ void main() async {
   final notificationRepository = NotificationRepository();
   final organizerRepository =
       OrganizerRepository(authRepository: authRepository);
+  final adminRepository = AdminRepository();
 
   if (authRepository.isSignedIn) {
     await savedEventsRepository.load();
@@ -86,6 +88,7 @@ void main() async {
     notificationRepository: notificationRepository,
     organizerRepository: organizerRepository,
     ticketRepository: ticketRepository,
+    adminRepository: adminRepository,
   ));
 }
 
@@ -143,6 +146,7 @@ class FutureTimesApp extends StatefulWidget {
     required this.notificationRepository,
     required this.organizerRepository,
     required this.ticketRepository,
+    required this.adminRepository,
   });
 
   final EventRepository eventRepository;
@@ -154,6 +158,7 @@ class FutureTimesApp extends StatefulWidget {
   final NotificationRepository notificationRepository;
   final OrganizerRepository organizerRepository;
   final TicketRepository ticketRepository;
+  final AdminRepository adminRepository;
 
   @override
   State<FutureTimesApp> createState() => _FutureTimesAppState();
@@ -175,6 +180,7 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       notificationRepository: widget.notificationRepository,
       organizerRepository: widget.organizerRepository,
       ticketRepository: widget.ticketRepository,
+      adminRepository: widget.adminRepository,
     );
   }
 
