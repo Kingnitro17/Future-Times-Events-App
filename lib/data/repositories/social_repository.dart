@@ -313,6 +313,32 @@ class SocialRepository {
     return const [];
   }
 
+  Future<int> countFriendsGoing({
+    required String eventId,
+    required String userId,
+  }) async {
+    try {
+      final friends = await getFriends();
+      final friendIds = friends
+          .where((friend) => friend.userId != userId)
+          .map((friend) => friend.userId)
+          .toList();
+      if (friendIds.isEmpty) return 0;
+      final rows = await _client
+          .from('rsvps')
+          .select('user_id')
+          .eq('event_id', eventId)
+          .eq('status', 'going')
+          .inFilter('user_id', friendIds);
+      return (rows as List).length;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[social] countFriendsGoing failed: $error');
+      }
+      return 0;
+    }
+  }
+
   /// Search users by display name
   Future<List<UserProfileCard>> searchUsers(String query) async {
     final trimmed = query.trim();
@@ -417,7 +443,8 @@ class SocialRepository {
           // Permission denied — skip to strategy 2
           row = null;
           if (kDebugMode) {
-            debugPrint('[social] getUserProfile: direct query blocked (${e.code}), trying join fallback');
+            debugPrint(
+                '[social] getUserProfile: direct query blocked (${e.code}), trying join fallback');
           }
         } else {
           rethrow;
@@ -433,7 +460,8 @@ class SocialRepository {
         // Try as a follower lookup — check if target follows anyone
         final joinRows = await _client
             .from('user_follows')
-            .select('following_id, profiles!user_follows_following_id_fkey(id, display_name, avatar_url)')
+            .select(
+                'following_id, profiles!user_follows_following_id_fkey(id, display_name, avatar_url)')
             .eq('following_id', targetUserId)
             .limit(1);
         if ((joinRows as List).isNotEmpty) {
@@ -450,7 +478,8 @@ class SocialRepository {
       try {
         final joinRows = await _client
             .from('user_follows')
-            .select('follower_id, profiles!user_follows_follower_id_fkey(id, display_name, avatar_url)')
+            .select(
+                'follower_id, profiles!user_follows_follower_id_fkey(id, display_name, avatar_url)')
             .eq('follower_id', targetUserId)
             .limit(1);
         if ((joinRows as List).isNotEmpty) {
@@ -582,17 +611,20 @@ class SocialRepository {
           .order('created_at', ascending: false)
           .limit(20);
       final list = rows as List;
-      return list.map((row) {
-        final eventRaw = row['events'];
-        if (eventRaw is Map<String, dynamic>) return eventRaw;
-        if (eventRaw is List &&
-            eventRaw.isNotEmpty &&
-            eventRaw.first is Map<String, dynamic>) {
-          return eventRaw.first as Map<String, dynamic>;
-        }
-        // Fallback: return just the event_id so callers can still use it
-        return <String, dynamic>{'id': row['event_id']?.toString() ?? ''};
-      }).where((e) => (e['id']?.toString() ?? '').isNotEmpty).toList();
+      return list
+          .map((row) {
+            final eventRaw = row['events'];
+            if (eventRaw is Map<String, dynamic>) return eventRaw;
+            if (eventRaw is List &&
+                eventRaw.isNotEmpty &&
+                eventRaw.first is Map<String, dynamic>) {
+              return eventRaw.first as Map<String, dynamic>;
+            }
+            // Fallback: return just the event_id so callers can still use it
+            return <String, dynamic>{'id': row['event_id']?.toString() ?? ''};
+          })
+          .where((e) => (e['id']?.toString() ?? '').isNotEmpty)
+          .toList();
     } catch (e) {
       if (kDebugMode) debugPrint('[social] getUserPublicEvents failed: $e');
       return const [];

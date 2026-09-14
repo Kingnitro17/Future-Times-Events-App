@@ -21,8 +21,12 @@ import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../data/repositories/ride_repository.dart';
+import '../../data/repositories/attendance_group_repository.dart';
 import '../../presentation/screens/wallet_screen.dart';
 import '../../presentation/screens/ride/ride_booking_screen.dart';
+import '../../presentation/screens/groups/create_group_screen.dart';
+import '../../presentation/screens/groups/group_detail_screen.dart';
+import '../../presentation/screens/groups/invites_inbox_screen.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../presentation/screens/admin/admin_home_screen.dart';
 import '../../presentation/screens/admin/admin_reviews_screen.dart';
@@ -201,6 +205,7 @@ class _EventDetailsLoader extends StatefulWidget {
     required this.savedEventsRepository,
     required this.authRepository,
     required this.socialRepository,
+    required this.groupRepository,
   });
 
   final String eventId;
@@ -209,6 +214,7 @@ class _EventDetailsLoader extends StatefulWidget {
   final SavedEventsRepository savedEventsRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
+  final AttendanceGroupRepository groupRepository;
 
   @override
   State<_EventDetailsLoader> createState() => _EventDetailsLoaderState();
@@ -239,6 +245,7 @@ class _EventDetailsLoaderState extends State<_EventDetailsLoader> {
             savedEventsRepository: widget.savedEventsRepository,
             authRepository: widget.authRepository,
             socialRepository: widget.socialRepository,
+            groupRepository: widget.groupRepository,
           ),
         );
       },
@@ -288,6 +295,7 @@ GoRouter buildAppRouter({
   required TicketRepository ticketRepository,
   required WalletRepository walletRepository,
   required RideRepository rideRepository,
+  required AttendanceGroupRepository groupRepository,
   required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -305,6 +313,9 @@ GoRouter buildAppRouter({
       if (authRepository.isLoading || location == '/launch') return null;
 
       if (!authRepository.isSignedIn && !isAuthRoute) {
+        if (location == '/groups/join') {
+          return '/login?returnUrl=${Uri.encodeComponent(state.uri.toString())}';
+        }
         return '/login';
       }
       if (authRepository.isSignedIn && isAuthRoute) {
@@ -337,7 +348,10 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/login',
-        builder: (_, __) => LoginScreen(authRepository: authRepository),
+        builder: (_, state) => LoginScreen(
+          authRepository: authRepository,
+          returnLocation: state.uri.queryParameters['returnUrl'],
+        ),
       ),
       GoRoute(
         path: '/register',
@@ -398,6 +412,7 @@ GoRouter buildAppRouter({
                     socialRepository: socialRepository,
                     notificationRepository: notificationRepository,
                     organizerRepository: organizerRepository,
+                    groupRepository: groupRepository,
                   ),
                 ),
               ),
@@ -416,6 +431,40 @@ GoRouter buildAppRouter({
           rideRepository: rideRepository,
           eventRepository: eventRepository,
           eventId: state.uri.queryParameters['eventId'],
+        ),
+      ),
+      GoRoute(
+        path: '/groups/new',
+        builder: (context, state) => CreateGroupScreen(
+          eventId: state.uri.queryParameters['eventId'] ?? '',
+          eventRepository: eventRepository,
+          groupRepository: groupRepository,
+          friendCount:
+              int.tryParse(state.uri.queryParameters['friendCount'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/groups/:id',
+        builder: (_, state) => GroupDetailScreen(
+          groupId: state.pathParameters['id'] ?? '',
+          groupRepository: groupRepository,
+          authRepository: authRepository,
+          socialRepository: socialRepository,
+          eventRepository: eventRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/groups/invites',
+        builder: (_, state) => InvitesInboxScreen(
+          repository: groupRepository,
+          initialInviteId: state.uri.queryParameters['inviteId'],
+        ),
+      ),
+      GoRoute(
+        path: '/groups/join',
+        builder: (_, state) => InvitesInboxScreen(
+          repository: groupRepository,
+          initialInviteId: state.uri.queryParameters['code'],
         ),
       ),
       GoRoute(
@@ -607,6 +656,7 @@ GoRouter buildAppRouter({
             savedEventsRepository: savedEventsRepository,
             authRepository: authRepository,
             socialRepository: socialRepository,
+            groupRepository: groupRepository,
           );
         },
       ),

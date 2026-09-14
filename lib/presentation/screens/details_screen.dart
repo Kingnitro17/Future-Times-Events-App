@@ -4,12 +4,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/attendance_group_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../logic/blocs/social/social_bloc.dart';
@@ -19,6 +21,7 @@ import '../widgets/event_network_image.dart';
 import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
 import '../widgets/whos_going_sheet.dart';
+import '../widgets/friends_group_suggestion_banner.dart';
 
 class DetailsScreen extends StatefulWidget {
   const DetailsScreen(
@@ -26,11 +29,13 @@ class DetailsScreen extends StatefulWidget {
       required this.event,
       required this.savedEventsRepository,
       required this.authRepository,
-      required this.socialRepository});
+      required this.socialRepository,
+      required this.groupRepository});
   final EventModel event;
   final SavedEventsRepository savedEventsRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
+  final AttendanceGroupRepository groupRepository;
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
 }
@@ -41,6 +46,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
   bool _rsvpLoading = false;
   bool _ownsTicket = false;
   bool _claimingTicket = false;
+  late Future<List<Map<String, dynamic>>> _groupsFuture;
+  int? _friendsGoingCount;
+  bool _suggestionDismissed = false;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -55,6 +63,43 @@ class _DetailsScreenState extends State<DetailsScreen> {
     if (tickets.isNotEmpty) _selectedTicket = tickets.first;
     _loadGoing();
     _loadOwnedTicket();
+    _groupsFuture = widget.groupRepository.getGroupsForEvent(widget.event.id);
+    _loadGroupSuggestion();
+  }
+
+  Future<void> _loadGroupSuggestion() async {
+    final userId = widget.authRepository.user?.id;
+    if (userId == null) return;
+    final going = await widget.socialRepository
+        .hasCheckedIn(eventId: widget.event.id, userId: userId);
+    if (!going) return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'group_suggestion_dismissed:$userId:${widget.event.id}';
+    if (prefs.getBool(key) == true) {
+      if (mounted) setState(() => _suggestionDismissed = true);
+      return;
+    }
+    final count = await widget.socialRepository.countFriendsGoing(
+      eventId: widget.event.id,
+      userId: userId,
+    );
+    if (count < 2) return;
+    final hasGroup = await widget.groupRepository.hasGroupMembershipForEvent(
+      eventId: widget.event.id,
+      userId: userId,
+    );
+    if (mounted && !hasGroup) setState(() => _friendsGoingCount = count);
+  }
+
+  Future<void> _dismissGroupSuggestion() async {
+    final userId = widget.authRepository.user?.id;
+    if (userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(
+      'group_suggestion_dismissed:$userId:${widget.event.id}',
+      true,
+    );
+    if (mounted) setState(() => _suggestionDismissed = true);
   }
 
   Future<void> _loadOwnedTicket() async {
@@ -103,7 +148,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
       if (mounted) setState(() => _going = !_going);
       if (mounted) {
-        context.read<SocialBloc>().add(WatchAttendees(eventId: widget.event.id));
+        context
+            .read<SocialBloc>()
+            .add(WatchAttendees(eventId: widget.event.id));
       }
     } catch (_) {
       if (mounted) {
@@ -124,6 +171,18 @@ class _DetailsScreenState extends State<DetailsScreen> {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
             sliver: SliverList.list(children: [
               _attendance(),
+              const SizedBox(height: 18),
+              if (_friendsGoingCount != null && !_suggestionDismissed) ...[
+                FriendsGroupSuggestionBanner(
+                  friendCount: _friendsGoingCount!,
+                  onCreateGroup: () => context.push(
+                    '/groups/new?eventId=${widget.event.id}&friendCount=$_friendsGoingCount',
+                  ),
+                  onDismiss: _dismissGroupSuggestion,
+                ),
+                const SizedBox(height: 12),
+              ],
+              _groupsSection(),
               const SizedBox(height: 26),
               _facts(),
               const SizedBox(height: 28),
@@ -369,6 +428,96 @@ class _DetailsScreenState extends State<DetailsScreen> {
           ]);
         },
       );
+
+  Widget _groupsSection() {
+    if (!_going) {
+      return const Card(
+        child: ListTile(
+          leading: Icon(Icons.groups_outlined, color: AppColors.purple),
+          title: Text("Who's going with me?"),
+          subtitle: Text('RSVP first to coordinate with friends'),
+        ),
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _groupsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: Center(
+                child: SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return Card(
+            child: ListTile(
+              leading:
+                  const Icon(Icons.groups_outlined, color: AppColors.purple),
+              title: const Text("Who's going with me?"),
+              subtitle: const Text('Groups could not be loaded.'),
+              trailing: IconButton(
+                onPressed: () => setState(() => _groupsFuture =
+                    widget.groupRepository.getGroupsForEvent(widget.event.id)),
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ),
+          );
+        }
+        final groups = snapshot.data ?? const [];
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text("Who's going with me?",
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push('/groups/new?eventId=${widget.event.id}'),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Create a group'),
+                  ),
+                ]),
+                if (groups.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14),
+                    child: Text('No public groups yet. Start one with friends.',
+                        style: TextStyle(color: AppColors.textMuted)),
+                  )
+                else
+                  ...groups.take(5).map((group) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(
+                          backgroundColor: AppColors.purpleLight,
+                          child: Icon(Icons.groups_rounded,
+                              color: AppColors.purple),
+                        ),
+                        title: Text(group['name']?.toString() ?? 'Group'),
+                        subtitle: Text(
+                            '${group['host_display_name'] ?? 'Host'} · ${group['member_count'] ?? 0} members'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context
+                            .push('/groups/${group['id']?.toString() ?? ''}'),
+                      )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   Widget _facts() => IntrinsicHeight(
         child: Row(children: [
@@ -684,8 +833,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
           context: context,
           barrierDismissible: false,
           builder: (dialogContext) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
             contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -712,8 +861,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 const Text(
                   'Your QR code is ready in your wallet. Show it at the gate for entry.',
                   textAlign: TextAlign.center,
-                  style:
-                      TextStyle(color: AppColors.textMuted, fontSize: 14, height: 1.4),
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 14, height: 1.4),
                 ),
                 const SizedBox(height: 22),
                 SizedBox(

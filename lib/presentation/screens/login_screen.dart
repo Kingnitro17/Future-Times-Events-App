@@ -14,9 +14,14 @@ import '../../data/repositories/auth_repository.dart';
 /// [AuthRepository]; the Supabase client performs the request while the button
 /// shows a spinner to prevent double-tapping.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.authRepository});
+  const LoginScreen({
+    super.key,
+    required this.authRepository,
+    this.returnLocation,
+  });
 
   final AuthRepository authRepository;
+  final String? returnLocation;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -57,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _password.text,
       );
       if (!mounted) return;
-      context.go('/profile');
+      context.go(widget.returnLocation ?? '/profile');
     } on AppFailure catch (failure) {
       if (mounted) setState(() => _error = failure.message);
     } finally {
@@ -81,7 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _googleSubmitting = false);
     }
   }
-@override
+
+  @override
   Widget build(BuildContext context) {
     final busy = _submitting || _googleSubmitting;
 
@@ -113,17 +119,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Welcome back',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.text,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.text,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Sign in to access your tickets, saved events, wallet and friends.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: AppColors.textMuted, height: 1.45, fontSize: 14),
+                          color: AppColors.textMuted,
+                          height: 1.45,
+                          fontSize: 14),
                     ),
                     const SizedBox(height: 28),
 
@@ -134,8 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,10 +175,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
                       enabled: !busy,
-                      validator: (value) => value == null ||
-                              !_emailPattern.hasMatch(value.trim())
-                          ? 'Enter a valid email address'
-                          : null,
+                      validator: (value) =>
+                          value == null || !_emailPattern.hasMatch(value.trim())
+                              ? 'Enter a valid email address'
+                              : null,
                       decoration: const InputDecoration(
                         labelText: 'Email address',
                         hintText: 'name@example.com',
@@ -254,8 +263,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                         foregroundColor: AppColors.text,
-                        side:
-                            const BorderSide(color: AppColors.border, width: 1.4),
+                        side: const BorderSide(
+                            color: AppColors.border, width: 1.4),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(999)),
                       ),
@@ -287,7 +296,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         const Text("Don't have an account?",
                             style: TextStyle(color: AppColors.textMuted)),
                         TextButton(
-                          onPressed: busy ? null : () => context.go('/register'),
+                          onPressed:
+                              busy ? null : () => context.go('/register'),
                           child: const Text('Create Account',
                               style: TextStyle(fontWeight: FontWeight.w800)),
                         ),

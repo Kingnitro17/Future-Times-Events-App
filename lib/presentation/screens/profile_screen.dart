@@ -14,7 +14,9 @@ import '../../data/repositories/discovery_preferences_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../data/models/organizer_application.dart';
+import '../../data/models/attendance_group.dart';
 import '../../data/repositories/organizer_repository.dart';
+import '../../data/repositories/attendance_group_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -25,6 +27,7 @@ class ProfileScreen extends StatefulWidget {
     required this.socialRepository,
     required this.notificationRepository,
     required this.organizerRepository,
+    required this.groupRepository,
   });
 
   final AuthRepository authRepository;
@@ -33,6 +36,7 @@ class ProfileScreen extends StatefulWidget {
   final SocialRepository socialRepository;
   final NotificationRepository notificationRepository;
   final OrganizerRepository organizerRepository;
+  final AttendanceGroupRepository groupRepository;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -666,6 +670,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── 2. REAL SIGNED-IN PROFILE ───────────────────────────────────────────────
 
+  Widget _groupInvitesRow() => FutureBuilder<List<GroupInvite>>(
+        future: widget.groupRepository.getMyPendingInvites(),
+        builder: (context, snapshot) {
+          final count = snapshot.data?.length ?? 0;
+          return _buildRow(
+            Icons.mail_outline_rounded,
+            'Group invites',
+            count == 0
+                ? 'No pending group invites'
+                : '$count pending invite${count == 1 ? '' : 's'}',
+            () => context.push('/groups/invites'),
+            trailing: count == 0
+                ? null
+                : CircleAvatar(
+                    radius: 12,
+                    backgroundColor: AppColors.pink,
+                    child: Text('$count',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800)),
+                  ),
+          );
+        },
+      );
+
   Widget _buildSignedIn(AuthRepository auth) {
     final currentUser = Supabase.instance.client.auth.currentUser ?? auth.user;
     final metadata = currentUser?.userMetadata ?? const <String, dynamic>{};
@@ -798,6 +828,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'Saved Events',
               'Your shortlist for what happens next',
               () => context.push('/saved')),
+          _groupInvitesRow(),
         ]),
 
         const SizedBox(height: 20),
@@ -934,7 +965,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildRow(
       IconData icon, String title, String subtitle, VoidCallback onTap,
-      {bool isDestructive = false}) {
+      {bool isDestructive = false, Widget? trailing}) {
     return ListTile(
       onTap: onTap,
       leading: Container(
@@ -959,8 +990,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       subtitle: Text(subtitle,
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-      trailing: Icon(Icons.chevron_right_rounded,
-          color: isDestructive ? Colors.red : AppColors.textMuted),
+      trailing: trailing ??
+          Icon(Icons.chevron_right_rounded,
+              color: isDestructive ? Colors.red : AppColors.textMuted),
     );
   }
 

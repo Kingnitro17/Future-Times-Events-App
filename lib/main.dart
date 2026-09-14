@@ -15,6 +15,7 @@ import 'data/repositories/ticket_repository.dart';
 import 'data/repositories/payment_repository.dart';
 import 'data/repositories/wallet_repository.dart';
 import 'data/repositories/ride_repository.dart';
+import 'data/repositories/attendance_group_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'data/repositories/organizer_repository.dart';
 import 'data/repositories/admin_repository.dart';
@@ -58,6 +59,7 @@ void main() async {
   final ticketRepository = TicketRepository(authRepository: authRepository);
   final paymentRepository = PaymentRepository();
   final rideRepository = RideRepository();
+  final groupRepository = AttendanceGroupRepository();
   final walletRepository = WalletRepository(
     authRepository: authRepository,
     ticketRepository: ticketRepository,
@@ -101,6 +103,7 @@ void main() async {
     ticketRepository: ticketRepository,
     walletRepository: walletRepository,
     rideRepository: rideRepository,
+    groupRepository: groupRepository,
     adminRepository: adminRepository,
   ));
 }
@@ -161,6 +164,7 @@ class FutureTimesApp extends StatefulWidget {
     required this.ticketRepository,
     required this.walletRepository,
     required this.rideRepository,
+    required this.groupRepository,
     required this.adminRepository,
   });
 
@@ -175,6 +179,7 @@ class FutureTimesApp extends StatefulWidget {
   final TicketRepository ticketRepository;
   final WalletRepository walletRepository;
   final RideRepository rideRepository;
+  final AttendanceGroupRepository groupRepository;
   final AdminRepository adminRepository;
 
   @override
@@ -199,6 +204,7 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       ticketRepository: widget.ticketRepository,
       walletRepository: widget.walletRepository,
       rideRepository: widget.rideRepository,
+      groupRepository: widget.groupRepository,
       adminRepository: widget.adminRepository,
     );
   }
