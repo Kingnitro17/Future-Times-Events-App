@@ -11,6 +11,13 @@ import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../data/repositories/organizer_repository.dart';
+import '../../presentation/screens/organizer/organizer_home_screen.dart';
+import '../../presentation/screens/organizer/organizer_events_screen.dart';
+import '../../presentation/screens/organizer/edit_event_screen.dart';
+import '../../presentation/screens/organizer/organizer_event_detail_screen.dart';
+import '../../presentation/screens/organizer/scan_ticket_screen.dart';
+import '../../data/repositories/ticket_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
@@ -266,198 +273,253 @@ GoRouter buildAppRouter({
   required SavedEventsRepository savedEventsRepository,
   required DiscoveryPreferencesRepository discoveryPreferences,
   required NotificationRepository notificationRepository,
+  required OrganizerRepository organizerRepository,
+  required TicketRepository ticketRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   return GoRouter(
-      navigatorKey: rootKey,
-      refreshListenable: authRepository,
-      initialLocation: '/launch',
-      redirect: (context, state) {
-        final location = state.uri.path;
-        final isAuthRoute = location == '/login' || location == '/register';
+    navigatorKey: rootKey,
+    refreshListenable: authRepository,
+    initialLocation: '/launch',
+    redirect: (context, state) {
+      final location = state.uri.path;
+      final isAuthRoute = location == '/login' || location == '/register';
 
-        // Keep the launch animation visible while the initial session is
-        // resolving. AuthRepository is initialized before the app starts, but
-        // this also prevents a transient redirect during deep-link startup.
-        if (authRepository.isLoading || location == '/launch') return null;
+      // Keep the launch animation visible while the initial session is
+      // resolving. AuthRepository is initialized before the app starts, but
+      // this also prevents a transient redirect during deep-link startup.
+      if (authRepository.isLoading || location == '/launch') return null;
 
-        if (!authRepository.isSignedIn && !isAuthRoute) {
-          return '/login';
-        }
-        if (authRepository.isSignedIn && isAuthRoute) {
-          return '/';
-        }
-        return null;
-      },
-      errorBuilder: (context, state) => Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: AppBar(title: const Text('Page not found')),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'This screen could not be opened.\n${state.error ?? state.uri}',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
+      if (!authRepository.isSignedIn && !isAuthRoute) {
+        return '/login';
+      }
+      if (authRepository.isSignedIn && isAuthRoute) {
+        return '/';
+      }
+      return null;
+    },
+    errorBuilder: (context, state) => Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Page not found')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'This screen could not be opened.\n${state.error ?? state.uri}',
+            textAlign: TextAlign.center,
           ),
-      routes: [
-        GoRoute(
-          path: '/launch',
-          builder: (_, __) => LaunchScreen(showOnboarding: showOnboarding),
         ),
-        GoRoute(
-          path: '/onboarding',
-          builder: (_, __) =>
-              OnboardingScreen(preferencesRepository: discoveryPreferences),
+      ),
+    ),
+    routes: [
+      GoRoute(
+        path: '/launch',
+        builder: (_, __) => LaunchScreen(showOnboarding: showOnboarding),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) =>
+            OnboardingScreen(preferencesRepository: discoveryPreferences),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (_, __) => LoginScreen(authRepository: authRepository),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (_, __) => RegisterScreen(authRepository: authRepository),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => BlocProvider(
+          create: (_) => EventBloc(repository: eventRepository),
+          child: AppShell(navigationShell: navigationShell),
         ),
-        GoRoute(
-          path: '/login',
-          builder: (_, __) => LoginScreen(authRepository: authRepository),
-        ),
-        GoRoute(
-          path: '/register',
-          builder: (_, __) => RegisterScreen(authRepository: authRepository),
-        ),
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) => BlocProvider(
-            create: (_) => EventBloc(repository: eventRepository),
-            child: AppShell(navigationShell: navigationShell),
-          ),
-          branches: [
-            StatefulShellBranch(routes: [
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/',
+                pageBuilder: (_, __) => NoTransitionPage(
+                    child: HomeScreen(
+                        authRepository: authRepository,
+                        savedEventsRepository: savedEventsRepository,
+                        preferencesRepository: discoveryPreferences,
+                        socialRepository: socialRepository)))
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/tickets',
+                pageBuilder: (_, __) => NoTransitionPage(
+                    child: TicketsScreen(authRepository: authRepository)))
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/explore',
+                pageBuilder: (_, __) => NoTransitionPage(
+                    child: ExploreScreen(
+                        savedEventsRepository: savedEventsRepository,
+                        preferencesRepository: discoveryPreferences)))
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/map',
+                pageBuilder: (_, __) => NoTransitionPage(
+                    child: MapDiscoveryScreen(
+                        savedEventsRepository: savedEventsRepository)))
+          ]),
+          StatefulShellBranch(
+            navigatorKey: GlobalKey<NavigatorState>(debugLabel: 'profile'),
+            routes: [
               GoRoute(
-                  path: '/',
-                  pageBuilder: (_, __) => NoTransitionPage(
-                      child: HomeScreen(
-                          authRepository: authRepository,
-                          savedEventsRepository: savedEventsRepository,
-                          preferencesRepository: discoveryPreferences,
-                          socialRepository: socialRepository)))
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: '/tickets',
-                  pageBuilder: (_, __) => NoTransitionPage(
-                      child: TicketsScreen(authRepository: authRepository)))
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: '/explore',
-                  pageBuilder: (_, __) => NoTransitionPage(
-                      child: ExploreScreen(
-                          savedEventsRepository: savedEventsRepository,
-                          preferencesRepository: discoveryPreferences)))
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(
-                  path: '/map',
-                  pageBuilder: (_, __) => NoTransitionPage(
-                      child: MapDiscoveryScreen(
-                          savedEventsRepository: savedEventsRepository)))
-            ]),
-            StatefulShellBranch(
-              navigatorKey: GlobalKey<NavigatorState>(debugLabel: 'profile'),
-              routes: [
-                GoRoute(
-                  path: '/profile',
-                  name: 'profile',
-                  pageBuilder: (context, state) => NoTransitionPage(
-                    key: state.pageKey,
-                    child: ProfileScreen(
-                      authRepository: authRepository,
-                      savedEventsRepository: savedEventsRepository,
-                      preferencesRepository: discoveryPreferences,
-                      socialRepository: socialRepository,
-                      notificationRepository: notificationRepository,
-                    ),
+                path: '/profile',
+                name: 'profile',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  key: state.pageKey,
+                  child: ProfileScreen(
+                    authRepository: authRepository,
+                    savedEventsRepository: savedEventsRepository,
+                    preferencesRepository: discoveryPreferences,
+                    socialRepository: socialRepository,
+                    notificationRepository: notificationRepository,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/saved',
+        builder: (_, __) => SavedEventsScreen(
+          eventRepository: eventRepository,
+          savedEventsRepository: savedEventsRepository,
         ),
-        GoRoute(
-          path: '/saved',
-          builder: (_, __) => SavedEventsScreen(
+      ),
+      GoRoute(
+        path: '/friends',
+        builder: (_, __) => FriendsScreen(socialRepository: socialRepository),
+      ),
+      GoRoute(
+        path: '/organizers',
+        builder: (_, __) =>
+            OrganizersScreen(socialRepository: socialRepository),
+      ),
+      GoRoute(
+        path: '/organizer/:id',
+        builder: (_, state) {
+          final org = state.extra is OrganizerModel
+              ? state.extra as OrganizerModel
+              : OrganizerModel(
+                  id: state.pathParameters['id'] ?? '',
+                  name: 'Organizer',
+                );
+          return OrganizerDetailScreen(
+            organizer: org,
+            socialRepository: socialRepository,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/user/:id',
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => UserProfileScreen(
+          userId: state.pathParameters['id']!,
+          authRepository: authRepository,
+          socialRepository: socialRepository,
+          eventRepository: eventRepository,
+          initialData: state.extra,
+        ),
+      ),
+      // Keep old links working without overlapping the Profile tab route.
+      GoRoute(
+        path: '/profile/:id',
+        redirect: (context, state) => '/user/${state.pathParameters['id']}',
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) =>
+            NotificationsScreen(notificationRepository: notificationRepository),
+      ),
+      GoRoute(
+        path: '/organizer',
+        builder: (_, __) => OrganizerHomeScreen(
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events',
+        builder: (_, __) => OrganizerEventsScreen(
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/new',
+        builder: (_, __) => EditEventScreen(
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/edit',
+        builder: (_, state) => EditEventScreen(
+          eventId: state.pathParameters['id'],
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id',
+        builder: (_, state) => OrganizerEventDetailScreen(
+          eventId: state.pathParameters['id']!,
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/scan',
+        redirect: (context, state) {
+          final role = authRepository.currentRole;
+          if (role != 'organizer' && role != 'super_admin') {
+            return '/profile';
+          }
+          return null;
+        },
+        builder: (_, state) => ScanTicketScreen(
+          authRepository: authRepository,
+          organizerRepository: organizerRepository,
+          ticketRepository: ticketRepository,
+          initialEventId: state.extra is String ? state.extra as String : null,
+        ),
+      ),
+      GoRoute(
+        path: '/calendar',
+        builder: (_, __) => BlocProvider(
+          create: (_) => EventBloc(repository: eventRepository),
+          child: const CalendarScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/event/:id',
+        builder: (context, state) {
+          return _EventDetailsLoader(
+            eventId: state.pathParameters['id']!,
+            summary:
+                state.extra is EventModel ? state.extra! as EventModel : null,
             eventRepository: eventRepository,
             savedEventsRepository: savedEventsRepository,
-          ),
-        ),
-        GoRoute(
-          path: '/friends',
-          builder: (_, __) => FriendsScreen(socialRepository: socialRepository),
-        ),
-        GoRoute(
-          path: '/organizers',
-          builder: (_, __) =>
-              OrganizersScreen(socialRepository: socialRepository),
-        ),
-        GoRoute(
-          path: '/organizer/:id',
-          builder: (_, state) {
-            final org = state.extra is OrganizerModel
-                ? state.extra as OrganizerModel
-                : OrganizerModel(
-                    id: state.pathParameters['id'] ?? '',
-                    name: 'Organizer',
-                  );
-            return OrganizerDetailScreen(
-              organizer: org,
-              socialRepository: socialRepository,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/user/:id',
-          parentNavigatorKey: rootKey,
-          builder: (context, state) => UserProfileScreen(
-            userId: state.pathParameters['id']!,
             authRepository: authRepository,
             socialRepository: socialRepository,
-            eventRepository: eventRepository,
-            initialData: state.extra,
-          ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/event/:id/map',
+        builder: (_, state) => BlocProvider(
+          create: (_) => SocialBloc(socialRepository: socialRepository),
+          child: EventMapScreen(event: state.extra as EventModel),
         ),
-        // Keep old links working without overlapping the Profile tab route.
-        GoRoute(
-          path: '/profile/:id',
-          redirect: (context, state) => '/user/${state.pathParameters['id']}',
-        ),
-        GoRoute(
-          path: '/notifications',
-          builder: (_, __) => NotificationsScreen(
-              notificationRepository: notificationRepository),
-        ),
-        GoRoute(
-          path: '/calendar',
-          builder: (_, __) => BlocProvider(
-            create: (_) => EventBloc(repository: eventRepository),
-            child: const CalendarScreen(),
-          ),
-        ),
-        GoRoute(
-          path: '/event/:id',
-          builder: (context, state) {
-            return _EventDetailsLoader(
-              eventId: state.pathParameters['id']!,
-              summary:
-                  state.extra is EventModel ? state.extra! as EventModel : null,
-              eventRepository: eventRepository,
-              savedEventsRepository: savedEventsRepository,
-              authRepository: authRepository,
-              socialRepository: socialRepository,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/event/:id/map',
-          builder: (_, state) => BlocProvider(
-            create: (_) => SocialBloc(socialRepository: socialRepository),
-            child: EventMapScreen(event: state.extra as EventModel),
-          ),
-        ),
-      ],
-    );
+      ),
+    ],
+  );
 }

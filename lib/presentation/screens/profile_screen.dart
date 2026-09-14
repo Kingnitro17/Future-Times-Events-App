@@ -124,8 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final profileError = auth.profileError;
 
       debugPrint('[PROFILE] build() called');
-      debugPrint(
-          '[PROFILE] currentUser = ${user?.id}');
+      debugPrint('[PROFILE] currentUser = ${user?.id}');
       debugPrint(
           '[PROFILE] session = ${Supabase.instance.client.auth.currentSession?.user.id}');
       debugPrint('[PROFILE] isLoading = $profileLoading');
@@ -158,9 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           user.userMetadata?['full_name']?.toString() ??
           user.email?.split('@').first ??
           'User';
-      final email = profile?['email']?.toString() ??
-          user.email ??
-          'no-email';
+      final email = profile?['email']?.toString() ?? user.email ?? 'no-email';
       final avatarUrl = profile?['avatar_url']?.toString();
       final initials = profile?['initials']?.toString() ??
           (name.trim().isEmpty ? 'U' : name.trim()[0].toUpperCase());
@@ -259,8 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppColors.purple,
                         fontWeight: FontWeight.w700,
                       ),
-                      backgroundColor:
-                          AppColors.purple.withValues(alpha: 0.1),
+                      backgroundColor: AppColors.purple.withValues(alpha: 0.1),
                       side: BorderSide.none,
                     ),
                   ],
@@ -297,6 +293,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Change password and manage access',
                 () => _showSecurityMessage(),
               ),
+              if (auth.currentRole == 'organizer' ||
+                  auth.currentRole == 'super_admin')
+                _buildRow(
+                  Icons.dashboard_customize_outlined,
+                  'Organizer',
+                  'Manage your events and tickets',
+                  () => context.push('/organizer'),
+                ),
             ]),
             const SizedBox(height: 20),
             _buildGroup([
@@ -398,13 +402,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatProfileAmount(Object value) {
     final amount = num.tryParse(value.toString()) ?? 0;
-    return amount % 1 == 0 ? amount.toInt().toString() : amount.toStringAsFixed(2);
+    return amount % 1 == 0
+        ? amount.toInt().toString()
+        : amount.toStringAsFixed(2);
   }
 
   void _showSecurityMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Password changes are available from your account email.'),
+        content:
+            Text('Password changes are available from your account email.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -611,8 +618,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── 2. REAL SIGNED-IN PROFILE ───────────────────────────────────────────────
 
   Widget _buildSignedIn(AuthRepository auth) {
-    final currentUser =
-        Supabase.instance.client.auth.currentUser ?? auth.user;
+    final currentUser = Supabase.instance.client.auth.currentUser ?? auth.user;
     final metadata = currentUser?.userMetadata ?? const <String, dynamic>{};
     final email = currentUser?.email ?? auth.displayEmail;
     final name = auth.profile?['display_name']?.toString() ??

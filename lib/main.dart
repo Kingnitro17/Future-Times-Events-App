@@ -13,6 +13,7 @@ import 'data/repositories/saved_events_repository.dart';
 import 'data/repositories/discovery_preferences_repository.dart';
 import 'data/repositories/ticket_repository.dart';
 import 'data/repositories/notification_repository.dart';
+import 'data/repositories/organizer_repository.dart';
 import 'data/services/realtime_service.dart';
 
 void main() async {
@@ -52,6 +53,8 @@ void main() async {
       SavedEventsRepository(authRepository: authRepository);
   final ticketRepository = TicketRepository(authRepository: authRepository);
   final notificationRepository = NotificationRepository();
+  final organizerRepository =
+      OrganizerRepository(authRepository: authRepository);
 
   if (authRepository.isSignedIn) {
     await savedEventsRepository.load();
@@ -81,6 +84,8 @@ void main() async {
     savedEventsRepository: savedEventsRepository,
     discoveryPreferences: discoveryPreferences,
     notificationRepository: notificationRepository,
+    organizerRepository: organizerRepository,
+    ticketRepository: ticketRepository,
   ));
 }
 
@@ -136,6 +141,8 @@ class FutureTimesApp extends StatefulWidget {
     required this.savedEventsRepository,
     required this.discoveryPreferences,
     required this.notificationRepository,
+    required this.organizerRepository,
+    required this.ticketRepository,
   });
 
   final EventRepository eventRepository;
@@ -145,6 +152,8 @@ class FutureTimesApp extends StatefulWidget {
   final SavedEventsRepository savedEventsRepository;
   final DiscoveryPreferencesRepository discoveryPreferences;
   final NotificationRepository notificationRepository;
+  final OrganizerRepository organizerRepository;
+  final TicketRepository ticketRepository;
 
   @override
   State<FutureTimesApp> createState() => _FutureTimesAppState();
@@ -164,6 +173,8 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       savedEventsRepository: widget.savedEventsRepository,
       discoveryPreferences: widget.discoveryPreferences,
       notificationRepository: widget.notificationRepository,
+      organizerRepository: widget.organizerRepository,
+      ticketRepository: widget.ticketRepository,
     );
   }
 

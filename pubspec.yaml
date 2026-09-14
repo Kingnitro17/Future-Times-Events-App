@@ -24,6 +24,7 @@ dependencies:
 
   # Image Loading
   cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
 
   # Navigation
   go_router: ^14.6.2
@@ -45,6 +46,7 @@ dependencies:
   geolocator: 14.0.3
   url_launcher: 6.3.2
   qr_flutter: 4.1.0
+  mobile_scanner: ^7.4.2
   share_plus: ^13.0.0
 
 dev_dependencies:
@@ -64,4 +66,3 @@ flutter:
 
 dependency_overrides:
   path_provider_foundation: 2.5.1
-
