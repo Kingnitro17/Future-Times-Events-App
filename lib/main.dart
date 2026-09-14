@@ -12,6 +12,8 @@ import 'data/repositories/social_repository.dart';
 import 'data/repositories/saved_events_repository.dart';
 import 'data/repositories/discovery_preferences_repository.dart';
 import 'data/repositories/ticket_repository.dart';
+import 'data/repositories/payment_repository.dart';
+import 'data/repositories/wallet_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'data/repositories/organizer_repository.dart';
 import 'data/repositories/admin_repository.dart';
@@ -53,6 +55,12 @@ void main() async {
   final savedEventsRepository =
       SavedEventsRepository(authRepository: authRepository);
   final ticketRepository = TicketRepository(authRepository: authRepository);
+  final paymentRepository = PaymentRepository();
+  final walletRepository = WalletRepository(
+    authRepository: authRepository,
+    ticketRepository: ticketRepository,
+    paymentRepository: paymentRepository,
+  );
   final notificationRepository = NotificationRepository();
   final organizerRepository =
       OrganizerRepository(authRepository: authRepository);
@@ -88,6 +96,7 @@ void main() async {
     notificationRepository: notificationRepository,
     organizerRepository: organizerRepository,
     ticketRepository: ticketRepository,
+    walletRepository: walletRepository,
     adminRepository: adminRepository,
   ));
 }
@@ -146,6 +155,7 @@ class FutureTimesApp extends StatefulWidget {
     required this.notificationRepository,
     required this.organizerRepository,
     required this.ticketRepository,
+    required this.walletRepository,
     required this.adminRepository,
   });
 
@@ -158,6 +168,7 @@ class FutureTimesApp extends StatefulWidget {
   final NotificationRepository notificationRepository;
   final OrganizerRepository organizerRepository;
   final TicketRepository ticketRepository;
+  final WalletRepository walletRepository;
   final AdminRepository adminRepository;
 
   @override
@@ -180,6 +191,7 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       notificationRepository: widget.notificationRepository,
       organizerRepository: widget.organizerRepository,
       ticketRepository: widget.ticketRepository,
+      walletRepository: widget.walletRepository,
       adminRepository: widget.adminRepository,
     );
   }

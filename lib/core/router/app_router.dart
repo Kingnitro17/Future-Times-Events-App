@@ -19,6 +19,8 @@ import '../../presentation/screens/organizer/organizer_event_detail_screen.dart'
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
+import '../../data/repositories/wallet_repository.dart';
+import '../../presentation/screens/wallet_screen.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../presentation/screens/admin/admin_home_screen.dart';
 import '../../presentation/screens/admin/admin_reviews_screen.dart';
@@ -74,7 +76,7 @@ class _FutureTimesNavigation extends StatelessWidget {
   static const _items = [
     ('Home', Icons.home_outlined, Icons.home_rounded),
     (
-      'Tickets',
+      'Wallet',
       Icons.confirmation_number_outlined,
       Icons.confirmation_number_rounded
     ),
@@ -282,6 +284,7 @@ GoRouter buildAppRouter({
   required NotificationRepository notificationRepository,
   required OrganizerRepository organizerRepository,
   required TicketRepository ticketRepository,
+  required WalletRepository walletRepository,
   required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -355,9 +358,12 @@ GoRouter buildAppRouter({
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/tickets',
+                path: '/wallet',
                 pageBuilder: (_, __) => NoTransitionPage(
-                    child: TicketsScreen(authRepository: authRepository)))
+                        child: WalletScreen(
+                      authRepository: authRepository,
+                      walletRepository: walletRepository,
+                    )))
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
@@ -395,6 +401,10 @@ GoRouter buildAppRouter({
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/tickets',
+        builder: (_, __) => TicketsScreen(authRepository: authRepository),
       ),
       GoRoute(
         path: '/saved',
