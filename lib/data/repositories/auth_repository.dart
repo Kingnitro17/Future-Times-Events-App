@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_failure.dart';
+import '../../services/roles/role_service.dart';
 
 class AuthRepository extends ChangeNotifier {
   AuthRepository({SupabaseClient? client})
@@ -20,6 +21,8 @@ class AuthRepository extends ChangeNotifier {
   bool get profileLoading => _profileLoading;
   bool get isSignedIn => _user != null;
   String get displayEmail => _user?.email ?? '';
+  String? get currentRole =>
+      _user == null ? null : RoleService.instance.cachedRole(_user!.id);
 
   Future<void> initialize() async {
     _subscription = _client.auth.onAuthStateChange.listen(
@@ -114,6 +117,7 @@ class AuthRepository extends ChangeNotifier {
     // Profile enrichment has settled, so release the Profile screen loading state
     // and let it paint the signed-in profile instead of the shimmer.
     _profileLoading = false;
+    RoleService().setRole(_user!.id, _profile?['role']?.toString() ?? 'user');
     notifyListeners();
   }
 
@@ -189,6 +193,7 @@ class AuthRepository extends ChangeNotifier {
       throw _mapAuthError(error);
     }
     await _synchronize(null);
+    RoleService().clear();
   }
 
   Future<void> updateDisplayName(String displayName) async {
