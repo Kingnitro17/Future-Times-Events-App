@@ -17,6 +17,7 @@ class WalletItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(item.statusLabel);
+    final order = item is WalletItemOrder ? item as WalletItemOrder : null;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -51,6 +52,18 @@ class WalletItemCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: AppColors.textMuted)),
+                    if (order != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${order.itemCount} '
+                        '${order.itemCount == 1 ? 'item' : 'items'} · '
+                        '${order.currency} ${order.total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -108,8 +121,14 @@ class WalletItemCard extends StatelessWidget {
     final value = status.toLowerCase();
     if (value.contains('paid') ||
         value.contains('active') ||
-        value.contains('issued')) {
+        value.contains('issued') ||
+        value.contains('ready') ||
+        value.contains('served') ||
+        value.contains('complete')) {
       return AppColors.success;
+    }
+    if (value.contains('preparing')) {
+      return AppColors.purple;
     }
     if (value.contains('used') || value.contains('checked')) {
       return AppColors.purple;

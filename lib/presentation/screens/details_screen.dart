@@ -53,6 +53,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   int? _friendsGoingCount;
   bool _suggestionDismissed = false;
   late Future<bool> _hasTablesFuture;
+  late Future<bool> _hasMenuFuture;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -72,6 +73,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
     _hasTablesFuture = widget.venueCommerceRepository
         .getAvailableTables(widget.event.id)
         .then((tables) => tables.isNotEmpty);
+    _hasMenuFuture = widget.venueCommerceRepository
+        .getEventMenu(widget.event.id)
+        .then((items) => items.any((item) => item.isAvailable));
   }
 
   Future<void> _loadGroupSuggestion() async {
@@ -200,6 +204,15 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 future: _hasTablesFuture,
                 builder: (context, snapshot) => snapshot.data == true
                     ? _reserveTableCard()
+                    : const SizedBox.shrink(),
+              ),
+              FutureBuilder<bool>(
+                future: _hasMenuFuture,
+                builder: (context, snapshot) => snapshot.data == true
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: _orderFoodCard(),
+                      )
                     : const SizedBox.shrink(),
               ),
               const SizedBox(height: 28),
@@ -644,6 +657,17 @@ class _DetailsScreenState extends State<DetailsScreen> {
           subtitle: const Text('Choose a table and pay securely'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.push('/events/${widget.event.id}/tables'),
+        ),
+      );
+
+  Widget _orderFoodCard() => Card(
+        child: ListTile(
+          leading: const CircleAvatar(child: Icon(Icons.restaurant_outlined)),
+          title: const Text('Order food and drinks',
+              style: TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: const Text('Browse the menu and order to your table'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/events/${widget.event.id}/menu'),
         ),
       );
 

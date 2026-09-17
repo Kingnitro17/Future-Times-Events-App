@@ -1,4 +1,5 @@
 import 'payment_transaction.dart';
+import 'venue_order.dart';
 import 'wallet_ticket.dart';
 import 'ride.dart';
 import 'table_reservation.dart';
@@ -38,6 +39,8 @@ sealed class WalletItem {
 
   factory WalletItem.fromReservation(TableReservation reservation) =
       WalletItemReservation.fromReservation;
+
+  factory WalletItem.fromOrder(VenueOrder order) = WalletItemOrder.fromOrder;
 }
 
 final class WalletItemTicket extends WalletItem {
@@ -146,7 +149,43 @@ final class WalletItemOrder extends WalletItem {
     super.eventId,
     super.qrPayload,
     super.deepLink,
+    required this.total,
+    required this.currency,
+    required this.itemCount,
+    this.tableReservationId,
   }) : super(kind: 'order');
+
+  final double total;
+  final String currency;
+  final int itemCount;
+  final String? tableReservationId;
+
+  factory WalletItemOrder.fromOrder(VenueOrder order) {
+    final itemCount =
+        order.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    final preview = order.items.take(2).map((item) => item.itemName).join(', ');
+    final remaining = order.items.length - 2;
+    final title = (order.eventTitle ?? '').trim();
+    final subtitle = preview.isEmpty
+        ? '${order.currency} ${order.total.toStringAsFixed(2)}'
+        : remaining > 0
+            ? '$preview +$remaining more'
+            : preview;
+    return WalletItemOrder(
+      id: order.id,
+      title: title.isEmpty ? 'Venue order' : title,
+      subtitle: subtitle,
+      statusLabel: order.status.replaceAll('_', ' '),
+      createdAt: order.createdAt,
+      eventId: order.eventId,
+      qrPayload: order.qrCode.trim().isEmpty ? null : order.qrCode,
+      deepLink: '/wallet',
+      total: order.total,
+      currency: order.currency,
+      itemCount: itemCount,
+      tableReservationId: order.tableReservationId,
+    );
+  }
 }
 
 final class WalletItemPayment extends WalletItem {

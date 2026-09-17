@@ -20,6 +20,7 @@ import '../../presentation/screens/organizer/venue_setup_screen.dart';
 import '../../presentation/screens/organizer/edit_table_screen.dart';
 import '../../presentation/screens/organizer/edit_menu_item_screen.dart';
 import '../../presentation/screens/venue/table_picker_screen.dart';
+import '../../presentation/screens/venue/menu_order_screen.dart';
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
@@ -726,6 +727,14 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/events/:id/tables',
         builder: (_, state) => TablePickerScreen(
+          eventId: state.pathParameters['id']!,
+          venueRepository: venueCommerceRepository,
+          paymentRepository: paymentRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/events/:id/menu',
+        builder: (_, state) => MenuOrderScreen(
           eventId: state.pathParameters['id']!,
           venueRepository: venueCommerceRepository,
           paymentRepository: paymentRepository,

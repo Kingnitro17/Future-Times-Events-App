@@ -37,6 +37,7 @@ class WalletRepository {
     final payments = await _payments.getMyTransactions(limit: 20);
     final rides = await _rides.getMyRides(limit: 20);
     final reservations = await _venueCommerce.getMyReservations(limit: 20);
+    final orders = await _venueCommerce.getMyOrders(limit: 20);
     final items = <WalletItem>[
       ...tickets.map(WalletItem.fromTicket),
       ...payments
@@ -44,6 +45,7 @@ class WalletRepository {
           .map(WalletItem.fromPayment),
       ...rides.map(WalletItem.fromRide),
       ...reservations.map(WalletItem.fromReservation),
+      ...orders.map(WalletItem.fromOrder),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items.take(limit).toList(growable: false);
   }
@@ -123,6 +125,17 @@ class WalletRepository {
               event: PostgresChangeEvent.all,
               schema: 'public',
               table: 'table_reservations',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'user_id',
+                value: userId,
+              ),
+              callback: (_) => scheduleRefresh(),
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'venue_orders',
               filter: PostgresChangeFilter(
                 type: PostgresChangeFilterType.eq,
                 column: 'user_id',
