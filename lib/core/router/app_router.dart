@@ -22,6 +22,7 @@ import '../../presentation/screens/organizer/edit_menu_item_screen.dart';
 import '../../presentation/screens/venue/table_picker_screen.dart';
 import '../../presentation/screens/venue/menu_order_screen.dart';
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
+import '../../presentation/screens/organizer/venue_fulfillment_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
@@ -676,6 +677,21 @@ GoRouter buildAppRouter({
           venueRepository: venueCommerceRepository,
           organizerRepository: organizerRepository,
           item: state.extra is MenuItem ? state.extra as MenuItem : null,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/fulfill',
+        redirect: (context, state) {
+          final role = authRepository.currentRole;
+          return role == 'organizer' || role == 'super_admin'
+              ? null
+              : '/profile';
+        },
+        builder: (_, state) => VenueFulfillmentScreen(
+          eventId: state.pathParameters['id']!,
+          organizerRepository: organizerRepository,
+          ticketRepository: ticketRepository,
+          venueRepository: venueCommerceRepository,
         ),
       ),
       GoRoute(

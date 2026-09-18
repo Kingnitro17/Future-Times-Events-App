@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/menu_item.dart';
@@ -359,5 +360,136 @@ class VenueCommerceRepository {
       },
     );
     return controller.stream;
+  }
+
+  /// Every reservation for an event. Staff-facing, so it relies on the owner
+  /// read policy instead of filtering by the signed-in user.
+  Future<List<TableReservation>> getEventReservations(
+    String eventId, {
+    String? statusFilter,
+  }) async {
+    var query = _client
+        .from('table_reservations')
+        .select('*, tables:table_id(name)')
+        .eq('event_id', eventId);
+    if (statusFilter != null && statusFilter.isNotEmpty) {
+      query = query.eq('status', statusFilter);
+    }
+    final rows = await query.order('reserved_at', ascending: true);
+    return rows.map(TableReservation.fromSupabase).toList(growable: false);
+  }
+
+  /// Live staff view of every reservation for an event.
+  Stream<List<TableReservation>> watchEventReservations(String eventId) {
+    late StreamController<List<TableReservation>> controller;
+    RealtimeChannel? channel;
+    var disposed = false;
+
+    Future<void> refresh() async {
+      try {
+        final reservations = await getEventReservations(eventId);
+        if (!disposed && !controller.isClosed) controller.add(reservations);
+      } catch (error, stackTrace) {
+        if (!disposed && !controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    controller = StreamController<List<TableReservation>>(
+      onListen: () {
+        refresh();
+        channel = _client
+            .channel('public:event_reservations:$eventId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'table_reservations',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'event_id',
+                value: eventId,
+              ),
+              callback: (_) => refresh(),
+            );
+        channel?.subscribe();
+      },
+      onCancel: () async {
+        disposed = true;
+        if (channel != null) await _client.removeChannel(channel!);
+      },
+    );
+    return controller.stream;
+  }
+
+  /// Guest display names for a set of user ids. Mirrors the profiles lookup in
+  /// OrganizerRepository.getEventAttendees. A failed lookup degrades to an
+  /// empty map so the fulfillment board still renders.
+  Future<Map<String, String>> getGuestNames(Iterable<String> userIds) async {
+    final ids = userIds.where((id) => id.trim().isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return const <String, String>{};
+    try {
+      final rows = await _client
+          .from('profiles')
+          .select('id,display_name,email')
+          .inFilter('id', ids);
+      return {
+        for (final row in rows.cast<Map<String, dynamic>>())
+          row['id'].toString(): _displayName(row),
+      };
+    } catch (error) {
+      if (kDebugMode) debugPrint('[venue] guest lookup failed: $error');
+      return const <String, String>{};
+    }
+  }
+
+  static String _displayName(Map<String, dynamic> row) {
+    final name = row['display_name']?.toString().trim() ?? '';
+    if (name.isNotEmpty) return name;
+    final email = row['email']?.toString().trim() ?? '';
+    return email.isEmpty ? 'Guest' : email;
+  }
+
+  /// Seats a party: the reservation moves to 'used' and its table to
+  /// 'occupied'. There is no seating RPC yet, so the two writes run in order.
+  Future<void> seatReservation({
+    required String reservationId,
+    required String tableId,
+  }) async {
+    await _client
+        .from('table_reservations')
+        .update({'status': 'used'}).eq('id', reservationId);
+    await _client
+        .from('venue_tables')
+        .update({'status': 'occupied'}).eq('id', tableId);
+  }
+
+  /// Frees a table for the next party. The reservation keeps its 'used' history.
+  Future<void> freeTable(String tableId) async {
+    await _client
+        .from('venue_tables')
+        .update({'status': 'available'}).eq('id', tableId);
+  }
+
+  Future<TableReservation?> getReservationByQr(String qrCode) async {
+    final clean = qrCode.trim();
+    if (clean.isEmpty) return null;
+    final row = await _client
+        .from('table_reservations')
+        .select('*, tables:table_id(name)')
+        .eq('qr_code', clean)
+        .maybeSingle();
+    return row == null ? null : TableReservation.fromSupabase(row);
+  }
+
+  Future<VenueOrder?> getOrderByQr(String qrCode) async {
+    final clean = qrCode.trim();
+    if (clean.isEmpty) return null;
+    final row = await _client
+        .from('venue_orders')
+        .select('*, items:venue_order_items(*)')
+        .eq('qr_code', clean)
+        .maybeSingle();
+    return row == null ? null : VenueOrder.fromSupabase(row);
   }
 }

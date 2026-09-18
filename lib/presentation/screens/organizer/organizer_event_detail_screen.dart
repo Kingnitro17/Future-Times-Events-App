@@ -214,6 +214,12 @@ class _Overview extends StatelessWidget {
               icon: const Icon(Icons.restaurant_menu_outlined),
               label: const Text('Venue Setup'),
             ),
+            FilledButton.icon(
+              onPressed: () =>
+                  context.push('/organizer/events/${event['id']}/fulfill'),
+              icon: const Icon(Icons.room_service_outlined),
+              label: const Text('Fulfillment'),
+            ),
           ],
         ),
         const SizedBox(height: 20),
