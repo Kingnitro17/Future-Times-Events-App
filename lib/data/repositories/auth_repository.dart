@@ -55,7 +55,7 @@ class AuthRepository extends ChangeNotifier {
       // 1. Try RPC get_my_profile
       final result = await _client
           .rpc('get_my_profile')
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
       if (result is Map<String, dynamic>) {
         _profile = result;
       }
@@ -73,7 +73,7 @@ class AuthRepository extends ChangeNotifier {
             .select()
             .eq('id', _user!.id)
             .maybeSingle()
-            .timeout(const Duration(seconds: 5));
+            .timeout(const Duration(seconds: 15));
         if (row != null) {
           _profile = row;
         } else {

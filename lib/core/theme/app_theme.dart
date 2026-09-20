@@ -43,7 +43,12 @@ abstract final class AppTheme {
         secondary: AppColors.pink,
         surface: AppColors.surface,
         error: AppColors.error);
-    final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+    final base = ThemeData(
+        useMaterial3: true,
+        colorScheme: scheme,
+        snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.fixed,
+        ));
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
       textTheme: base.textTheme

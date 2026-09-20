@@ -59,7 +59,10 @@ class _AdminEventsScreenState extends State<AdminEventsScreen> {
         search: _searchController.text,
       );
 
-  void _reload() => setState(() => _eventsFuture = _fetch());
+  void _reload() {
+    _eventsFuture = _fetch();
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {

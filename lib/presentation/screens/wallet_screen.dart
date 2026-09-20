@@ -59,7 +59,8 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _feedFuture = _loadFeed());
+    _feedFuture = _loadFeed();
+    if (mounted) setState(() {});
     await _feedFuture;
   }
 

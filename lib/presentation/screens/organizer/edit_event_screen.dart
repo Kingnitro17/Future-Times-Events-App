@@ -278,7 +278,19 @@ class _EditEventScreenState extends State<EditEventScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child:
-                    Image.network(_coverUrl!, height: 150, fit: BoxFit.cover),
+                    Image.network(
+                      _coverUrl!,
+                      height: 150,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 150,
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined,
+                              color: Colors.grey),
+                        ),
+                      ),
+                    ),
               ),
             ],
             _field(_venueName, 'Venue name', enabled: !_isLocked),

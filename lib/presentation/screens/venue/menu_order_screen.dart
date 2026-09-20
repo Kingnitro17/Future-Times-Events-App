@@ -77,7 +77,10 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
     });
   }
 
-  void _reload() => setState(() => _loadFuture = _load());
+  void _reload() {
+    _loadFuture = _load();
+    if (mounted) setState(() {});
+  }
 
   List<String> get _categories {
     final values = <String>{
