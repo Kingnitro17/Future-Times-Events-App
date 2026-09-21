@@ -84,10 +84,12 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                                     border: Border.all(color: AppColors.border),
                                   ),
                                   child: ClipOval(
-                                    child: org.logoUrl != null
+                                    child: (org.logoUrl != null &&
+                                            org.logoUrl!.isNotEmpty)
                                         ? Image.network(org.logoUrl!,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
+                                            errorBuilder: (context, error,
+                                                    stackTrace) =>
                                                 _logoFallback(org.name))
                                         : _logoFallback(org.name),
                                   ),

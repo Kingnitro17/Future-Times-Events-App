@@ -273,7 +273,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                   ? 'Choose cover image'
                   : 'Replace cover image'),
             ),
-            if (_coverUrl != null) ...[
+            if (_coverUrl != null && _coverUrl!.isNotEmpty) ...[
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),

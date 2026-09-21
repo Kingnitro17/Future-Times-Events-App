@@ -188,14 +188,15 @@ class _EditMenuItemScreenState extends State<EditMenuItemScreen> {
                         ? 'Choose image'
                         : 'Replace image'),
               ),
-              if (_imageUrl != null)
+              if (_imageUrl != null && _imageUrl!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: Image.network(
                     _imageUrl!,
                     height: 150,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox.shrink(),
                   ),
                 ),
               const SizedBox(height: 24),

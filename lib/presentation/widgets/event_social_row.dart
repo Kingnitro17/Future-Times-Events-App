@@ -176,15 +176,18 @@ class _EventSocialRowState extends State<EventSocialRow> {
                 color: AppColors.purple.withValues(alpha: 0.15),
               ),
               child: ClipOval(
-                child: Image.network(
-                  avatars[i],
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.person_rounded,
-                    size: 12,
-                    color: AppColors.purple,
-                  ),
-                ),
+                child: avatars[i].isNotEmpty
+                    ? Image.network(
+                        avatars[i],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                          Icons.person_rounded,
+                          size: 12,
+                          color: AppColors.purple,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ),
           );
@@ -228,15 +231,18 @@ class _EventSocialRowState extends State<EventSocialRow> {
                   color: AppColors.purple.withValues(alpha: 0.15),
                 ),
                 child: ClipOval(
-                  child: Image.network(
-                    publicAvatars[i],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person_rounded,
-                      size: 12,
-                      color: AppColors.purple,
-                    ),
-                  ),
+                  child: publicAvatars[i].isNotEmpty
+                      ? Image.network(
+                          publicAvatars[i],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.person_rounded,
+                            size: 12,
+                            color: AppColors.purple,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ),
             );

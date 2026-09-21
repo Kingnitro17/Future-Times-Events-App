@@ -17,13 +17,28 @@ import 'data/repositories/wallet_repository.dart';
 import 'data/repositories/ride_repository.dart';
 import 'data/repositories/attendance_group_repository.dart';
 import 'data/repositories/notification_repository.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'data/repositories/organizer_repository.dart';
 import 'data/repositories/venue_commerce_repository.dart';
 import 'data/repositories/admin_repository.dart';
 import 'data/services/realtime_service.dart';
+import 'data/services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Firebase & Push Notifications ──────────────────────────────────────────
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await FCMService().initialize();
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('[FCM] Firebase initialization skipped or pending setup: $e');
+    }
+  }
 
   // ── System UI ──────────────────────────────────────────────────────────────
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

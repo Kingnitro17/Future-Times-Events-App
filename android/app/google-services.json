@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "819791169789",
+    "project_id": "future-times-events-465e0",
+    "storage_bucket": "future-times-events-465e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:819791169789:android:358a70c8b36598e5aed694",
+        "android_client_info": {
+          "package_name": "com.futuretimes.events"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBD5MzgZF9R6aIRg7n28B12RTnMcRMEg1c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

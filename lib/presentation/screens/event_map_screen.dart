@@ -93,7 +93,8 @@ class _EventMapScreenState extends State<EventMapScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.electricIndigo, width: 2),
-                  image: maxAttendees[i].avatarUrl != null
+                  image: (maxAttendees[i].avatarUrl != null &&
+                          maxAttendees[i].avatarUrl!.isNotEmpty)
                       ? DecorationImage(
                           image: NetworkImage(maxAttendees[i].avatarUrl!),
                           fit: BoxFit.cover,

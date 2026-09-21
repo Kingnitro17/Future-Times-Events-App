@@ -59,10 +59,10 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                   ],
                 ),
                 child: ClipOval(
-                  child: org.logoUrl != null
+                  child: (org.logoUrl != null && org.logoUrl!.isNotEmpty)
                       ? Image.network(org.logoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (context, error, stackTrace) =>
                               _avatarFallback(org.name))
                       : _avatarFallback(org.name),
                 ),
