@@ -136,6 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: HeroBanner(
                         imageAsset: 'assets/images/hero.png',
                         headline: 'Discover What’s Happening',
+                        greeting: _firstName(widget.authRepository),
                         subheadline:
                             'Find events, buy tickets, and never miss out.',
                         buttonLabel: 'Explore Events',
@@ -273,10 +274,63 @@ String _formatLocationSubtitle(String city) {
   if (trimmed.isEmpty || trimmed.toLowerCase() == 'all zimbabwe') {
     return 'All Zimbabwe';
   }
+
   if (trimmed.toLowerCase().endsWith(', zimbabwe')) {
     return trimmed;
   }
   return '$trimmed, Zimbabwe';
+}
+
+String _firstName(AuthRepository authRepository) {
+  final profileName = authRepository.profile?['display_name']?.toString();
+  final metadata = authRepository.user?.userMetadata;
+  final name = (profileName != null && profileName.trim().isNotEmpty)
+      ? profileName
+      : metadata?['display_name']?.toString() ??
+          metadata?['full_name']?.toString();
+  final trimmed = name?.trim() ?? '';
+  return trimmed.isEmpty ? 'Welcome' : trimmed.split(RegExp(r'\s+')).first;
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.authRepository});
+
+  final AuthRepository authRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = authRepository.profile;
+    final metadata = authRepository.user?.userMetadata;
+    final displayName = _firstName(authRepository);
+    final url =
+        profile?['avatar_url']?.toString() ?? metadata?['avatar_url']?.toString();
+    final initials = displayName == 'Welcome'
+        ? 'W'
+        : displayName.substring(0, 1).toUpperCase();
+    Widget fallback() => CircleAvatar(
+          backgroundColor: AppColors.purple,
+          child: Text(initials,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w800)),
+        );
+    return Container(
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.fromBorderSide(
+          BorderSide(color: AppColors.purple, width: 2),
+        ),
+      ),
+      child: ClipOval(
+        child: url != null && url.isNotEmpty
+            ? Image.network(url, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => fallback())
+            : fallback(),
+      ),
+    );
+  }
 }
 
 class _HomeHeader extends StatelessWidget {
@@ -359,9 +413,10 @@ class _HomeHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _HeaderButton(
-                icon: Icons.search_rounded,
-                tooltip: 'Explore events',
-                onTap: () => context.go('/explore'),
+                icon: Icons.person_rounded,
+                tooltip: 'Profile',
+                onTap: () => context.push('/profile'),
+                customIcon: _ProfileAvatar(authRepository: authRepository),
               ),
             ],
           ),
@@ -376,11 +431,13 @@ class _HeaderButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.customIcon,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+  final Widget? customIcon;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -389,7 +446,7 @@ class _HeaderButton extends StatelessWidget {
         child: IconButton(
           onPressed: onTap,
           tooltip: tooltip,
-          icon: Icon(icon),
+          icon: customIcon ?? Icon(icon),
         ),
       );
 }
@@ -502,13 +559,15 @@ class _Featured extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: AppColors.border),
       ),
+      elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: .08),
       child: InkWell(
         onTap: () => context.push('/event/${event.id}', extra: event),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
-              aspectRatio: 1.6,
+              aspectRatio: 16 / 9,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -541,29 +600,38 @@ class _Featured extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      event.name.text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 16,
-                        height: 1.18,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            event.name.text,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 17,
+                              height: 1.25,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _PriceChip(event: event),
+                      ],
                     ),
                     EventSocialRow(
                       eventId: event.id,
                       socialRepository: socialRepository,
                       isSignedIn: authRepository.isSignedIn,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     _Meta(
                       icon: Icons.location_on_outlined,
                       text: event.venue?.address?.city ?? 'Harare',
@@ -571,16 +639,7 @@ class _Featured extends StatelessWidget {
                     const SizedBox(height: 4),
                     _Meta(
                       icon: Icons.schedule_rounded,
-                      text: DateFormat('EEE, d MMM • h:mm a').format(date),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      event.isFree ? 'Free' : 'Paid',
-                      style: const TextStyle(
-                        color: AppColors.purple,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      text: DateFormat('EEE, d MMM · HH:mm').format(date),
                     ),
                   ],
                 ),
@@ -733,6 +792,34 @@ class _Pill extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _PriceChip extends StatelessWidget {
+  const _PriceChip({required this.event});
+
+  final EventModel event;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = event.ticketClasses.where((ticket) => !ticket.free).toList();
+    final text = event.isFree
+        ? 'Free'
+        : paid.isEmpty
+            ? 'Paid'
+            : 'From ${paid.map((ticket) => ticket.cost?.display).whereType<String>().firstOrNull ?? ''}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.purple.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(text,
+          style: const TextStyle(
+              color: AppColors.purple,
+              fontSize: 11,
+              fontWeight: FontWeight.w700)),
+    );
+  }
 }
 
 class _Meta extends StatelessWidget {

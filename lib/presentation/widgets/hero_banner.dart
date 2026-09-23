@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
@@ -12,6 +13,7 @@ class HeroBanner extends StatelessWidget {
     required this.buttonLabel,
     required this.onButtonPressed,
     this.semanticLabel,
+    this.greeting,
   });
 
   final String imageAsset;
@@ -20,6 +22,7 @@ class HeroBanner extends StatelessWidget {
   final String buttonLabel;
   final VoidCallback onButtonPressed;
   final String? semanticLabel;
+  final String? greeting;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +80,45 @@ class HeroBanner extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (greeting != null && greeting!.trim().isNotEmpty)
+                  Positioned(
+                    top: 20,
+                    left: 20,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Hi',
+                                  style: TextStyle(
+                                      color: Colors.white.withValues(alpha: .7),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                greeting!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: Column(

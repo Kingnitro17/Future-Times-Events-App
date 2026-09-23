@@ -256,9 +256,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'za.co.futuretimes.events',
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.futuretimes.events',
               ),
               MarkerLayer(markers: [
                 if (_userLocation != null)
