@@ -50,7 +50,7 @@ class _FakeSocialRepository extends SocialRepository {
   Future<List<AttendeeModel>> getAttendees(String eventId) async => attendees;
 
   @override
-  Future<EventSocialSummary> getEventSocialSummary(String eventId) async =>
+  Future<EventSocialSummary> getEventSocialSummary(String eventId, {bool forceRefresh = false}) async =>
       EventSocialSummary(
         goingCount: goingCount,
       );

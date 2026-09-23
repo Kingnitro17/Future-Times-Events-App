@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event_model.dart';
 import '../models/event_list_response.dart';
 import '../services/supabase_event_service.dart';
+import 'package:latlong2/latlong.dart';
 
 class EventRepository {
   EventRepository({SupabaseEventService? service})
@@ -56,6 +57,34 @@ class EventRepository {
   Future<List<EventModel>> getEventsByIds(Iterable<String> eventIds) =>
       _service.fetchEventsByIds(eventIds);
 
+  Future<List<EventModel>> getNearbyEvents({
+    required double lat,
+    required double lng,
+    double radiusKm = 50,
+    int limit = 50,
+  }) async {
+    final response = await getEvents(forceRefresh: true, page: 1);
+    const distance = Distance();
+    final origin = LatLng(lat, lng);
+    final nearby = response.events.where((event) {
+      if (event.status != 'published') return false;
+      final eventLat = double.tryParse(event.venue?.latitude ?? '');
+      final eventLng = double.tryParse(event.venue?.longitude ?? '');
+      if (eventLat == null || eventLng == null) return false;
+      return distance.as(
+            LengthUnit.Kilometer,
+            origin,
+            LatLng(eventLat, eventLng),
+          ) <=
+          radiusKm;
+    }).toList()
+      ..sort((a, b) => distance
+          .as(LengthUnit.Meter, origin, _pointForEvent(a)!)
+          .compareTo(
+              distance.as(LengthUnit.Meter, origin, _pointForEvent(b)!)));
+    return nearby.take(limit).toList();
+  }
+
   Future<List<TicketClass>> getTicketClasses(String eventId) async =>
       (await _service.fetchEventById(eventId)).ticketClasses;
 
@@ -72,6 +101,13 @@ class EventRepository {
       'has_more': response.pagination.hasMoreItems,
     });
     await preferences.setString(_storageKey(key), payload);
+  }
+
+  LatLng? _pointForEvent(EventModel event) {
+    final lat = double.tryParse(event.venue?.latitude ?? '');
+    final lng = double.tryParse(event.venue?.longitude ?? '');
+    if (lat == null || lng == null || (lat == 0 && lng == 0)) return null;
+    return LatLng(lat, lng);
   }
 
   Future<EventListResponse?> _readPersisted(String key, int page) async {

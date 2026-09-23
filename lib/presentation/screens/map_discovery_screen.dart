@@ -14,6 +14,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
+import '../../services/maps/location_service.dart';
+import '../../services/maps/routing_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
@@ -32,12 +34,20 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
     with AutomaticKeepAliveClientMixin {
   final _mapController = MapController();
   final _cards = PageController(viewportFraction: .82);
+  final _locationService = LocationService();
+  final _routingService = RoutingService();
+  StreamSubscription<Position>? _positionSubscription;
   String? _city;
   String? _selectedId;
   LatLng? _userLocation;
   bool _locating = false;
   String? _locationMessage;
   bool _mapReady = false;
+  bool _directionsMode = false;
+  bool _routing = false;
+  RouteResult? _route;
+  EventModel? _destination;
+  String? _routeMessage;
 
   @override
   bool get wantKeepAlive => true;
@@ -48,12 +58,17 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
     if (context.read<EventBloc>().state is EventInitial) {
       context.read<EventBloc>().add(const FetchEvents());
     }
+    _positionSubscription = _locationService.positionStream().listen((position) {
+      if (!mounted) return;
+      setState(() => _userLocation = LatLng(position.latitude, position.longitude));
+    });
   }
 
   @override
   void dispose() {
     _cards.dispose();
     _mapController.dispose();
+    _positionSubscription?.cancel();
     super.dispose();
   }
 
@@ -65,29 +80,12 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
       _locationMessage = null;
     });
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
+      final position = await _locationService.getCurrentPosition();
+      if (position == null) {
         setState(() => _locationMessage =
-            'Location services are off. You can still browse by city.');
+            'Enable location for nearby events.');
         return;
       }
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        setState(() => _locationMessage = permission ==
-                LocationPermission.deniedForever
-            ? 'Location is blocked in Settings. Browse by city or enable it there.'
-            : 'Location was not allowed. Browse any city instead.');
-        return;
-      }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
       if (!mounted) return;
       setState(() {
         _userLocation = LatLng(position.latitude, position.longitude);
@@ -101,6 +99,7 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
         setState(() => _locationMessage =
             'Location took too long. Try again or choose a city.');
       }
+
     } catch (_) {
       if (mounted) {
         setState(() => _locationMessage =
@@ -108,6 +107,51 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
       }
     } finally {
       if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _toggleDirections() async {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _directionsMode = !_directionsMode;
+      _routeMessage = null;
+      if (!_directionsMode) {
+        _route = null;
+        _destination = null;
+      }
+    });
+    if (_directionsMode && _userLocation == null) {
+      await _useMyLocation();
+    }
+  }
+
+  Future<void> _routeTo(EventModel event) async {
+    final destination = mapPointForEvent(event);
+    if (destination == null || _userLocation == null) return;
+    setState(() {
+      _routing = true;
+      _routeMessage = null;
+      _destination = event;
+    });
+    final route = await _routingService.getRoute(
+      fromLat: _userLocation!.latitude,
+      fromLng: _userLocation!.longitude,
+      toLat: destination.latitude,
+      toLng: destination.longitude,
+    );
+    if (!mounted) return;
+    setState(() {
+      _routing = false;
+      _route = route;
+      _routeMessage = route == null
+          ? 'Could not calculate route. Check your connection.'
+          : null;
+    });
+    if (route != null && route.polyline.isNotEmpty) {
+      _mapController.fitCamera(CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(route.polyline),
+        padding: const EdgeInsets.fromLTRB(48, 180, 48, 260),
+      ));
     }
   }
 
@@ -231,10 +275,25 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
                     child: _EventMarker(
                       selected: _selectedId == event.id,
                       label: event.name.text,
-                      onTap: () => _select(event, filtered),
+                      onTap: () => _directionsMode
+                          ? _routeTo(event)
+                          : _select(event, filtered),
                     ),
                   ),
               ]),
+              if (_route != null)
+                PolylineLayer(polylines: [
+                  Polyline(
+                    points: _route!.polyline,
+                    color: Colors.white,
+                    strokeWidth: 8,
+                  ),
+                  Polyline(
+                    points: _route!.polyline,
+                    color: AppColors.purple,
+                    strokeWidth: 5,
+                  ),
+                ]),
             ],
           ),
           Positioned(
@@ -296,9 +355,131 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
                 ),
               ),
             ),
+          Positioned(
+            right: 16,
+            bottom: 190,
+            child: Column(
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'map-location',
+                  onPressed: _useMyLocation,
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.purple,
+                  child: const Icon(Icons.my_location_rounded),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton.small(
+                  heroTag: 'map-directions',
+                  onPressed: _toggleDirections,
+                  backgroundColor:
+                      _directionsMode ? AppColors.purple : Colors.white,
+                  foregroundColor:
+                      _directionsMode ? Colors.white : AppColors.purple,
+                  child: const Icon(Icons.navigation_rounded),
+                ),
+                if (_route != null) ...[
+                  const SizedBox(height: 10),
+                  FloatingActionButton.small(
+                    heroTag: 'map-reset',
+                    onPressed: () => setState(() {
+                      _route = null;
+                      _destination = null;
+                      _directionsMode = false;
+                    }),
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.purple,
+                    child: const Icon(Icons.layers_clear_rounded),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_routing)
+            const Positioned(
+              top: 150,
+              left: 24,
+              right: 24,
+              child: _Glass(
+                child: Row(children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Calculating route…'),
+                ]),
+              ),
+            ),
+          if (_routeMessage != null)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 180,
+              child: _Glass(
+                child: Text(_routeMessage!,
+                    style: const TextStyle(color: AppColors.error)),
+              ),
+            ),
+          if (_route != null && _destination != null)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 82,
+              left: 20,
+              right: 20,
+              child: _RouteSummary(
+                destination: _destination!,
+                route: _route!,
+                onDetails: () => _showRouteDetails(context),
+              ),
+            ),
         ]);
       }),
     );
+  }
+
+  void _showRouteDetails(BuildContext context) {
+    final route = _route;
+    if (route == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          shrinkWrap: true,
+          children: [
+            Text('Turn-by-turn directions',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            for (final step in route.steps)
+              ListTile(
+                leading: Icon(_maneuverIcon(step.maneuverType),
+                    color: AppColors.purple),
+                title: Text(step.instruction),
+                subtitle: Text('${(step.distanceMeters / 1000).toStringAsFixed(1)} km'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Start Navigation'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _maneuverIcon(String type) {
+    switch (type) {
+      case 'turn':
+        return Icons.turn_left_rounded;
+      case 'roundabout':
+        return Icons.roundabout_left_rounded;
+      case 'arrive':
+        return Icons.flag_rounded;
+      default:
+        return Icons.navigation_rounded;
+    }
   }
 }
 
@@ -601,6 +782,47 @@ class _MapLoading extends StatelessWidget {
         SizedBox(height: 12),
         Text('Preparing the event map…')
       ])));
+}
+
+class _RouteSummary extends StatelessWidget {
+  const _RouteSummary({
+    required this.destination,
+    required this.route,
+    required this.onDetails,
+  });
+
+  final EventModel destination;
+  final RouteResult route;
+  final VoidCallback onDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final distance = route.distanceMeters < 1000
+        ? '${route.distanceMeters.round()} m'
+        : '${(route.distanceMeters / 1000).toStringAsFixed(1)} km';
+    final minutes = (route.durationSeconds / 60).ceil();
+    return _Glass(
+      child: Row(
+        children: [
+          const Icon(Icons.navigation_rounded, color: AppColors.purple),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(destination.name.text,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('$distance · $minutes min',
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 12)),
+              ],
+            ),
+          ),
+          TextButton(onPressed: onDetails, child: const Text('Steps')),
+        ],
+      ),
+    );
+  }
 }
 
 class _Message extends StatelessWidget {
