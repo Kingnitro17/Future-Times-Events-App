@@ -202,12 +202,12 @@ class OrganizerRepository {
   Future<String> uploadEventCover(Uint8List bytes, String fileName) async {
     final path =
         '${_auth.user?.id ?? 'anonymous'}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-    await _client.storage.from('events_images').uploadBinary(
+    await _client.storage.from('events').uploadBinary(
           path,
           bytes,
           fileOptions: const FileOptions(upsert: true),
         );
-    return _client.storage.from('events_images').getPublicUrl(path);
+    return _client.storage.from('events').getPublicUrl(path);
   }
 
   Future<void> submitEventForReview(String eventId) async {

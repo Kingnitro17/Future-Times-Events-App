@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminRepository {
@@ -7,12 +8,135 @@ class AdminRepository {
   final SupabaseClient _client;
 
   Future<Map<String, dynamic>> getDashboardKpis() async {
-    final response = await _client.rpc('admin_dashboard_kpis');
-    if (response is Map<String, dynamic>) return response;
-    if (response is List && response.isNotEmpty && response.first is Map) {
-      return Map<String, dynamic>.from(response.first as Map);
+    try {
+      final response = await _client.rpc('admin_dashboard_kpis');
+      if (response is Map<String, dynamic>) return response;
+      if (response is List && response.isNotEmpty && response.first is Map) {
+        return Map<String, dynamic>.from(response.first as Map);
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[admin] admin_dashboard_kpis unavailable: $error');
+      }
     }
-    return const {};
+    // The RPC is absent until the admin dashboard migration is applied, so
+    // fall back to counting the tables the client can already read.
+    return _countKpisFromTables();
+  }
+
+  Future<Map<String, dynamic>> _countKpisFromTables() async {
+    final events = (await _client.from('events').select('id,status'))
+        .cast<Map<String, dynamic>>();
+    final profiles = (await _client.from('profiles').select('id,role'))
+        .cast<Map<String, dynamic>>();
+    final tickets =
+        (await _client.from('tickets').select('id,status,ticket_type_id'))
+            .cast<Map<String, dynamic>>();
+    final ticketTypes = (await _client.from('ticket_types').select('id,price'))
+        .cast<Map<String, dynamic>>();
+
+    final prices = {
+      for (final type in ticketTypes)
+        type['id'].toString(): num.tryParse(type['price']?.toString() ?? '') ?? 0,
+    };
+    const soldStatuses = {'issued', 'checked_in'};
+    final sold = tickets
+        .where((ticket) => soldStatuses.contains(ticket['status']?.toString()))
+        .toList();
+    final revenue = sold.fold<num>(
+      0,
+      (total, ticket) =>
+          total + (prices[ticket['ticket_type_id']?.toString()] ?? 0),
+    );
+
+    int countEvents(Set<String> statuses) => events
+        .where((event) => statuses.contains(event['status']?.toString()))
+        .length;
+
+    return {
+      'total_events': events.length,
+      'published_events': countEvents(const {'published', 'live', 'ended'}),
+      'pending_reviews': countEvents(const {'pending_review'}),
+      'total_users': profiles.length,
+      'total_organizers': profiles
+          .where((profile) => profile['role'] == 'organizer' ||
+              profile['role'] == 'super_admin')
+          .length,
+      'tickets_sold': sold.length,
+      'revenue': revenue,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getUsers({
+    String? search,
+    String? roleFilter,
+  }) async {
+    var query = _client.from('profiles').select();
+    if (roleFilter != null && roleFilter.isNotEmpty) {
+      query = query.eq('role', roleFilter);
+    }
+    final term = search?.trim() ?? '';
+    if (term.isNotEmpty) {
+      final escaped = term.replaceAll('%', r'\%').replaceAll('_', r'\_');
+      query = query.or('display_name.ilike.%$escaped%,email.ilike.%$escaped%');
+    }
+    final rows = await query.order('created_at', ascending: false).limit(200);
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> setUserRole(String userId, String role) async {
+    await _client.rpc('admin_set_user_role', params: {
+      'p_user_id': userId,
+      'p_role': role,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getOrganizerApplications({
+    String? statusFilter,
+  }) async {
+    var query = _client.from('organizer_applications').select();
+    if (statusFilter != null && statusFilter.isNotEmpty) {
+      query = query.eq('status', statusFilter);
+    }
+    final rows = await query.order('created_at', ascending: false);
+    final applications = rows.cast<Map<String, dynamic>>();
+    if (applications.isEmpty) return const [];
+
+    final userIds = applications
+        .map((application) => application['user_id']?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    final profiles = (await _client
+            .from('profiles')
+            .select('id,display_name,email,role')
+            .inFilter('id', userIds))
+        .cast<Map<String, dynamic>>();
+    final byId = {
+      for (final profile in profiles) profile['id'].toString(): profile,
+    };
+    return applications
+        .map((application) => {
+              ...application,
+              'applicant': byId[application['user_id']?.toString()],
+            })
+        .toList();
+  }
+
+  Future<void> approveOrganizerApplication(String applicationId) async {
+    await _client.rpc('approve_organizer_application', params: {
+      'p_application_id': applicationId,
+    });
+  }
+
+  Future<void> rejectOrganizerApplication(
+    String applicationId,
+    String reason,
+  ) async {
+    await _client.rpc('reject_organizer_application', params: {
+      'p_application_id': applicationId,
+      'p_reason': reason,
+    });
   }
 
   Future<int> getPendingReviewCount() async {

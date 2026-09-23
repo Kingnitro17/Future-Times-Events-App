@@ -48,3 +48,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build/
+
+# Java heap dumps from OOM crashes
+*.hprof
+java_pid*.hprof
+

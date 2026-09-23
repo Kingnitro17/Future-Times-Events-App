@@ -11,18 +11,21 @@ class EventSocialRow extends StatefulWidget {
     required this.socialRepository,
     required this.isSignedIn,
     this.onTap,
+    this.stateKey,
   });
 
   final String eventId;
   final SocialRepository socialRepository;
   final bool isSignedIn;
   final VoidCallback? onTap;
+  /// Pass a [GlobalKey<EventSocialRowState>] to be able to call [reload] from outside.
+  final GlobalKey<EventSocialRowState>? stateKey;
 
   @override
-  State<EventSocialRow> createState() => _EventSocialRowState();
+  State<EventSocialRow> createState() => EventSocialRowState();
 }
 
-class _EventSocialRowState extends State<EventSocialRow> {
+class EventSocialRowState extends State<EventSocialRow> {
   EventSocialSummary? _summary;
   bool _loading = true;
 
@@ -37,14 +40,18 @@ class _EventSocialRowState extends State<EventSocialRow> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.eventId != widget.eventId ||
         oldWidget.isSignedIn != widget.isSignedIn) {
-      _load();
+      _load(forceRefresh: true);
     }
   }
 
-  Future<void> _load() async {
+  /// Call this after an RSVP toggle to force-refresh the going count.
+  Future<void> reload() => _load(forceRefresh: true);
+
+  Future<void> _load({bool forceRefresh = false}) async {
+    if (mounted) setState(() => _loading = true);
     try {
-      final summary =
-          await widget.socialRepository.getEventSocialSummary(widget.eventId);
+      final summary = await widget.socialRepository
+          .getEventSocialSummary(widget.eventId, forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _summary = summary;

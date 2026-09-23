@@ -51,8 +51,9 @@ class SocialRepository {
   }
 
   /// Get event social summary for home cards and details screen using get_event_social_summary RPC
-  Future<EventSocialSummary> getEventSocialSummary(String eventId) async {
-    if (_summaryCache.containsKey(eventId)) {
+  Future<EventSocialSummary> getEventSocialSummary(String eventId,
+      {bool forceRefresh = false}) async {
+    if (!forceRefresh && _summaryCache.containsKey(eventId)) {
       return _summaryCache[eventId]!;
     }
     try {
@@ -67,12 +68,68 @@ class SocialRepository {
       }
     } on PostgrestException catch (e) {
       if (kDebugMode) {
-        debugPrint('[social] get_event_social_summary failed: $e');
+        debugPrint('[social] get_event_social_summary RPC failed: $e — trying direct query');
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[social] summary error: $e');
+        debugPrint('[social] summary error: $e — trying direct query');
       }
+    }
+
+    // ── Fallback: direct table query ─────────────────────────────────────
+    try {
+      final userId = _client.auth.currentUser?.id;
+      final rows = await _client
+          .from('rsvps')
+          .select('user_id, is_public, profiles!inner(display_name, avatar_url)')
+          .eq('event_id', eventId)
+          .eq('status', 'going');
+
+      final totalGoing = rows.length;
+      final publicRows = (rows as List)
+          .where((r) => r['is_public'] == true)
+          .toList();
+      final publicAvatars = publicRows
+          .map((r) {
+            final p = r['profiles'];
+            return p is Map ? (p['avatar_url']?.toString() ?? '') : '';
+          })
+          .where((s) => s.isNotEmpty)
+          .take(3)
+          .toList();
+
+      List<String> friendAvatars = [];
+      int friendCount = 0;
+      if (userId != null) {
+        final friendIds = await _client
+            .from('user_follows')
+            .select('following_id')
+            .eq('follower_id', userId);
+        final friendSet =
+            (friendIds as List).map((r) => r['following_id']?.toString() ?? '').toSet();
+        final friendRows =
+            rows.where((r) => friendSet.contains(r['user_id']?.toString())).toList();
+        friendCount = friendRows.length;
+        friendAvatars = friendRows
+            .map((r) {
+              final p = r['profiles'];
+              return p is Map ? (p['avatar_url']?.toString() ?? '') : '';
+            })
+            .where((s) => s.isNotEmpty)
+            .take(3)
+            .toList();
+      }
+
+      final summary = EventSocialSummary(
+        goingCount: totalGoing,
+        friendCount: friendCount,
+        friendAvatars: friendAvatars,
+        publicAvatars: publicAvatars,
+      );
+      _summaryCache[eventId] = summary;
+      return summary;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[social] direct rsvp query failed: $e');
     }
 
     return const EventSocialSummary();

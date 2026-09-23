@@ -239,21 +239,39 @@ class AttendanceGroupRepository {
   }
 
   Future<List<Map<String, dynamic>>> getGroupsForEvent(String eventId) async {
-    final rows = await _client
-        .from('attendance_groups')
-        .select('id, name, member_count, host:created_by(display_name)')
-        .eq('event_id', eventId)
-        .order('created_at', ascending: false);
-    return rows.map((row) {
-      final host = row['host'];
-      final hostMap = host is Map ? Map<String, dynamic>.from(host) : const {};
-      return <String, dynamic>{
-        'id': row['id'],
-        'name': row['name'],
-        'member_count': row['member_count'] ?? 0,
-        'host_display_name': hostMap['display_name'],
-      };
-    }).toList(growable: false);
+    try {
+      final rows = await _client
+          .from('attendance_groups')
+          .select('id, name, member_count, host:created_by(display_name)')
+          .eq('event_id', eventId)
+          .order('created_at', ascending: false);
+      return rows.map((row) {
+        final host = row['host'];
+        final hostMap = host is Map ? Map<String, dynamic>.from(host) : const {};
+        return <String, dynamic>{
+          'id': row['id'],
+          'name': row['name'],
+          'member_count': row['member_count'] ?? 0,
+          'host_display_name': hostMap['display_name'] ?? 'Host',
+        };
+      }).toList(growable: false);
+    } catch (_) {
+      try {
+        final rows = await _client
+            .from('attendance_groups')
+            .select('id, name, member_count')
+            .eq('event_id', eventId)
+            .order('created_at', ascending: false);
+        return rows.map((row) => <String, dynamic>{
+          'id': row['id'],
+          'name': row['name'],
+          'member_count': row['member_count'] ?? 0,
+          'host_display_name': 'Host',
+        }).toList(growable: false);
+      } catch (_) {
+        return const [];
+      }
+    }
   }
 
   Future<bool> hasGroupMembershipForEvent({

@@ -42,6 +42,8 @@ import '../../presentation/screens/admin/admin_home_screen.dart';
 import '../../presentation/screens/admin/admin_reviews_screen.dart';
 import '../../presentation/screens/admin/admin_events_screen.dart';
 import '../../presentation/screens/admin/admin_event_detail_screen.dart';
+import '../../presentation/screens/admin/admin_users_screen.dart';
+import '../../presentation/screens/admin/admin_applications_screen.dart';
 import '../../services/roles/role_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
@@ -333,7 +335,8 @@ GoRouter buildAppRouter({
         }
         return '/login';
       }
-      if (authRepository.isSignedIn && isAuthRoute) {
+      if (authRepository.isSignedIn &&
+          (isAuthRoute || location == '/onboarding')) {
         return '/';
       }
       return null;
@@ -499,21 +502,6 @@ GoRouter buildAppRouter({
             OrganizersScreen(socialRepository: socialRepository),
       ),
       GoRoute(
-        path: '/organizer/:id',
-        builder: (_, state) {
-          final org = state.extra is OrganizerModel
-              ? state.extra as OrganizerModel
-              : OrganizerModel(
-                  id: state.pathParameters['id'] ?? '',
-                  name: 'Organizer',
-                );
-          return OrganizerDetailScreen(
-            organizer: org,
-            socialRepository: socialRepository,
-          );
-        },
-      ),
-      GoRoute(
         path: '/user/:id',
         parentNavigatorKey: rootKey,
         builder: (context, state) => UserProfileScreen(
@@ -574,6 +562,32 @@ GoRouter buildAppRouter({
           return allowed ? null : '/profile';
         },
         builder: (_, __) => AdminReviewsScreen(
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, __) => AdminUsersScreen(
+          authRepository: authRepository,
+          adminRepository: adminRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/admin/applications',
+        redirect: (context, state) async {
+          final userId = authRepository.user?.id;
+          final allowed =
+              userId != null && await RoleService.instance.isSuperAdmin(userId);
+          return allowed ? null : '/profile';
+        },
+        builder: (_, __) => AdminApplicationsScreen(
           authRepository: authRepository,
           adminRepository: adminRepository,
         ),
@@ -709,6 +723,23 @@ GoRouter buildAppRouter({
           ticketRepository: ticketRepository,
           initialEventId: state.extra is String ? state.extra as String : null,
         ),
+      ),
+      // Must stay after every literal `/organizer/<segment>` route: a dynamic
+      // segment declared earlier would match those paths first.
+      GoRoute(
+        path: '/organizer/:id',
+        builder: (_, state) {
+          final org = state.extra is OrganizerModel
+              ? state.extra as OrganizerModel
+              : OrganizerModel(
+                  id: state.pathParameters['id'] ?? '',
+                  name: 'Organizer',
+                );
+          return OrganizerDetailScreen(
+            organizer: org,
+            socialRepository: socialRepository,
+          );
+        },
       ),
       GoRoute(
         path: '/calendar',

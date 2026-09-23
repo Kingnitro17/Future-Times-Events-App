@@ -85,7 +85,7 @@ class _WhosGoingSheetState extends State<WhosGoingSheet> {
                   color: AppColors.purple, size: 22),
               const SizedBox(width: 8),
               const Text(
-                "Who's Going",
+                "Who wants to go with me",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

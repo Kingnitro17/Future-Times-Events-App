@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../../../services/roles/role_service.dart';
 
 class ScanTicketScreen extends StatefulWidget {
   const ScanTicketScreen({
@@ -44,12 +45,39 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
   Timer? _resultTimer;
   bool _processing = false;
   int _checkedInCount = 0;
+  bool _checkingRole = true;
 
   @override
   void initState() {
     super.initState();
     _selectedEventId = widget.initialEventId;
     _eventsFuture = widget.organizerRepository.getMyEvents();
+    _verifyRole();
+  }
+
+  Future<void> _verifyRole() async {
+    final user = widget.authRepository.user;
+    if (user == null) {
+      if (mounted) {
+        setState(() {
+          _checkingRole = false;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/profile');
+        });
+      }
+      return;
+    }
+    final role = await RoleService.instance.getRole(user.id);
+    final ok = role == 'organizer' || role == 'super_admin';
+    if (mounted) {
+      setState(() => _checkingRole = false);
+      if (!ok) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/profile');
+        });
+      }
+    }
   }
 
   @override
@@ -57,12 +85,6 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
     _resultTimer?.cancel();
     _scannerController.dispose();
     super.dispose();
-  }
-
-  bool get _isOrganizer {
-    final role = widget.authRepository.currentRole;
-    return widget.authRepository.isSignedIn &&
-        (role == 'organizer' || role == 'super_admin');
   }
 
   Future<void> _handleBarcode(BarcodeCapture capture) async {
@@ -192,10 +214,14 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isOrganizer) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/profile');
-      });
+    // Show loading while we verify the role asynchronously
+    if (_checkingRole) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
     }
     return Scaffold(
       backgroundColor: Colors.black,

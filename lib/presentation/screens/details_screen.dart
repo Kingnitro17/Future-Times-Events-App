@@ -487,7 +487,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
             child: ListTile(
               leading:
                   const Icon(Icons.groups_outlined, color: AppColors.purple),
-              title: const Text("Who's going with me?"),
+              title: const Text("Who wants to go with me"),
               subtitle: const Text('Groups could not be loaded.'),
               trailing: IconButton(
                 onPressed: () => setState(() => _groupsFuture =
@@ -506,7 +506,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               children: [
                 Row(children: [
                   Expanded(
-                    child: Text("Who's going with me?",
+                    child: Text("Who wants to go with me",
                         style: Theme.of(context).textTheme.titleMedium),
                   ),
                   OutlinedButton.icon(
