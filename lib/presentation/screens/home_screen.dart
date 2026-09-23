@@ -18,6 +18,7 @@ import '../widgets/event_network_image.dart';
 import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
 import '../widgets/event_social_row.dart';
+import '../widgets/hero_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -129,6 +130,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _HomeHeader(
                         authRepository: widget.authRepository,
                         preferredCity: widget.preferencesRepository.city,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: HeroBanner(
+                        imageAsset: 'assets/images/hero.png',
+                        headline: 'Discover What’s Happening',
+                        subheadline:
+                            'Find events, buy tickets, and never miss out.',
+                        buttonLabel: 'Explore Events',
+                        onButtonPressed: () => context.push('/explore'),
+                        semanticLabel:
+                            'Explore events banner. Opens event search.',
                       ),
                     ),
                     if (state is EventLoading || state is EventInitial)
