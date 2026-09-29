@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,10 +44,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _imagePicker = ImagePicker();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _displayName = TextEditingController();
   bool _submitting = false;
+  bool _avatarUpdating = false;
   String? _error;
   SocialStats _socialStats = const SocialStats();
   OrganizerApplication? _myApplication;
@@ -149,6 +152,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickProfilePhoto() async {
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 1200,
+    );
+    if (image == null || !mounted) return;
+    setState(() => _avatarUpdating = true);
+    try {
+      await widget.authRepository.updateProfilePhoto(
+        await image.readAsBytes(),
+        fileName: image.name,
+        contentType: image.mimeType,
+      );
+    } on AppFailure catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(failure.message)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update profile photo: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _avatarUpdating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -247,22 +280,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 42,
-                    backgroundColor: AppColors.purple.withValues(alpha: 0.12),
-                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? NetworkImage(avatarUrl)
-                        : null,
-                    child: avatarUrl == null || avatarUrl.isEmpty
-                        ? Text(
-                            initials,
-                            style: const TextStyle(
-                              color: AppColors.purple,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 42,
+                        backgroundColor:
+                            AppColors.purple.withValues(alpha: 0.12),
+                        backgroundImage:
+                            avatarUrl != null && avatarUrl.isNotEmpty
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                        child: avatarUrl == null || avatarUrl.isEmpty
+                            ? Text(
+                                initials,
+                                style: const TextStyle(
+                                  color: AppColors.purple,
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        right: -4,
+                        bottom: -4,
+                        child: Material(
+                          color: AppColors.purple,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            onPressed:
+                                _avatarUpdating ? null : _pickProfilePhoto,
+                            tooltip: 'Add or change profile photo',
+                            icon: _avatarUpdating
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.camera_alt_outlined,
+                                    size: 18, color: Colors.white),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 34,
+                              height: 34,
                             ),
-                          )
-                        : null,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   Text(

@@ -83,34 +83,35 @@ class HeroBanner extends StatelessWidget {
                 if (greeting != null && greeting!.trim().isNotEmpty)
                   Positioned(
                     top: 20,
-                    left: 20,
+                    right: 20,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(999),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                              horizontal: 11, vertical: 7),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Hi',
-                                  style: TextStyle(
-                                      color: Colors.white.withValues(alpha: .7),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500)),
+                              Text(
+                                'Hi, ',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: .78),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               Text(
                                 greeting!,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                  height: 1.1,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],

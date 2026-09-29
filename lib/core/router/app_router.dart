@@ -378,10 +378,8 @@ GoRouter buildAppRouter({
         builder: (_, __) => RegisterScreen(authRepository: authRepository),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => BlocProvider(
-          create: (_) => EventBloc(repository: eventRepository),
-          child: AppShell(navigationShell: navigationShell),
-        ),
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(

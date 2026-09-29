@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'data/repositories/organizer_repository.dart';
 import 'data/repositories/venue_commerce_repository.dart';
 import 'data/repositories/admin_repository.dart';
+import 'logic/blocs/event/event_bloc.dart';
 import 'data/services/realtime_service.dart';
 import 'data/services/fcm_service.dart';
 
@@ -237,11 +239,14 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Future Times Events',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      routerConfig: _router,
+    return BlocProvider(
+      create: (_) => EventBloc(repository: widget.eventRepository),
+      child: MaterialApp.router(
+        title: 'Future Times Events',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        routerConfig: _router,
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/organizer_application.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -29,8 +31,10 @@ class _OrganizerApplicationScreenState
   final _phone = TextEditingController();
   final _email = TextEditingController();
   final _description = TextEditingController();
+  final _imagePicker = ImagePicker();
   late Future<OrganizerApplication?> _applicationFuture;
   bool _submitting = false;
+  bool _photoUpdating = false;
   String? _error;
 
   @override
@@ -52,7 +56,42 @@ class _OrganizerApplicationScreenState
 
   bool get _isUser => widget.authRepository.currentRole == 'user';
 
+  String? get _profilePhotoUrl =>
+      widget.authRepository.profile?['avatar_url']?.toString() ??
+      widget.authRepository.user?.userMetadata?['avatar_url']?.toString();
+
+  Future<void> _pickProfilePhoto() async {
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 1200,
+    );
+    if (image == null || !mounted) return;
+    setState(() {
+      _photoUpdating = true;
+      _error = null;
+    });
+    try {
+      await widget.authRepository.updateProfilePhoto(
+        await image.readAsBytes(),
+        fileName: image.name,
+        contentType: image.mimeType,
+      );
+      if (mounted) setState(() {});
+    } on AppFailure catch (failure) {
+      if (mounted) setState(() => _error = failure.message);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Could not upload photo: $error');
+    } finally {
+      if (mounted) setState(() => _photoUpdating = false);
+    }
+  }
+
   Future<void> _submit() async {
+    if (_profilePhotoUrl == null || _profilePhotoUrl!.trim().isEmpty) {
+      setState(() => _error = 'Add a profile photo before applying.');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _submitting = true;
@@ -131,6 +170,9 @@ class _OrganizerApplicationScreenState
             phone: _phone,
             email: _email,
             description: _description,
+            profilePhotoUrl: _profilePhotoUrl,
+            photoUpdating: _photoUpdating,
+            onAddProfilePhoto: _pickProfilePhoto,
             rejectedApplication:
                 application?.isRejected == true ? application : null,
             error: _error,
@@ -209,6 +251,9 @@ class _ApplicationForm extends StatelessWidget {
     required this.phone,
     required this.email,
     required this.description,
+    required this.profilePhotoUrl,
+    required this.photoUpdating,
+    required this.onAddProfilePhoto,
     required this.rejectedApplication,
     required this.error,
     required this.submitting,
@@ -221,6 +266,9 @@ class _ApplicationForm extends StatelessWidget {
   final TextEditingController phone;
   final TextEditingController email;
   final TextEditingController description;
+  final String? profilePhotoUrl;
+  final bool photoUpdating;
+  final VoidCallback onAddProfilePhoto;
   final OrganizerApplication? rejectedApplication;
   final String? error;
   final bool submitting;
@@ -248,6 +296,68 @@ class _ApplicationForm extends StatelessWidget {
           const Text('Complete the form below to apply as an event organizer.',
               style: TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: profilePhotoUrl == null || profilePhotoUrl!.isEmpty
+                    ? AppColors.purple.withValues(alpha: .35)
+                    : AppColors.border,
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.purple.withValues(alpha: .12),
+                  backgroundImage:
+                      profilePhotoUrl != null && profilePhotoUrl!.isNotEmpty
+                          ? NetworkImage(profilePhotoUrl!)
+                          : null,
+                  child: profilePhotoUrl == null || profilePhotoUrl!.isEmpty
+                      ? const Icon(Icons.person_outline_rounded,
+                          color: AppColors.purple)
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Profile photo required',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        profilePhotoUrl == null || profilePhotoUrl!.isEmpty
+                            ? 'Add a clear photo to continue.'
+                            : 'Your photo will appear on your organizer profile.',
+                        style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: photoUpdating ? null : onAddProfilePhoto,
+                  child: photoUpdating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(profilePhotoUrl == null || profilePhotoUrl!.isEmpty
+                          ? 'Add'
+                          : 'Change'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           _field(businessName, 'Business name', Icons.business_outlined,
               required: true, maxLength: 100),
           _field(registration, 'Business registration (optional)',

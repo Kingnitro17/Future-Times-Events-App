@@ -215,6 +215,50 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
+  Future<String> updateProfilePhoto(
+    Uint8List bytes, {
+    required String fileName,
+    String? contentType,
+  }) async {
+    final user = _user;
+    if (user == null) {
+      throw const AuthFailure('Sign in to add a profile photo.');
+    }
+
+    final extension =
+        fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final safeExtension =
+        RegExp(r'^[a-z0-9]{1,5}$').hasMatch(extension) ? extension : 'jpg';
+    final storage = _client.storage.from('avatars');
+    final path = '${user.id}/profile/avatar.$safeExtension';
+
+    try {
+      await storage.uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(
+          upsert: true,
+          contentType: contentType,
+        ),
+      );
+      final avatarUrl =
+          '${storage.getPublicUrl(path)}?v=${DateTime.now().millisecondsSinceEpoch}';
+      await _client.from('profiles').upsert({
+        'id': user.id,
+        'avatar_url': avatarUrl,
+      });
+      _profile = {...?_profile, 'avatar_url': avatarUrl};
+      notifyListeners();
+      return avatarUrl;
+    } on PostgrestException catch (error) {
+      if (kDebugMode) {
+        debugPrint('[profile] photo update failed: ${error.code}');
+      }
+      throw const AuthFailure(
+          'Your profile photo could not be saved. Try again.');
+    }
+  }
+
   AuthFailure _mapAuthError(AuthException error) {
     final message = error.message.toLowerCase();
     if (message.contains('invalid login credentials')) {

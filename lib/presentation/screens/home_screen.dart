@@ -694,9 +694,22 @@ class _Upcoming extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Pill(
-                      value: event.categoryLabel ?? event.categoryId,
-                      compact: true,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _Pill(
+                            value: event.categoryLabel ?? event.categoryId,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SaveHeartButton(
+                          eventId: event.id,
+                          repository: savedEventsRepository,
+                          authRepository: authRepository,
+                          size: 36,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -732,12 +745,6 @@ class _Upcoming extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                           ),
-                        ),
-                        SaveHeartButton(
-                          eventId: event.id,
-                          repository: savedEventsRepository,
-                          authRepository: authRepository,
-                          size: 36,
                         ),
                       ],
                     ),
