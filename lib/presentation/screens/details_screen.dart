@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -54,6 +56,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   bool _suggestionDismissed = false;
   late Future<bool> _hasTablesFuture;
   late Future<bool> _hasMenuFuture;
+  late Future<_EventPartnerData> _partnersFuture;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -76,6 +79,24 @@ class _DetailsScreenState extends State<DetailsScreen> {
     _hasMenuFuture = widget.venueCommerceRepository
         .getEventMenu(widget.event.id)
         .then((items) => items.any((item) => item.isAvailable));
+    _partnersFuture = _loadEventPartners();
+  }
+
+  Future<_EventPartnerData> _loadEventPartners() async {
+    final client = Supabase.instance.client;
+    final partners = await client
+        .from('event_partners')
+        .select('id,name,logo_url,tier,sort_order')
+        .eq('event_id', widget.event.id)
+        .order('sort_order');
+    final hasFtService = await client.rpc(
+      'event_has_ft_service',
+      params: {'p_event_id': widget.event.id},
+    );
+    return _EventPartnerData(
+      partners: partners.cast<Map<String, dynamic>>(),
+      hasFtService: hasFtService == true,
+    );
   }
 
   Future<void> _loadGroupSuggestion() async {
@@ -229,10 +250,65 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 const SizedBox(height: 28),
                 _tickets(),
               ],
+              const SizedBox(height: 28),
+              _partnersSection(),
             ]),
           ),
         ]),
         bottomNavigationBar: _bottomBar(),
+      );
+
+  Widget _partnersSection() => FutureBuilder<_EventPartnerData>(
+        future: _partnersFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Card(
+              child: ListTile(
+                leading:
+                    const Icon(Icons.error_outline, color: AppColors.error),
+                title: const Text('Event partners could not be loaded'),
+                trailing: IconButton(
+                  tooltip: 'Retry',
+                  onPressed: () => setState(
+                    () => _partnersFuture = _loadEventPartners(),
+                  ),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+            );
+          }
+          if (!snapshot.hasData) return const SizedBox.shrink();
+          final data = snapshot.data!;
+          if (data.partners.isEmpty && !data.hasFtService) {
+            return const SizedBox.shrink();
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Our Partners',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 14),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (data.hasFtService) ...[
+                      const _FutureTimesPartnerChip(),
+                      const SizedBox(width: 14),
+                    ],
+                    ...data.partners.map(
+                      (partner) => Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: _EventPartnerChip(partner: partner),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       );
 
   Widget _hero() => SizedBox(
@@ -1093,6 +1169,146 @@ class _Fact extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
       ]);
+}
+
+class _EventPartnerData {
+  const _EventPartnerData({
+    required this.partners,
+    required this.hasFtService,
+  });
+
+  final List<Map<String, dynamic>> partners;
+  final bool hasFtService;
+}
+
+class _EventPartnerChip extends StatelessWidget {
+  const _EventPartnerChip({required this.partner});
+
+  final Map<String, dynamic> partner;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = partner['name']?.toString().trim() ?? '';
+    final logo = partner['logo_url']?.toString().trim();
+    final tier = partner['tier']?.toString();
+    final badge = switch (tier) {
+      'featured_partner' => 'Featured',
+      'official_partner' => 'Official',
+      _ => null,
+    };
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
+    final hasLogo = logo != null && logo.isNotEmpty;
+
+    return SizedBox(
+      width: 90,
+      child: Column(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.purple.withValues(alpha: .1),
+                backgroundImage: hasLogo ? NetworkImage(logo) : null,
+                child: hasLogo
+                    ? null
+                    : Text(
+                        initials.isEmpty ? '?' : initials,
+                        style: const TextStyle(
+                          color: AppColors.purple,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+              if (badge != null)
+                Positioned(
+                  top: -8,
+                  right: -10,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        fontSize: 8,
+                        color: AppColors.purple,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name.isEmpty ? 'Partner' : name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FutureTimesPartnerChip extends StatelessWidget {
+  const _FutureTimesPartnerChip();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 152,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          gradient: AppGradients.brand,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.white,
+              child: Image.asset(
+                'assets/images/appicon.png',
+                width: 31,
+                height: 31,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.event_available_rounded,
+                  color: AppColors.purple,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Future Times Events',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+              ),
+            ),
+            const Text(
+              'Official Event Partner',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 10),
+            ),
+          ],
+        ),
+      );
 }
 
 String _category(String value) => value
