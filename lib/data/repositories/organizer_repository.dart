@@ -135,7 +135,11 @@ class OrganizerRepository {
     if (user == null) throw StateError('A signed-in organizer is required.');
     final row = await _client
         .from('events')
-        .insert({...data, 'organizer_id': user.id, 'status': 'draft'})
+        .insert({
+          ..._normalizeEventCoordinates(data),
+          'organizer_id': user.id,
+          'status': 'draft',
+        })
         .select('id')
         .single();
     return row['id'].toString();
@@ -146,9 +150,24 @@ class OrganizerRepository {
     if (user == null) throw StateError('A signed-in organizer is required.');
     await _client
         .from('events')
-        .update(data)
+        .update(_normalizeEventCoordinates(data))
         .eq('id', eventId)
         .eq('organizer_id', user.id);
+  }
+
+  Map<String, dynamic> _normalizeEventCoordinates(
+    Map<String, dynamic> data,
+  ) {
+    final normalized = Map<String, dynamic>.from(data);
+    final latitude = normalized.remove('latitude');
+    final longitude = normalized.remove('longitude');
+    if (!normalized.containsKey('lat') && latitude != null) {
+      normalized['lat'] = latitude;
+    }
+    if (!normalized.containsKey('lng') && longitude != null) {
+      normalized['lng'] = longitude;
+    }
+    return normalized;
   }
 
   Future<Map<String, dynamic>?> getEventForEdit(String eventId) async {
@@ -197,6 +216,49 @@ class OrganizerRepository {
         await _client.from('ticket_types').delete().eq('id', id);
       }
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getEventPartners(String eventId) async {
+    final rows = await _client
+        .from('event_partners')
+        .select('id,name,logo_url,website_url,tier,sort_order')
+        .eq('event_id', eventId)
+        .order('sort_order');
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> saveEventPartners(
+    String eventId,
+    List<Map<String, dynamic>> partners,
+  ) async {
+    await _client.from('event_partners').delete().eq('event_id', eventId);
+    if (partners.isEmpty) return;
+    await _client.from('event_partners').insert(
+          partners.asMap().entries.map((entry) {
+            final partner = entry.value;
+            return {
+              'event_id': eventId,
+              'name': partner['name'],
+              'logo_url': partner['logo_url'],
+              'website_url': partner['website_url'],
+              'tier': partner['tier'] ?? 'partner',
+              'sort_order': entry.key,
+            };
+          }).toList(),
+        );
+  }
+
+  Future<String> uploadPartnerLogo(Uint8List bytes, String fileName) async {
+    final userId = _auth.user?.id ?? 'anonymous';
+    final path =
+        '$userId/partners/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final storage = _client.storage.from('events');
+    await storage.uploadBinary(
+      path,
+      bytes,
+      fileOptions: const FileOptions(upsert: true),
+    );
+    return storage.getPublicUrl(path);
   }
 
   Future<String> uploadEventCover(Uint8List bytes, String fileName) async {

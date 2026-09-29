@@ -168,6 +168,13 @@ class FtServicesRepository {
     );
   }
 
+  Future<void> cancelUnpaidBooking(String bookingId) async {
+    await _client.rpc(
+      'cancel_service_booking',
+      params: {'p_booking_id': bookingId},
+    );
+  }
+
   Stream<List<FtServiceBooking>> watchAdminPending() => _watchBookings(
         channelName: 'public:ft_service_bookings:admin_pending',
         load: adminPendingReview,

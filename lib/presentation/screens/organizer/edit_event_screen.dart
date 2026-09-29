@@ -1,21 +1,31 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/ft_service.dart';
+import '../../../data/models/ft_service_booking.dart';
+import '../../../data/repositories/ft_services_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
+import '../../../data/repositories/payment_repository.dart';
+import '../ft_services/ft_service_detail_screen.dart';
 
 class EditEventScreen extends StatefulWidget {
   const EditEventScreen({
     super.key,
     required this.authRepository,
     required this.organizerRepository,
+    required this.paymentRepository,
     this.eventId,
   });
 
   final AuthRepository authRepository;
   final OrganizerRepository organizerRepository;
+  final PaymentRepository paymentRepository;
   final String? eventId;
 
   @override
@@ -32,6 +42,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
   final _longitude = TextEditingController();
   final _picker = ImagePicker();
   final _tickets = <_TicketDraft>[_TicketDraft()];
+  final _partners = <_PartnerDraft>[];
+  final _ftServicesRepository = FtServicesRepository();
+  List<FtService> _ftServices = const [];
+  List<FtServiceBooking> _serviceBookings = const [];
+  bool _loadingServices = false;
+  bool _partnersChanged = false;
+  bool _partnersAvailable = true;
   DateTime? _startsAt;
   DateTime? _endsAt;
   String? _category;
@@ -63,6 +80,22 @@ class _EditEventScreenState extends State<EditEventScreen> {
     super.initState();
     if (widget.eventId != null) {
       _loadEvent();
+    } else {
+      _loadFtServices();
+    }
+  }
+
+  Future<void> _loadFtServices() async {
+    if (mounted) setState(() => _loadingServices = true);
+    try {
+      final services = await _ftServicesRepository.listServices();
+      if (mounted) setState(() => _ftServices = services);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = 'Could not load Future Times services: $error');
+      }
+    } finally {
+      if (mounted) setState(() => _loadingServices = false);
     }
   }
 
@@ -76,13 +109,29 @@ class _EditEventScreenState extends State<EditEventScreen> {
       }
       final types =
           await widget.organizerRepository.getTicketTypes(widget.eventId!);
+      await _loadFtServices();
+      List<Map<String, dynamic>> partners = const [];
+      List<FtServiceBooking> bookings = const [];
+      try {
+        partners =
+            await widget.organizerRepository.getEventPartners(widget.eventId!);
+      } catch (error) {
+        _partnersAvailable = false;
+        _error = 'Partner editing is unavailable until the event-partners '
+            'database migration is applied: $error';
+      }
+      try {
+        bookings = await _ftServicesRepository.myBookings();
+      } catch (error) {
+        _error = 'Service bookings are unavailable: $error';
+      }
       _title.text = event['title']?.toString() ?? '';
       _description.text = event['description']?.toString() ?? '';
       _venueName.text =
           event['venue_name']?.toString() ?? event['venue']?.toString() ?? '';
       _venueAddress.text = event['address']?.toString() ?? '';
-      _latitude.text = event['latitude']?.toString() ?? '';
-      _longitude.text = event['longitude']?.toString() ?? '';
+      _latitude.text = (event['lat'] ?? event['latitude'])?.toString() ?? '';
+      _longitude.text = (event['lng'] ?? event['longitude'])?.toString() ?? '';
       _category = event['category']?.toString();
       _coverUrl = event['image_url']?.toString();
       _status = event['status']?.toString() ?? 'draft';
@@ -94,6 +143,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
         ..addAll(types.isEmpty
             ? [_TicketDraft()]
             : types.map(_TicketDraft.fromJson));
+      _partners
+        ..clear()
+        ..addAll(partners.map(_PartnerDraft.fromRow));
+      _partnersChanged = false;
+      _serviceBookings = bookings
+          .where((booking) => booking.eventId == widget.eventId)
+          .toList(growable: false);
     } catch (error) {
       _error = error.toString();
     } finally {
@@ -167,8 +223,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
           'image_url': _coverUrl,
           'venue_name': _venueName.text.trim(),
           'address': _venueAddress.text.trim(),
-          'latitude': double.tryParse(_latitude.text.trim()),
-          'longitude': double.tryParse(_longitude.text.trim()),
+          'lat': double.tryParse(_latitude.text.trim()),
+          'lng': double.tryParse(_longitude.text.trim()),
           'starts_at': _startsAt!.toIso8601String(),
           'ends_at': _endsAt!.toIso8601String(),
         });
@@ -185,10 +241,37 @@ class _EditEventScreenState extends State<EditEventScreen> {
         id,
         _tickets.map((ticket) => ticket.toJson()).toList(),
       );
+      if (_partnersChanged) {
+        for (final partner in _partners) {
+          if (partner.logoBytes != null && partner.logoFileName != null) {
+            partner.logoUrl =
+                await widget.organizerRepository.uploadPartnerLogo(
+              partner.logoBytes!,
+              partner.logoFileName!,
+            );
+          }
+        }
+        if (!_partnersAvailable) {
+          throw StateError(
+            'Partner changes could not be saved because the event-partners '
+            'database migration is not available.',
+          );
+        }
+        await widget.organizerRepository.saveEventPartners(
+          id,
+          _partners.map((partner) => partner.toRow()).toList(),
+        );
+      }
       if (submit) {
         await widget.organizerRepository.submitEventForReview(id);
       }
-      if (mounted) context.go('/organizer/events');
+      if (mounted) {
+        if (widget.eventId == null && !submit) {
+          context.go('/organizer/events/$id/edit');
+        } else {
+          context.go('/organizer/events');
+        }
+      }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -210,6 +293,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
     for (final ticket in _tickets) {
       ticket.dispose();
+    }
+    for (final partner in _partners) {
+      partner.dispose();
     }
     super.dispose();
   }
@@ -277,20 +363,19 @@ class _EditEventScreenState extends State<EditEventScreen> {
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child:
-                    Image.network(
-                      _coverUrl!,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 150,
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              color: Colors.grey),
-                        ),
-                      ),
+                child: Image.network(
+                  _coverUrl!,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 150,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child:
+                          Icon(Icons.broken_image_outlined, color: Colors.grey),
                     ),
+                  ),
+                ),
               ),
             ],
             _field(_venueName, 'Venue name', enabled: !_isLocked),
@@ -327,6 +412,10 @@ class _EditEventScreenState extends State<EditEventScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add ticket type'),
             ),
+            const SizedBox(height: 8),
+            _buildFtServicesSection(),
+            const SizedBox(height: 18),
+            _buildPartnersSection(),
             const SizedBox(height: 18),
             FilledButton(
               onPressed: _saving ? null : () => _save(submit: false),
@@ -434,6 +523,477 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ),
         ),
       );
+
+  Widget _buildFtServicesSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Future Times Services (optional)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Add Future Times services to your event',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 10),
+          if (_loadingServices)
+            const LinearProgressIndicator()
+          else if (_ftServices.isEmpty)
+            const Text(
+              'No active services are available right now.',
+              style: TextStyle(color: AppColors.textMuted),
+            )
+          else
+            SizedBox(
+              height: 176,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _ftServices.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final service = _ftServices[index];
+                  return SizedBox(
+                    width: 148,
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: service.imageUrl == null ||
+                                      service.imageUrl!.isEmpty
+                                  ? const ColoredBox(
+                                      color: AppColors.surfaceMuted,
+                                      child: Icon(
+                                        Icons.home_repair_service_outlined,
+                                        size: 32,
+                                      ),
+                                    )
+                                  : Image.network(
+                                      service.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const ColoredBox(
+                                        color: AppColors.surfaceMuted,
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                            child: Text(
+                              service.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 4, 2),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'From ${service.currency} ${service.basePrice.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: 'Add service',
+                                  onPressed: _isLocked || _saving
+                                      ? null
+                                      : () => _bookService(service),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (widget.eventId == null)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Save this event as a draft first to book services for it.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+            ),
+          if (_serviceBookings.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Booked services',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            ..._serviceBookings.map(_bookedServiceTile),
+          ],
+          if (_serviceBookings.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Your event will show the Future Times partner badge.',
+              style: TextStyle(
+                color: AppColors.purple,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      );
+
+  Widget _bookedServiceTile(FtServiceBooking booking) {
+    final unpaid =
+        booking.status == 'draft' || booking.status == 'pending_payment';
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+        leading: const Icon(Icons.handyman_outlined, color: AppColors.purple),
+        title: Text(booking.serviceName ?? 'Future Times service'),
+        subtitle: Text(
+          '${DateFormat.yMMMd().format(booking.startTime)} · '
+          '${booking.quantity} unit(s) · ${booking.status.replaceAll('_', ' ')}',
+        ),
+        trailing: unpaid
+            ? IconButton(
+                tooltip: 'Cancel unpaid booking',
+                onPressed: _saving ? null : () => _cancelBooking(booking),
+                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              )
+            : TextButton(
+                onPressed: () => _showPaidBookingSupport(),
+                child: const Text('Support'),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _bookService(FtService service) async {
+    final eventId = widget.eventId;
+    if (eventId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Save the event as a draft before booking services.'),
+        ),
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => FtServiceBookingSheet(
+        service: service,
+        repository: _ftServicesRepository,
+        organizerRepository: widget.organizerRepository,
+        paymentRepository: widget.paymentRepository,
+        initialEventId: eventId,
+        initialStart: _startsAt,
+        initialEnd: _endsAt,
+      ),
+    );
+    if (!mounted) return;
+    try {
+      final bookings = await _ftServicesRepository.myBookings();
+      setState(() {
+        _serviceBookings = bookings
+            .where((booking) => booking.eventId == eventId)
+            .toList(growable: false);
+      });
+    } catch (error) {
+      setState(() => _error = 'Could not refresh service bookings: $error');
+    }
+  }
+
+  Future<void> _cancelBooking(FtServiceBooking booking) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel service booking?'),
+        content: const Text(
+          'This booking has no paid deposit and can be cancelled.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep booking'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cancel booking'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _saving = true);
+    try {
+      await _ftServicesRepository.cancelUnpaidBooking(booking.id);
+      final bookings = await _ftServicesRepository.myBookings();
+      if (!mounted) return;
+      setState(() {
+        _serviceBookings = bookings
+            .where((item) => item.eventId == widget.eventId)
+            .toList(growable: false);
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Could not cancel booking: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _showPaidBookingSupport() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contact support to cancel'),
+        content: const Text(
+          'A deposit has been paid for this booking. Please contact support '
+          'to request cancellation.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPartnersSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Partners (optional)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Add event partners',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 8),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _partners.length,
+            onReorderItem: (oldIndex, newIndex) {
+              setState(() {
+                final partner = _partners.removeAt(oldIndex);
+                _partners.insert(newIndex, partner);
+                _partnersChanged = true;
+              });
+            },
+            itemBuilder: (context, index) {
+              final partner = _partners[index];
+              return Card(
+                key: ObjectKey(partner),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.drag_handle),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: partner.name,
+                              onChanged: (_) => _partnersChanged = true,
+                              enabled: !_isLocked,
+                              decoration: const InputDecoration(
+                                labelText: 'Partner name',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? 'Partner name is required'
+                                      : null,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Remove partner',
+                            onPressed: _isLocked
+                                ? null
+                                : () => setState(() {
+                                      _partners.removeAt(index).dispose();
+                                      _partnersChanged = true;
+                                    }),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: partner.website,
+                              onChanged: (_) => _partnersChanged = true,
+                              enabled: !_isLocked,
+                              keyboardType: TextInputType.url,
+                              decoration: const InputDecoration(
+                                labelText: 'Website URL (optional)',
+                              ),
+                              validator: (value) {
+                                final text = value?.trim() ?? '';
+                                if (text.isEmpty) return null;
+                                final uri = Uri.tryParse(text);
+                                return uri == null ||
+                                        !uri.hasScheme ||
+                                        uri.host.isEmpty
+                                    ? 'Enter a valid URL'
+                                    : null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          DropdownButton<String>(
+                            value: partner.tier,
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'partner',
+                                child: Text('Partner'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'featured_partner',
+                                child: Text('Featured Partner'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'official_partner',
+                                child: Text('Official Partner'),
+                              ),
+                            ],
+                            onChanged: _isLocked
+                                ? null
+                                : (value) => setState(
+                                      () {
+                                        partner.tier = value ?? 'partner';
+                                        _partnersChanged = true;
+                                      },
+                                    ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          if (partner.logoBytes != null)
+                            ClipOval(
+                              child: Image.memory(
+                                partner.logoBytes!,
+                                width: 42,
+                                height: 42,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          else if (partner.logoUrl != null &&
+                              partner.logoUrl!.isNotEmpty)
+                            CircleAvatar(
+                              radius: 21,
+                              backgroundImage: NetworkImage(partner.logoUrl!),
+                            )
+                          else
+                            const CircleAvatar(
+                              radius: 21,
+                              child: Icon(Icons.business_outlined),
+                            ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: _isLocked
+                                ? null
+                                : () => _pickPartnerLogo(partner),
+                            icon: const Icon(Icons.upload_outlined),
+                            label: const Text('Upload logo'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          TextButton.icon(
+            onPressed: _isLocked
+                ? null
+                : () => setState(() {
+                      _partners.add(_PartnerDraft());
+                      _partnersChanged = true;
+                    }),
+            icon: const Icon(Icons.add),
+            label: const Text('Add partner'),
+          ),
+        ],
+      );
+
+  Future<void> _pickPartnerLogo(_PartnerDraft partner) async {
+    try {
+      final image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        partner.logoBytes = bytes;
+        partner.logoFileName = image.name;
+        _partnersChanged = true;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Could not select logo: $error');
+    }
+  }
+}
+
+class _PartnerDraft {
+  _PartnerDraft({
+    String? name,
+    String? website,
+    this.logoUrl,
+    this.tier = 'partner',
+  })  : name = TextEditingController(text: name),
+        website = TextEditingController(text: website);
+
+  factory _PartnerDraft.fromRow(Map<String, dynamic> row) => _PartnerDraft(
+        name: row['name']?.toString(),
+        website: row['website_url']?.toString(),
+        logoUrl: row['logo_url']?.toString(),
+        tier: row['tier']?.toString() ?? 'partner',
+      );
+
+  final TextEditingController name;
+  final TextEditingController website;
+  String? logoUrl;
+  String tier;
+  Uint8List? logoBytes;
+  String? logoFileName;
+
+  Map<String, dynamic> toRow() => {
+        'name': name.text.trim(),
+        'website_url': website.text.trim().isEmpty ? null : website.text.trim(),
+        'logo_url': logoUrl,
+        'tier': tier,
+      };
+
+  void dispose() {
+    name.dispose();
+    website.dispose();
+  }
 }
 
 class _TicketDraft {

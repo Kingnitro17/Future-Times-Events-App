@@ -647,6 +647,7 @@ GoRouter buildAppRouter({
         builder: (_, __) => EditEventScreen(
           authRepository: authRepository,
           organizerRepository: organizerRepository,
+          paymentRepository: paymentRepository,
         ),
       ),
       GoRoute(
@@ -655,6 +656,7 @@ GoRouter buildAppRouter({
           eventId: state.pathParameters['id'],
           authRepository: authRepository,
           organizerRepository: organizerRepository,
+          paymentRepository: paymentRepository,
         ),
       ),
       GoRoute(

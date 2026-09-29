@@ -198,7 +198,7 @@ class _ServiceDetails extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
-            builder: (_) => _BookingSheet(
+            builder: (_) => FtServiceBookingSheet(
               service: service,
               repository: repository,
               organizerRepository: organizerRepository,
@@ -283,24 +283,31 @@ class _CategoryPill extends StatelessWidget {
       );
 }
 
-class _BookingSheet extends StatefulWidget {
-  const _BookingSheet({
+class FtServiceBookingSheet extends StatefulWidget {
+  const FtServiceBookingSheet({
+    super.key,
     required this.service,
     required this.repository,
     required this.organizerRepository,
     required this.paymentRepository,
+    this.initialEventId,
+    this.initialStart,
+    this.initialEnd,
   });
 
   final FtService service;
   final FtServicesRepository repository;
   final OrganizerRepository organizerRepository;
   final PaymentRepository paymentRepository;
+  final String? initialEventId;
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
 
   @override
-  State<_BookingSheet> createState() => _BookingSheetState();
+  State<FtServiceBookingSheet> createState() => _BookingSheetState();
 }
 
-class _BookingSheetState extends State<_BookingSheet> {
+class _BookingSheetState extends State<FtServiceBookingSheet> {
   late Future<List<Map<String, dynamic>>> _eventsFuture;
   final _notes = TextEditingController();
   String? _eventId;
@@ -316,6 +323,14 @@ class _BookingSheetState extends State<_BookingSheet> {
   void initState() {
     super.initState();
     _eventsFuture = widget.organizerRepository.getMyEvents();
+    _eventId = widget.initialEventId;
+    _start = widget.initialStart;
+    _end = widget.initialEnd;
+    if (_eventId != null && _start != null && _end != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refreshAvailability();
+      });
+    }
   }
 
   @override
@@ -350,10 +365,16 @@ class _BookingSheetState extends State<_BookingSheet> {
       final endsAt = DateTime.tryParse(
         event?['ends_at']?.toString() ?? event?['end_time']?.toString() ?? '',
       );
-      _start = startsAt;
-      _end = endsAt != null && startsAt != null && endsAt.isAfter(startsAt)
-          ? endsAt
-          : startsAt?.add(const Duration(hours: 4));
+      final useInitialDates = event?['id']?.toString() == widget.initialEventId;
+      _start = useInitialDates ? widget.initialStart ?? startsAt : startsAt;
+      _end = useInitialDates
+          ? widget.initialEnd ??
+              (endsAt != null && startsAt != null && endsAt.isAfter(startsAt)
+                  ? endsAt
+                  : startsAt?.add(const Duration(hours: 4)))
+          : (endsAt != null && startsAt != null && endsAt.isAfter(startsAt)
+              ? endsAt
+              : startsAt?.add(const Duration(hours: 4)));
       _availability = null;
       _error = null;
     });
@@ -619,7 +640,12 @@ class _BookingSheetState extends State<_BookingSheet> {
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: _eventId,
+                    initialValue: _eventId ??
+                        (events.any((event) =>
+                                event['id']?.toString() ==
+                                widget.initialEventId)
+                            ? widget.initialEventId
+                            : null),
                     decoration: const InputDecoration(
                       labelText: 'Choose your event',
                       border: OutlineInputBorder(),
