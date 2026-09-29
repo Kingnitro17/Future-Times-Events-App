@@ -19,6 +19,7 @@ import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
 import '../widgets/event_social_row.dart';
 import '../widgets/hero_banner.dart';
+import '../widgets/ft_services_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -260,6 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SizedBox(height: 100),
                       ),
                     ],
+                    SliverToBoxAdapter(child: FtServicesSection()),
                   ],
                 ),
               );
@@ -302,8 +304,8 @@ class _ProfileAvatar extends StatelessWidget {
     final profile = authRepository.profile;
     final metadata = authRepository.user?.userMetadata;
     final displayName = _firstName(authRepository);
-    final url =
-        profile?['avatar_url']?.toString() ?? metadata?['avatar_url']?.toString();
+    final url = profile?['avatar_url']?.toString() ??
+        metadata?['avatar_url']?.toString();
     final initials = displayName == 'Welcome'
         ? 'W'
         : displayName.substring(0, 1).toUpperCase();
@@ -325,8 +327,8 @@ class _ProfileAvatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: url != null && url.isNotEmpty
-            ? Image.network(url, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => fallback())
+            ? Image.network(url,
+                fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback())
             : fallback(),
       ),
     );

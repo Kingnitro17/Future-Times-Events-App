@@ -113,12 +113,24 @@ class WalletItemCard extends StatelessWidget {
         'ride' => Icons.directions_car_rounded,
         'reservation' => Icons.table_restaurant_rounded,
         'order' => Icons.restaurant_rounded,
+        'ft_service' => Icons.handyman_rounded,
         'payment' => Icons.receipt_long_rounded,
         _ => Icons.wallet_rounded,
       };
 
   static Color _statusColor(String status) {
     final value = status.toLowerCase();
+    if (value == 'pending payment' || value == 'pending review') {
+      return const Color(0xFFE6A700);
+    }
+    if (value == 'deposit paid') return const Color(0xFF2389FF);
+    if (value == 'approved' || value == 'active') {
+      return AppColors.success;
+    }
+    if (value == 'rejected') return AppColors.error;
+    if (value == 'cancelled' || value == 'completed') {
+      return AppColors.textMuted;
+    }
     if (value.contains('paid') ||
         value.contains('active') ||
         value.contains('issued') ||

@@ -1,4 +1,4 @@
-enum PaymentPurpose { ticket, table, order }
+enum PaymentPurpose { ticket, table, order, service }
 
 sealed class PaymentResult {
   const PaymentResult();

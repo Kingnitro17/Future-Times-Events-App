@@ -1,16 +1,25 @@
 import 'dart:convert';
+
+import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/errors/app_failure.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/event_partner.dart';
 import '../models/event_model.dart';
 import '../models/event_list_response.dart';
 import '../services/supabase_event_service.dart';
-import 'package:latlong2/latlong.dart';
 
 class EventRepository {
-  EventRepository({SupabaseEventService? service})
-      : _service = service ?? SupabaseEventService();
+  EventRepository({SupabaseEventService? service, SupabaseClient? client})
+      : _service = service ?? SupabaseEventService(client: client),
+        _client = client;
 
   final SupabaseEventService _service;
+  final SupabaseClient? _client;
   final Map<String, EventListResponse> _cache = {};
+
+  SupabaseClient get _supabaseClient => _client ?? Supabase.instance.client;
 
   Future<EventListResponse> getEvents({
     String? categoryId,
@@ -53,6 +62,40 @@ class EventRepository {
 
   Future<EventModel> getEventById(String eventId) =>
       _service.fetchEventById(eventId);
+
+  Future<({EventModel event, List<EventPartner> partners, bool hasFtPartner})>
+      getEventWithPartners(String eventId) async {
+    try {
+      final row = await _supabaseClient
+          .from('events')
+          .select(SupabaseEventService.selection)
+          .eq('id', eventId)
+          .single();
+      final partnerRows = await _supabaseClient
+          .from('event_partners')
+          .select()
+          .eq('event_id', eventId)
+          .order('sort_order')
+          .order('name');
+      final hasFtPartner = await _supabaseClient.rpc(
+        'event_has_ft_service',
+        params: {'p_event_id': eventId},
+      );
+      return (
+        event: eventFromSupabaseRow(row),
+        partners: partnerRows
+            .map<EventPartner>((item) => EventPartner.fromSupabase(item))
+            .toList(growable: false),
+        hasFtPartner: hasFtPartner == true,
+      );
+    } on PostgrestException catch (error) {
+      throw DataFailure(
+        'Event partners could not be loaded.',
+        code: error.code,
+        cause: error,
+      );
+    }
+  }
 
   Future<List<EventModel>> getEventsByIds(Iterable<String> eventIds) =>
       _service.fetchEventsByIds(eventIds);

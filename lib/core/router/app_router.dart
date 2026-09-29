@@ -65,6 +65,8 @@ import '../../presentation/screens/organizers_screen.dart';
 import '../../presentation/screens/organizer_detail_screen.dart';
 import '../../presentation/screens/notifications_screen.dart';
 import '../../presentation/screens/user_profile_screen.dart';
+import '../../presentation/screens/ft_services/ft_services_list_screen.dart';
+import '../../presentation/screens/ft_services/ft_service_detail_screen.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -437,6 +439,18 @@ GoRouter buildAppRouter({
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/ft-services',
+        builder: (_, __) => FtServicesListScreen(),
+      ),
+      GoRoute(
+        path: '/ft-services/:id',
+        builder: (_, state) => FtServiceDetailScreen(
+          serviceId: state.pathParameters['id']!,
+          organizerRepository: organizerRepository,
+          paymentRepository: paymentRepository,
+        ),
       ),
       GoRoute(
         path: '/tickets',

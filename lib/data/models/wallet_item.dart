@@ -5,6 +5,7 @@ import 'ride.dart';
 import 'table_reservation.dart';
 import '../../core/geo/geo_point.dart';
 import '../../services/payments/payment_gateway.dart';
+import 'ft_service_booking.dart';
 
 sealed class WalletItem {
   const WalletItem({
@@ -41,6 +42,50 @@ sealed class WalletItem {
       WalletItemReservation.fromReservation;
 
   factory WalletItem.fromOrder(VenueOrder order) = WalletItemOrder.fromOrder;
+
+  factory WalletItem.fromFtService(FtServiceBooking booking) =
+      WalletItemFtService.fromBooking;
+}
+
+final class WalletItemFtService extends WalletItem {
+  const WalletItemFtService({
+    required super.id,
+    required super.title,
+    required super.subtitle,
+    required super.statusLabel,
+    required super.createdAt,
+    required super.eventId,
+    required super.qrPayload,
+    required super.deepLink,
+    required this.bookingStatus,
+  }) : super(kind: 'ft_service');
+
+  final String bookingStatus;
+
+  factory WalletItemFtService.fromBooking(FtServiceBooking booking) {
+    final status = booking.status;
+    return WalletItemFtService(
+      id: booking.id,
+      title: booking.serviceName?.trim().isNotEmpty == true
+          ? booking.serviceName!
+          : 'Future Times service',
+      subtitle: booking.eventTitle?.trim().isNotEmpty == true
+          ? booking.eventTitle!
+          : 'Event booking',
+      statusLabel: _statusLabel(status),
+      createdAt: booking.createdAt,
+      eventId: booking.eventId,
+      qrPayload: booking.id,
+      deepLink: '/wallet',
+      bookingStatus: status,
+    );
+  }
+
+  static String _statusLabel(String status) {
+    final normalized = status.replaceAll('_', ' ').trim();
+    if (normalized.isEmpty) return 'Unknown';
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
 }
 
 final class WalletItemTicket extends WalletItem {
@@ -229,5 +274,6 @@ final class WalletItemPayment extends WalletItem {
         PaymentPurpose.ticket => 'Ticket payment',
         PaymentPurpose.table => 'Table payment',
         PaymentPurpose.order => 'Order payment',
+        PaymentPurpose.service => 'Service deposit',
       };
 }
