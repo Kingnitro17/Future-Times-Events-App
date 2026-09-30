@@ -1,0 +1,120 @@
+Home greeting implementation
+============================
+
+This reference matches the current Flutter app. The greeting is rendered in
+the hero banner's top-right corner; it is not rendered in the home header.
+
+File: lib/presentation/widgets/hero_banner.dart
+-----------------------------------------------
+
+import 'package:flutter/material.dart';
+import 'dart:ui';
+
+class HeroBanner extends StatelessWidget {
+  const HeroBanner({
+    super.key,
+    required this.imageAsset,
+    required this.headline,
+    required this.subheadline,
+    required this.buttonLabel,
+    required this.onButtonPressed,
+    this.semanticLabel,
+    this.greeting,
+  });
+
+  final String? semanticLabel;
+  final String? greeting;
+
+Inside the banner Stack, after the image and scrim:
+
+if (greeting != null && greeting!.trim().isNotEmpty)
+  Positioned(
+    top: 16,
+    right: 16,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Hi',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                greeting!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ),
+
+File: lib/presentation/screens/home_screen.dart
+-----------------------------------------------
+
+The home screen passes the current user's first name to HeroBanner:
+
+HeroBanner(
+  imageAsset: 'assets/images/hero.png',
+  headline: 'Discover What’s Happening',
+  subheadline: 'Find events, buy tickets, and never miss out.',
+  buttonLabel: 'Explore Events',
+  onButtonPressed: () => context.push('/explore'),
+  greeting: _firstName(widget.authRepository),
+  semanticLabel: 'Explore events banner. Opens event search.',
+),
+
+The greeting uses the profile display name first, then auth metadata, and
+falls back to the email's first segment or "Welcome":
+
+String _firstName(AuthRepository authRepository) {
+  final profileName = authRepository.profile?['display_name']?.toString();
+  final metadata = authRepository.user?.userMetadata;
+  final name = (profileName != null && profileName.trim().isNotEmpty)
+      ? profileName
+      : metadata?['display_name']?.toString() ??
+          metadata?['full_name']?.toString() ??
+          authRepository.user?.email?.split('@').first;
+  final trimmed = name?.trim() ?? '';
+  return trimmed.isEmpty ? 'Welcome' : trimmed.split(RegExp(r'\s+')).first;
+}
+
+The header shows the calendar button followed by the profile avatar button;
+there is no separate "Hi, <name>" greeting between them:
+
+_HeaderButton(
+  icon: Icons.calendar_month_outlined,
+  tooltip: 'Calendar',
+  onTap: () => context.push('/calendar'),
+),
+const SizedBox(width: 8),
+_HeaderButton(
+  icon: Icons.person_rounded,
+  tooltip: 'Profile',
+  onTap: () => context.push('/profile'),
+  customIcon: _ProfileAvatar(authRepository: authRepository),
+),

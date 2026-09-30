@@ -147,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             'Find events, buy tickets, and never miss out.',
                         buttonLabel: 'Explore Events',
                         onButtonPressed: () => context.push('/explore'),
+                        greeting: _firstName(widget.authRepository),
                         semanticLabel:
                             'Explore events banner. Opens event search.',
                       ),
@@ -455,8 +456,6 @@ class _HomeHeader extends StatelessWidget {
                 onTap: () => context.push('/calendar'),
               ),
               const SizedBox(width: 8),
-              _Greeting(authRepository: authRepository),
-              const SizedBox(width: 7),
               _HeaderButton(
                 icon: Icons.person_rounded,
                 tooltip: 'Profile',
@@ -469,34 +468,6 @@ class _HomeHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.authRepository});
-
-  final AuthRepository authRepository;
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-        listenable: authRepository,
-        builder: (context, _) {
-          if (!authRepository.isSignedIn) return const SizedBox.shrink();
-          return SizedBox(
-            width: 72,
-            child: Text(
-              'Hi, ${_firstName(authRepository)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          );
-        },
-      );
 }
 
 class _LocationPickerSheet extends StatefulWidget {
