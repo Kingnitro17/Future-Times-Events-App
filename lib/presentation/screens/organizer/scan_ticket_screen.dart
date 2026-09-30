@@ -107,11 +107,12 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
         now.difference(timestamp) > const Duration(seconds: 3));
 
     setState(() => _processing = true);
-    await _scannerController.stop();
     try {
+      await _scannerController.stop();
       final result = await widget.ticketRepository.validateAndCheckInTicket(
         qrPayload: payload,
         gate: 'Main Gate',
+        eventId: _selectedEventId,
       );
       if (!mounted) return;
       _showResult(result);
@@ -154,6 +155,7 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
 
   Future<void> _resumeScanning() async {
     if (!mounted) return;
+    _resultTimer?.cancel();
     setState(() {
       _resultTitle = null;
       _resultMessage = null;
@@ -162,7 +164,33 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
       _resultTicketNumber = null;
       _resultCheckedInAt = null;
     });
-    await _scannerController.start();
+    try {
+      await _scannerController.start();
+    } on MobileScannerException catch (error) {
+      if (mounted) _showCameraError(error);
+    }
+  }
+
+  Future<void> _retryCamera() async {
+    try {
+      await _scannerController.start();
+    } on MobileScannerException catch (error) {
+      if (mounted) _showCameraError(error);
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    try {
+      await _scannerController.toggleTorch();
+    } on MobileScannerException catch (error) {
+      if (mounted) _showCameraError(error);
+    }
+  }
+
+  void _showCameraError(MobileScannerException error) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Camera unavailable (${error.errorCode.name}). Try again.'),
+    ));
   }
 
   Future<void> _manualEntry() async {
@@ -200,11 +228,12 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
   Future<void> _handleManualPayload(String payload) async {
     if (_processing || _resultTitle != null) return;
     setState(() => _processing = true);
-    await _scannerController.stop();
     try {
+      await _scannerController.stop();
       final result = await widget.ticketRepository.validateAndCheckInTicket(
         qrPayload: payload,
         gate: 'Main Gate',
+        eventId: _selectedEventId,
       );
       if (mounted) _showResult(result);
     } catch (error) {
@@ -229,7 +258,37 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
         fit: StackFit.expand,
         children: [
           MobileScanner(
-              controller: _scannerController, onDetect: _handleBarcode),
+            controller: _scannerController,
+            onDetect: _handleBarcode,
+            errorBuilder: (context, error) => ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.no_photography_outlined,
+                          color: Colors.white, size: 52),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Camera unavailable (${error.errorCode.name}). '
+                        'Check camera access and try again.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _retryCamera,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Retry camera'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           IgnorePointer(
             child: CustomPaint(painter: _ScannerOverlayPainter()),
           ),
@@ -244,7 +303,22 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
                       icon: const Icon(Icons.close_rounded),
                     ),
                     Expanded(child: _eventSelector()),
-                    const SizedBox(width: 48),
+                    ValueListenableBuilder<MobileScannerState>(
+                      valueListenable: _scannerController,
+                      builder: (context, state, _) => IconButton(
+                        tooltip: state.torchState == TorchState.on
+                            ? 'Turn torch off'
+                            : 'Turn torch on',
+                        onPressed: _processing ||
+                                state.torchState == TorchState.unavailable
+                            ? null
+                            : _toggleTorch,
+                        color: Colors.white,
+                        icon: Icon(state.torchState == TorchState.on
+                            ? Icons.flash_on_rounded
+                            : Icons.flash_off_rounded),
+                      ),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -333,10 +407,14 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
               if (_resultCheckedInAt != null &&
                   _resultTitle == 'Already checked in')
                 Text(_resultCheckedInAt!),
-              if (_resultTitle == 'Invalid ticket') ...[
-                const SizedBox(height: 8),
-                Text(_resultMessage!, textAlign: TextAlign.center),
-              ],
+              const SizedBox(height: 8),
+              Text(_resultMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _resumeScanning,
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: const Text('Scan next ticket'),
+              ),
             ],
           ),
         ),

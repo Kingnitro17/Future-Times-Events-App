@@ -44,12 +44,19 @@ List<EventModel> rankHomeEvents(
   if (base.isEmpty) return const [];
 
   final city = preferredCity.trim().toLowerCase();
+  final isAllZimbabwe = city.isEmpty || city == 'all zimbabwe';
   final ranked = [...base];
   ranked.sort((a, b) {
     int score(EventModel event) {
       var value = event.featured ? 1000 : 200;
       final eventCity = (event.venue?.address?.city ?? '').trim().toLowerCase();
-      if (city.isNotEmpty && eventCity == city) value += 250;
+      if (!isAllZimbabwe &&
+          eventCity.isNotEmpty &&
+          (eventCity == city ||
+              eventCity.contains(city) ||
+              city.contains(eventCity))) {
+        value += 1500;
+      }
       final category =
           (event.categoryLabel ?? event.categoryId ?? '').trim().toLowerCase();
       if (normalizedInterests.isNotEmpty &&

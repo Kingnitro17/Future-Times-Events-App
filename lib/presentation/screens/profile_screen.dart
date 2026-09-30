@@ -51,6 +51,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _submitting = false;
   bool _avatarUpdating = false;
   String? _error;
+  String? _loadedAuxiliaryDataForUser;
+  bool _profileRefreshScheduled = false;
+  bool _auxiliaryDataReloadPending = false;
   SocialStats _socialStats = const SocialStats();
   OrganizerApplication? _myApplication;
   bool _applicationLoading = true;
@@ -59,15 +62,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     widget.authRepository.addListener(_changed);
-    _loadStats();
-    _loadOrganizerApplication();
+    if (!widget.authRepository.profileLoading) {
+      _loadedAuxiliaryDataForUser = _auxiliaryDataKey;
+      _loadStats();
+      _loadOrganizerApplication();
+    }
   }
+
+  String get _auxiliaryDataKey =>
+      '${widget.authRepository.user?.id}:${widget.authRepository.currentRole}';
 
   void _changed() {
     if (!mounted) return;
+    final key = _auxiliaryDataKey;
+    final needsAuxiliaryReload = !widget.authRepository.profileLoading &&
+        key != _loadedAuxiliaryDataForUser;
+    if (needsAuxiliaryReload) {
+      _loadedAuxiliaryDataForUser = key;
+    }
+    _auxiliaryDataReloadPending |= needsAuxiliaryReload;
+    if (_profileRefreshScheduled) return;
+    _profileRefreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {});
+      if (!mounted) return;
+      _profileRefreshScheduled = false;
+      final reloadAuxiliaryData = _auxiliaryDataReloadPending;
+      _auxiliaryDataReloadPending = false;
+      setState(() {});
+      if (reloadAuxiliaryData) {
         _loadStats();
         _loadOrganizerApplication();
       }
@@ -153,11 +175,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickProfilePhoto() async {
-    final image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 1200,
-    );
+    XFile? image;
+    try {
+      image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 88,
+        maxWidth: 1200,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Could not open your photo library. Try again.'),
+        ));
+      }
+      return;
+    }
     if (image == null || !mounted) return;
     setState(() => _avatarUpdating = true);
     try {
@@ -184,281 +216,259 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    try {
-      final auth = widget.authRepository;
-      final user = Supabase.instance.client.auth.currentUser;
-      final profileLoading = auth.profileLoading;
-      final profile = auth.profile;
-      final profileError = auth.profileError;
+    final auth = widget.authRepository;
+    final user = auth.user;
+    final profileLoading = auth.profileLoading;
+    final profile = auth.profile;
+    final profileError = auth.profileError;
 
-      debugPrint('[PROFILE] build() called');
-      debugPrint('[PROFILE] currentUser = ${user?.id}');
-      debugPrint(
-          '[PROFILE] session = ${Supabase.instance.client.auth.currentSession?.user.id}');
-      debugPrint('[PROFILE] isLoading = $profileLoading');
-      debugPrint('[PROFILE] profile = $profile');
-      debugPrint('[PROFILE] error = $profileError');
-
-      if (user == null) {
-        return const Scaffold(
-          body: Center(child: Text('DEBUG: not signed in')),
-        );
-      }
-
-      if (profileLoading) {
-        return const Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text('DEBUG: loading profile...'),
-              ],
-            ),
-          ),
-        );
-      }
-
-      final name = profile?['display_name']?.toString() ??
-          user.userMetadata?['display_name']?.toString() ??
-          user.userMetadata?['full_name']?.toString() ??
-          user.email?.split('@').first ??
-          'User';
-      final email = profile?['email']?.toString() ?? user.email ?? 'no-email';
-      final avatarUrl = profile?['avatar_url']?.toString();
-      final initials = profile?['initials']?.toString() ??
-          (name.trim().isEmpty ? 'U' : name.trim()[0].toUpperCase());
-      final role = profile?['role']?.toString();
-      final eventsAttended = profile?['events_attended'] ?? 0;
-      final loyaltyPoints = profile?['loyalty_points'] ?? 0;
-      final totalSpent = profile?['total_spent'] ?? 0;
-      final phone = profile?['phone']?.toString() ?? 'Not added';
-      final city = profile?['city']?.toString() ?? 'Not added';
-      final bio = profile?['bio']?.toString() ?? 'No bio added';
-
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Profile'),
-          actions: [
-            IconButton(
-              onPressed: () => _editName(name),
-              tooltip: 'Edit profile',
-              icon: const Icon(Icons.edit_outlined),
-            ),
-          ],
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          children: [
-            if (profileError != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Text(
-                  'Displaying cached profile data. $profileError',
-                  style: const TextStyle(
-                    color: Colors.deepOrange,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      CircleAvatar(
-                        radius: 42,
-                        backgroundColor:
-                            AppColors.purple.withValues(alpha: 0.12),
-                        backgroundImage:
-                            avatarUrl != null && avatarUrl.isNotEmpty
-                                ? NetworkImage(avatarUrl)
-                                : null,
-                        child: avatarUrl == null || avatarUrl.isEmpty
-                            ? Text(
-                                initials,
-                                style: const TextStyle(
-                                  color: AppColors.purple,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        right: -4,
-                        bottom: -4,
-                        child: Material(
-                          color: AppColors.purple,
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            onPressed:
-                                _avatarUpdating ? null : _pickProfilePhoto,
-                            tooltip: 'Add or change profile photo',
-                            icon: _avatarUpdating
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.camera_alt_outlined,
-                                    size: 18, color: Colors.white),
-                            constraints: const BoxConstraints.tightFor(
-                              width: 34,
-                              height: 34,
-                            ),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (role != null && role.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Chip(
-                      label: Text(role),
-                      labelStyle: const TextStyle(
-                        color: AppColors.purple,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      backgroundColor: AppColors.purple.withValues(alpha: 0.1),
-                      side: BorderSide.none,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      _profileStat('Events', eventsAttended.toString()),
-                      _profileStat('Points', loyaltyPoints.toString()),
-                      _profileStat(
-                          'Spent', '\$${_formatProfileAmount(totalSpent)}'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            _sectionHeader('ACCOUNT'),
-            _buildGroup([
-              _buildRow(
-                Icons.manage_accounts_outlined,
-                'Account Settings',
-                '$phone · $city',
-                () => _editName(name),
-              ),
-              _buildRow(
-                Icons.notifications_none_rounded,
-                'Notifications',
-                'SMS and marketing preferences',
-                () => context.push('/notifications'),
-              ),
-              _buildRow(
-                Icons.lock_outline_rounded,
-                'Security',
-                'Change password and manage access',
-                () => _showSecurityMessage(),
-              ),
-              if (auth.currentRole == 'organizer' ||
-                  auth.currentRole == 'super_admin')
-                _buildRow(
-                  Icons.dashboard_customize_outlined,
-                  'Organizer',
-                  'Manage your events and tickets',
-                  () => context.push('/organizer'),
-                ),
-              if (auth.currentRole == 'super_admin')
-                _buildRow(
-                  Icons.admin_panel_settings_outlined,
-                  'Admin',
-                  'Manage events, users, and applications',
-                  () => context.push('/admin'),
-                ),
-              if (auth.currentRole == 'user' &&
-                  !_applicationLoading &&
-                  _myApplication?.isPending != true)
-                _buildRow(
-                  Icons.storefront_outlined,
-                  'Become an organizer',
-                  _myApplication?.isRejected == true
-                      ? 'Resubmit your organizer application'
-                      : 'Apply to host events and manage tickets',
-                  () => context.push('/organizer/apply'),
-                ),
-            ]),
-            const SizedBox(height: 20),
-            _buildGroup([
-              _buildRow(
-                Icons.logout_rounded,
-                'Sign Out',
-                'Log out of your account',
-                () async {
-                  await auth.signOut();
-                },
-                isDestructive: true,
-              ),
-            ]),
-            const SizedBox(height: 20),
-            Text(
-              bio,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text('Sign in to view your profile.')),
       );
-    } catch (error, stackTrace) {
-      return Scaffold(
+    }
+
+    if (profileLoading) {
+      return const Scaffold(
         body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text('PROFILE BUILD ERROR:\n$error\n\n$stackTrace'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Loading your profile...'),
+            ],
           ),
         ),
       );
     }
+
+    final name = profile?['display_name']?.toString() ??
+        user.userMetadata?['display_name']?.toString() ??
+        user.userMetadata?['full_name']?.toString() ??
+        user.email?.split('@').first ??
+        'User';
+    final email = profile?['email']?.toString() ?? user.email ?? 'no-email';
+    final avatarUrl = profile?['avatar_url']?.toString();
+    final initials = profile?['initials']?.toString() ??
+        (name.trim().isEmpty ? 'U' : name.trim()[0].toUpperCase());
+    final role = profile?['role']?.toString();
+    final eventsAttended = profile?['events_attended'] ?? 0;
+    final loyaltyPoints = profile?['loyalty_points'] ?? 0;
+    final totalSpent = profile?['total_spent'] ?? 0;
+    final phone = profile?['phone']?.toString() ?? 'Not added';
+    final city = profile?['city']?.toString() ?? 'Not added';
+    final bio = profile?['bio']?.toString() ?? 'No bio added';
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/account-settings'),
+            tooltip: 'Edit profile',
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          if (profileError != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Text(
+                'Displaying cached profile data. $profileError',
+                style: const TextStyle(
+                  color: Colors.deepOrange,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 42,
+                      backgroundColor: AppColors.purple.withValues(alpha: 0.12),
+                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl == null || avatarUrl.isEmpty
+                          ? Text(
+                              initials,
+                              style: const TextStyle(
+                                color: AppColors.purple,
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: Material(
+                        color: AppColors.purple,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          onPressed: _avatarUpdating ? null : _pickProfilePhoto,
+                          tooltip: 'Add or change profile photo',
+                          icon: _avatarUpdating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.camera_alt_outlined,
+                                  size: 18, color: Colors.white),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 34,
+                            height: 34,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 14,
+                  ),
+                ),
+                if (role != null && role.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Chip(
+                    label: Text(role),
+                    labelStyle: const TextStyle(
+                      color: AppColors.purple,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    backgroundColor: AppColors.purple.withValues(alpha: 0.1),
+                    side: BorderSide.none,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _profileStat('Events', eventsAttended.toString()),
+                    _profileStat('Points', loyaltyPoints.toString()),
+                    _profileStat(
+                        'Spent', '\$${_formatProfileAmount(totalSpent)}'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _sectionHeader('ACCOUNT'),
+          _buildGroup([
+            _buildRow(
+              Icons.manage_accounts_outlined,
+              'Account Settings',
+              '$phone · $city',
+              () => context.push('/account-settings'),
+            ),
+            _buildRow(
+              Icons.notifications_none_rounded,
+              'Notifications',
+              'SMS and marketing preferences',
+              () => context.push('/notifications'),
+            ),
+            _buildRow(
+              Icons.lock_outline_rounded,
+              'Security',
+              'Change password and manage access',
+              () => context.push('/security'),
+            ),
+            if (auth.currentRole == 'organizer' ||
+                auth.currentRole == 'super_admin')
+              _buildRow(
+                Icons.dashboard_customize_outlined,
+                'Organizer',
+                'Manage your events and tickets',
+                () => context.push('/organizer'),
+              ),
+            if (auth.currentRole == 'super_admin')
+              _buildRow(
+                Icons.admin_panel_settings_outlined,
+                'Admin',
+                'Manage events, users, and applications',
+                () => context.push('/admin'),
+              ),
+            if (auth.currentRole == 'user' &&
+                !_applicationLoading &&
+                _myApplication?.isPending != true)
+              _buildRow(
+                Icons.storefront_outlined,
+                'Become an organizer',
+                _myApplication?.isRejected == true
+                    ? 'Resubmit your organizer application'
+                    : 'Apply to host events and manage tickets',
+                () => context.push('/organizer/apply'),
+              ),
+          ]),
+          const SizedBox(height: 20),
+          _buildGroup([
+            _buildRow(
+              Icons.logout_rounded,
+              'Sign Out',
+              'Log out of your account',
+              () async {
+                await auth.signOut();
+              },
+              isDestructive: true,
+            ),
+          ]),
+          const SizedBox(height: 20),
+          Text(
+            bio,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfileContent(AuthRepository auth) {
@@ -527,16 +537,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return amount % 1 == 0
         ? amount.toInt().toString()
         : amount.toStringAsFixed(2);
-  }
-
-  void _showSecurityMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content:
-            Text('Password changes are available from your account email.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   Widget _buildCachedProfileWarning(String? detail) {
@@ -885,8 +885,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // ACCOUNT
         _sectionHeader('ACCOUNT'),
         _buildGroup([
-          _buildRow(Icons.edit_outlined, 'Edit Profile',
-              'Update display name and avatar', () => _editName(name)),
+          _buildRow(
+              Icons.edit_outlined,
+              'Edit Profile',
+              'Update your name, contact details, and photo',
+              () => context.push('/account-settings')),
           _buildRow(
               Icons.confirmation_number_outlined,
               'My Tickets',

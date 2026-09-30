@@ -40,3 +40,19 @@ For a configured Android build, use:
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/build_android.ps1 -Release
 ```
+
+## Password recovery deep link
+
+The mobile password reset flow returns to
+`futuretimesevents://reset-password/`. Add that exact URL to the Supabase
+project's **Authentication > URL Configuration > Redirect URLs** allowlist.
+Keep the Supabase recovery email template's confirmation link
+(`{{ .ConfirmationURL }}`) intact so Supabase can validate the recovery token
+before returning to the app. Android and iOS register the `futuretimesevents`
+scheme in their app manifests.
+
+Event-specific ticket scanning uses the overload added in
+`supabase/migrations/20260930135500_event_scoped_ticket_checkin.sql`. Apply
+that migration to Supabase before selecting an event in the organizer scanner;
+selected-event scans intentionally fail closed until the backend supports the
+scope check.

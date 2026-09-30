@@ -61,11 +61,20 @@ class _OrganizerApplicationScreenState
       widget.authRepository.user?.userMetadata?['avatar_url']?.toString();
 
   Future<void> _pickProfilePhoto() async {
-    final image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 1200,
-    );
+    XFile? image;
+    try {
+      image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 88,
+        maxWidth: 1200,
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => _error = 'Could not open your photo library. Try again.');
+      }
+      return;
+    }
     if (image == null || !mounted) return;
     setState(() {
       _photoUpdating = true;

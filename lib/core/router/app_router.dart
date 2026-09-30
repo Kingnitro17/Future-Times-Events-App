@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
@@ -24,6 +25,7 @@ import '../../presentation/screens/venue/menu_order_screen.dart';
 import '../../presentation/screens/organizer/scan_ticket_screen.dart';
 import '../../presentation/screens/organizer/venue_fulfillment_screen.dart';
 import '../../presentation/screens/organizer/organizer_application_screen.dart';
+import '../../presentation/screens/organizer/organizer_profile_photo_screen.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../data/repositories/ride_repository.dart';
@@ -44,6 +46,10 @@ import '../../presentation/screens/admin/admin_events_screen.dart';
 import '../../presentation/screens/admin/admin_event_detail_screen.dart';
 import '../../presentation/screens/admin/admin_users_screen.dart';
 import '../../presentation/screens/admin/admin_applications_screen.dart';
+import '../../presentation/screens/profile/forgot_password_screen.dart';
+import '../../presentation/screens/profile/account_settings_screen.dart';
+import '../../presentation/screens/profile/security_screen.dart';
+import '../../presentation/screens/profile/reset_password_screen.dart';
 import '../../services/roles/role_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
@@ -88,8 +94,10 @@ class AppShell extends StatelessWidget {
 }
 
 class _FutureTimesNavigation extends StatelessWidget {
-  const _FutureTimesNavigation(
-      {required this.selectedIndex, required this.onSelected});
+  const _FutureTimesNavigation({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
@@ -132,73 +140,77 @@ class _FutureTimesNavigation extends StatelessWidget {
                 children: List.generate(_items.length, (index) {
                   final item = _items[index];
                   final selected = selectedIndex == index;
-                  final center = index == 2;
                   return Expanded(
                     child: Semantics(
                       selected: selected,
                       button: true,
                       label: item.$1,
-                      child: InkResponse(
-                        onTap: () => onSelected(index),
-                        radius: 34,
-                        child: AnimatedScale(
-                          scale: selected ? 1 : .96,
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (center)
-                                Container(
-                                  width: 58,
-                                  height: 58,
-                                  transform:
-                                      Matrix4.translationValues(0, -12, 0),
-                                  decoration: BoxDecoration(
-                                    gradient: AppGradients.brand,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 4),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Color(0x357222E3),
-                                          blurRadius: 18,
-                                          offset: Offset(0, 8)),
-                                    ],
-                                  ),
-                                  child: Icon(item.$2,
-                                      color: Colors.white, size: 27),
-                                )
-                              else
-                                AnimatedContainer(
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          onSelected(index);
+                        },
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 320),
+                              curve: Curves.easeOutCubic,
+                              transform: selected
+                                  ? Matrix4.translationValues(0, -12, 0)
+                                  : Matrix4.identity(),
+                              width: selected ? 56 : 40,
+                              height: selected ? 56 : 30,
+                              decoration: selected
+                                  ? BoxDecoration(
+                                      gradient: AppGradients.brand,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 3.5),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x4D7222E3),
+                                          blurRadius: 16,
+                                          spreadRadius: 1,
+                                          offset: Offset(0, 6),
+                                        ),
+                                      ],
+                                    )
+                                  : const BoxDecoration(
+                                      color: Colors.transparent,
+                                      shape: BoxShape.circle,
+                                    ),
+                              child: Center(
+                                child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 5),
-                                  decoration: BoxDecoration(
+                                  child: Icon(
+                                    selected ? item.$3 : item.$2,
+                                    key: ValueKey('${item.$1}_$selected'),
                                     color: selected
-                                        ? AppColors.purple.withValues(alpha: .1)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(14),
+                                        ? Colors.white
+                                        : AppColors.textMuted,
+                                    size: selected ? 26 : 22,
                                   ),
-                                  child: Icon(selected ? item.$3 : item.$2,
-                                      color: selected
-                                          ? AppColors.purple
-                                          : AppColors.textMuted,
-                                      size: 23),
                                 ),
-                              SizedBox(height: center ? 0 : 2),
-                              Text(item.$1,
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                      color: selected
-                                          ? AppColors.text
-                                          : AppColors.textMuted,
-                                      fontSize: 11,
-                                      fontWeight: selected
-                                          ? FontWeight.w800
-                                          : FontWeight.w600)),
-                            ],
-                          ),
+                              ),
+                            ),
+                            SizedBox(height: selected ? 0 : 2),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 250),
+                              style: TextStyle(
+                                color: selected
+                                    ? AppColors.purple
+                                    : AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: selected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                              ),
+                              child: Text(item.$1, maxLines: 1),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -300,6 +312,23 @@ class _EventDetailsSkeleton extends StatelessWidget {
       );
 }
 
+String? _organizerToolsRedirect(
+    AuthRepository authRepository, GoRouterState state) {
+  final role = authRepository.currentRole;
+  if (role == null && authRepository.profileLoading) return null;
+  if (role != 'organizer' && role != 'super_admin') return '/profile';
+
+  if (role == 'organizer') {
+    final avatarUrl = authRepository.profile?['avatar_url']?.toString() ??
+        authRepository.user?.userMetadata?['avatar_url']?.toString();
+    if (avatarUrl == null || avatarUrl.trim().isEmpty) {
+      return '/organizer/complete-profile?returnUrl='
+          '${Uri.encodeComponent(state.uri.toString())}';
+    }
+  }
+  return null;
+}
+
 GoRouter buildAppRouter({
   required EventRepository eventRepository,
   required AuthRepository authRepository,
@@ -329,13 +358,17 @@ GoRouter buildAppRouter({
       // Keep the launch animation visible while the initial session is
       // resolving. AuthRepository is initialized before the app starts, but
       // this also prevents a transient redirect during deep-link startup.
-      if (authRepository.isLoading || location == '/launch') return null;
+      if (authRepository.isLoading) return null;
+      if (authRepository.passwordRecoveryPending &&
+          location != '/reset-password') {
+        return '/reset-password';
+      }
+      if (location == '/launch') return null;
 
-      if (!authRepository.isSignedIn && !isAuthRoute) {
-        if (location == '/groups/join') {
-          return '/login?returnUrl=${Uri.encodeComponent(state.uri.toString())}';
-        }
-        return '/login';
+      if (!authRepository.isSignedIn &&
+          !isAuthRoute &&
+          location != '/forgot-password') {
+        return '/login?returnUrl=${Uri.encodeComponent(state.uri.toString())}';
       }
       if (authRepository.isSignedIn &&
           (isAuthRoute || location == '/onboarding')) {
@@ -376,6 +409,32 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/register',
         builder: (_, __) => RegisterScreen(authRepository: authRepository),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, state) => ForgotPasswordScreen(
+          initialEmail: state.uri.queryParameters['email'],
+        ),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        redirect: (_, __) =>
+            authRepository.passwordRecoveryPending ? null : '/security',
+        builder: (_, __) => ResetPasswordScreen(
+          authRepository: authRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/account-settings',
+        builder: (_, __) => AccountSettingsScreen(
+          authRepository: authRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/security',
+        builder: (_, __) => SecurityScreen(
+          authRepository: authRepository,
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -627,7 +686,16 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/organizer/complete-profile',
+        builder: (_, state) => OrganizerProfilePhotoScreen(
+          authRepository: authRepository,
+          returnLocation: state.uri.queryParameters['returnUrl'],
+        ),
+      ),
+      GoRoute(
         path: '/organizer',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, __) => OrganizerHomeScreen(
           authRepository: authRepository,
           organizerRepository: organizerRepository,
@@ -635,6 +703,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, __) => OrganizerEventsScreen(
           authRepository: authRepository,
           organizerRepository: organizerRepository,
@@ -642,6 +712,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/new',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, __) => EditEventScreen(
           authRepository: authRepository,
           organizerRepository: organizerRepository,
@@ -650,6 +722,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id/edit',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => EditEventScreen(
           eventId: state.pathParameters['id'],
           authRepository: authRepository,
@@ -659,6 +733,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => OrganizerEventDetailScreen(
           eventId: state.pathParameters['id']!,
           authRepository: authRepository,
@@ -667,12 +743,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id/venue',
-        redirect: (context, state) {
-          final role = authRepository.currentRole;
-          return role == 'organizer' || role == 'super_admin'
-              ? null
-              : '/profile';
-        },
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => VenueSetupScreen(
           eventId: state.pathParameters['id']!,
           venueRepository: venueCommerceRepository,
@@ -680,12 +752,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id/venue/table',
-        redirect: (context, state) {
-          final role = authRepository.currentRole;
-          return role == 'organizer' || role == 'super_admin'
-              ? null
-              : '/profile';
-        },
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => EditTableScreen(
           eventId: state.pathParameters['id']!,
           venueRepository: venueCommerceRepository,
@@ -694,12 +762,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id/venue/menu',
-        redirect: (context, state) {
-          final role = authRepository.currentRole;
-          return role == 'organizer' || role == 'super_admin'
-              ? null
-              : '/profile';
-        },
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => EditMenuItemScreen(
           eventId: state.pathParameters['id']!,
           venueRepository: venueCommerceRepository,
@@ -709,12 +773,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/events/:id/fulfill',
-        redirect: (context, state) {
-          final role = authRepository.currentRole;
-          return role == 'organizer' || role == 'super_admin'
-              ? null
-              : '/profile';
-        },
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => VenueFulfillmentScreen(
           eventId: state.pathParameters['id']!,
           organizerRepository: organizerRepository,
@@ -724,13 +784,8 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/organizer/scan',
-        redirect: (context, state) {
-          final role = authRepository.currentRole;
-          if (role != 'organizer' && role != 'super_admin') {
-            return '/profile';
-          }
-          return null;
-        },
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
         builder: (_, state) => ScanTicketScreen(
           authRepository: authRepository,
           organizerRepository: organizerRepository,

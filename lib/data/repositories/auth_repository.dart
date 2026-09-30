@@ -14,11 +14,13 @@ class AuthRepository extends ChangeNotifier {
   String? _profileError;
   bool _isLoading = true;
   bool _profileLoading = false;
+  bool _passwordRecoveryPending = false;
   User? get user => _user;
   Map<String, dynamic>? get profile => _profile;
   String? get profileError => _profileError;
   bool get isLoading => _isLoading;
   bool get profileLoading => _profileLoading;
+  bool get passwordRecoveryPending => _passwordRecoveryPending;
   bool get isSignedIn => _user != null;
   String get displayEmail => _user?.email ?? '';
   String? get currentRole =>
@@ -26,7 +28,14 @@ class AuthRepository extends ChangeNotifier {
 
   Future<void> initialize() async {
     _subscription = _client.auth.onAuthStateChange.listen(
-      (state) => _synchronize(state.session),
+      (state) {
+        if (state.event == AuthChangeEvent.passwordRecovery) {
+          _passwordRecoveryPending = true;
+        } else if (state.event == AuthChangeEvent.signedOut) {
+          _passwordRecoveryPending = false;
+        }
+        _synchronize(state.session);
+      },
       onError: (Object error, StackTrace stack) {
         if (kDebugMode) debugPrint('[auth] stream error: ${error.runtimeType}');
         _profileError =
@@ -78,15 +87,15 @@ class AuthRepository extends ChangeNotifier {
           _profile = row;
         } else {
           // 3. Auto-bootstrap profile if missing
-          final fallbackName = _user!.userMetadata?['display_name']?.toString() ??
+          final fallbackName = _user!.userMetadata?['display_name']
+                  ?.toString() ??
               _user!.userMetadata?['full_name']?.toString() ??
               (_user!.email != null ? _user!.email!.split('@').first : 'User');
           final bootstrap = {
             'id': _user!.id,
             'email': _user!.email,
             'display_name': fallbackName,
-            'phone': _user!.phone ??
-                _user!.userMetadata?['phone']?.toString(),
+            'phone': _user!.phone ?? _user!.userMetadata?['phone']?.toString(),
             'city': 'Harare',
           };
           await _client
@@ -107,8 +116,7 @@ class AuthRepository extends ChangeNotifier {
           'email': _user!.email,
           'display_name': _user!.userMetadata?['display_name']?.toString() ??
               (_user!.email != null ? _user!.email!.split('@').first : 'User'),
-          'phone': _user!.phone ??
-              _user!.userMetadata?['phone']?.toString(),
+          'phone': _user!.phone ?? _user!.userMetadata?['phone']?.toString(),
           'city': 'Harare',
         };
       }
@@ -196,6 +204,15 @@ class AuthRepository extends ChangeNotifier {
     RoleService().clear();
   }
 
+  Future<void> completePasswordRecovery(String password) async {
+    try {
+      await _client.auth.updateUser(UserAttributes(password: password));
+      _passwordRecoveryPending = false;
+    } on AuthException catch (error) {
+      throw _mapAuthError(error);
+    }
+  }
+
   Future<void> updateDisplayName(String displayName) async {
     final user = _user;
     final value = displayName.trim();
@@ -215,6 +232,46 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
+  Future<void> updateProfileDetails({
+    required String displayName,
+    required String phone,
+    required String city,
+    required String bio,
+  }) async {
+    final user = _user;
+    final name = displayName.trim();
+    final normalizedPhone = phone.trim();
+    final normalizedCity = city.trim();
+    final normalizedBio = bio.trim();
+    if (user == null) {
+      throw const AuthFailure('Sign in to update your profile.');
+    }
+    if (name.length < 2) {
+      throw const AuthFailure('Enter a name with at least two characters.');
+    }
+    if (normalizedBio.length > 250) {
+      throw const AuthFailure('Your bio must be 250 characters or fewer.');
+    }
+
+    final updates = <String, dynamic>{
+      'id': user.id,
+      'display_name': name,
+      'phone': normalizedPhone.isEmpty ? null : normalizedPhone,
+      'city': normalizedCity.isEmpty ? null : normalizedCity,
+      'bio': normalizedBio.isEmpty ? null : normalizedBio,
+    };
+    try {
+      await _client.from('profiles').upsert(updates);
+      _profile = {...?_profile, ...updates};
+      notifyListeners();
+    } on PostgrestException catch (error) {
+      if (kDebugMode) {
+        debugPrint('[profile] details update failed: ${error.code}');
+      }
+      throw const AuthFailure('Your profile could not be updated. Try again.');
+    }
+  }
+
   Future<String> updateProfilePhoto(
     Uint8List bytes, {
     required String fileName,
@@ -223,6 +280,9 @@ class AuthRepository extends ChangeNotifier {
     final user = _user;
     if (user == null) {
       throw const AuthFailure('Sign in to add a profile photo.');
+    }
+    if (bytes.isEmpty) {
+      throw const AuthFailure('The selected photo is empty. Choose another.');
     }
 
     final extension =
@@ -256,6 +316,12 @@ class AuthRepository extends ChangeNotifier {
       }
       throw const AuthFailure(
           'Your profile photo could not be saved. Try again.');
+    } on StorageException catch (error) {
+      if (kDebugMode) {
+        debugPrint('[profile] photo upload failed: ${error.statusCode}');
+      }
+      throw const AuthFailure(
+          'Your profile photo could not be uploaded. Check your connection and try again.');
     }
   }
 

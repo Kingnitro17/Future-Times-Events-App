@@ -36,6 +36,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
   }
 
   void _redirectIfNeeded() {
+    if (widget.authRepository.profileLoading) return;
     if (!widget.authRepository.isSignedIn ||
         widget.authRepository.currentRole != 'organizer' &&
             widget.authRepository.currentRole != 'super_admin') {
@@ -72,15 +73,43 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
             const Text('Keep your events moving forward.',
                 style: TextStyle(color: AppColors.textMuted)),
             const SizedBox(height: 22),
+            Row(children: [
+              Expanded(
+                  child: _ActionButton(
+                label: 'Create Event',
+                icon: Icons.add_rounded,
+                onTap: () => context.push('/organizer/events/new'),
+              )),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: _ActionButton(
+                label: 'Scan Tickets',
+                icon: Icons.qr_code_scanner_rounded,
+                onTap: () => context.push('/organizer/scan'),
+              )),
+            ]),
+            const SizedBox(height: 22),
             FutureBuilder<Map<String, dynamic>>(
               future: _stats,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(
-                      child: Padding(
-                    padding: EdgeInsets.all(28),
-                    child: CircularProgressIndicator(),
-                  ));
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.55,
+                    children: List.generate(
+                      4,
+                      (_) => Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  );
                 }
                 if (snapshot.hasError) {
                   return _ErrorCard(onRetry: () => setState(_load));
@@ -106,22 +135,6 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                 );
               },
             ),
-            const SizedBox(height: 22),
-            Row(children: [
-              Expanded(
-                  child: _ActionButton(
-                label: 'Create Event',
-                icon: Icons.add_rounded,
-                onTap: () => context.push('/organizer/events/new'),
-              )),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _ActionButton(
-                label: 'Scan Tickets',
-                icon: Icons.qr_code_scanner_rounded,
-                onTap: () => context.push('/organizer/scan'),
-              )),
-            ]),
             const SizedBox(height: 28),
             const Text('Recent Activity',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),

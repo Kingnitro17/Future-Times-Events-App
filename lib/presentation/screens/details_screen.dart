@@ -651,11 +651,20 @@ class _DetailsScreenState extends State<DetailsScreen> {
       Row(children: [
         Text('Address', style: Theme.of(context).textTheme.titleLarge),
         const Spacer(),
-        if (lat != null && lng != null)
+        if (lat != null && lng != null) ...[
+          TextButton.icon(
+            onPressed: () =>
+                _openDirections(lat, lng, widget.event.name.text),
+            icon: const Icon(Icons.directions_rounded, size: 16),
+            label: const Text('Directions'),
+          ),
+          const SizedBox(width: 4),
           TextButton(
-              onPressed: () => context.push('/event/${widget.event.id}/map',
-                  extra: widget.event),
-              child: const Text('View on Map')),
+            onPressed: () => context.push('/event/${widget.event.id}/map',
+                extra: widget.event),
+            child: const Text('View on Map'),
+          ),
+        ],
       ]),
       const SizedBox(height: 10),
       ClipRRect(
@@ -680,9 +689,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   children: [
                     TileLayer(
                         urlTemplate:
-                            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                        subdomains: const ['a', 'b', 'c', 'd'],
-                        userAgentPackageName: 'za.co.futuretimes.events'),
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.futuretimes.events'),
                     MarkerLayer(markers: [
                       Marker(
                           point: LatLng(lat, lng),
@@ -1095,6 +1103,20 @@ class _DetailsScreenState extends State<DetailsScreen> {
         mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Could not open secure checkout. Try again shortly.')));
+    }
+  }
+
+  Future<void> _openDirections(double lat, double lng, String label) async {
+    final googleMapsUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    );
+    if (await canLaunchUrl(googleMapsUri)) {
+      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng($label)');
+    if (await canLaunchUrl(geoUri)) {
+      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
     }
   }
 

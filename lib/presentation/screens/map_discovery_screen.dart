@@ -127,7 +127,20 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
 
   Future<void> _routeTo(EventModel event) async {
     final destination = mapPointForEvent(event);
-    if (destination == null || _userLocation == null) return;
+    if (destination == null) return;
+    if (_userLocation == null) {
+      await _useMyLocation();
+      if (_userLocation == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enable location to calculate directions.'),
+            ),
+          );
+        }
+        return;
+      }
+    }
     setState(() {
       _routing = true;
       _routeMessage = null;

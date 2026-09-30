@@ -156,21 +156,25 @@ class TicketRepository {
       final qrPayload =
           'FTE-TKT-${now.millisecondsSinceEpoch}-${user.id.replaceAll('-', '').substring(0, 6)}';
 
-      final inserted = await _client.from('tickets').insert({
-        'ticket_number': ticketNumber,
-        'ticket_id': ticketNumber,
-        'event_id': eventId,
-        'ticket_type_id': ticketTypeId,
-        'user_id': user.id,
-        'attendee_name': name,
-        'attendee_email': email,
-        if (attendeePhone != null && attendeePhone.trim().isNotEmpty)
-          'attendee_phone': attendeePhone.trim(),
-        'status': 'issued',
-        'issued_at': now.toIso8601String(),
-        'purchased_at': now.toIso8601String(),
-        'qr_code': qrPayload,
-      }).select().single();
+      final inserted = await _client
+          .from('tickets')
+          .insert({
+            'ticket_number': ticketNumber,
+            'ticket_id': ticketNumber,
+            'event_id': eventId,
+            'ticket_type_id': ticketTypeId,
+            'user_id': user.id,
+            'attendee_name': name,
+            'attendee_email': email,
+            if (attendeePhone != null && attendeePhone.trim().isNotEmpty)
+              'attendee_phone': attendeePhone.trim(),
+            'status': 'issued',
+            'issued_at': now.toIso8601String(),
+            'purchased_at': now.toIso8601String(),
+            'qr_code': qrPayload,
+          })
+          .select()
+          .single();
 
       // Automatically register RSVP
       try {
@@ -205,6 +209,7 @@ class TicketRepository {
   Future<Map<String, dynamic>> validateAndCheckInTicket({
     required String qrPayload,
     String? gate,
+    String? eventId,
   }) async {
     final clean = qrPayload.trim();
     if (clean.isEmpty) {
@@ -213,23 +218,31 @@ class TicketRepository {
 
     // 1. Try server-side validation RPC
     try {
-      final res = await _client.rpc('validate_and_check_in_ticket', params: {
+      final params = <String, dynamic>{
         'p_qr_payload': clean,
         'p_gate': gate ?? 'Main Gate',
-      });
+      };
+      if (eventId != null) params['p_event_id'] = eventId;
+      final res =
+          await _client.rpc('validate_and_check_in_ticket', params: params);
       if (res is Map<String, dynamic>) {
         return res;
       }
     } catch (e) {
       if (kDebugMode) debugPrint('[tickets] validate RPC fallback: $e');
+      if (eventId != null) {
+        throw const DataFailure(
+          'Could not validate this ticket for the selected event. Try again or contact support.',
+        );
+      }
     }
 
     // 2. Direct table fallback for verification
     try {
-      final row = await _client
-          .from('tickets')
-          .select(
-              'id, ticket_number, status, attendee_name, checked_in_at, event_id')
+      var query = _client.from('tickets').select(
+          'id, ticket_number, status, attendee_name, checked_in_at, event_id');
+      if (eventId != null) query = query.eq('event_id', eventId);
+      final row = await query
           .or('qr_code.eq.$clean,ticket_number.eq.$clean,id.eq.$clean')
           .maybeSingle();
 
@@ -245,7 +258,8 @@ class TicketRepository {
         return {
           'valid': false,
           'already_checked_in': true,
-          'message': 'Ticket was already checked in at ${row['checked_in_at']}.',
+          'message':
+              'Ticket was already checked in at ${row['checked_in_at']}.',
         };
       }
 

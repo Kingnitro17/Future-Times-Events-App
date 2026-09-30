@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
@@ -13,7 +12,6 @@ class HeroBanner extends StatelessWidget {
     required this.buttonLabel,
     required this.onButtonPressed,
     this.semanticLabel,
-    this.greeting,
   });
 
   final String imageAsset;
@@ -22,7 +20,6 @@ class HeroBanner extends StatelessWidget {
   final String buttonLabel;
   final VoidCallback onButtonPressed;
   final String? semanticLabel;
-  final String? greeting;
 
   @override
   Widget build(BuildContext context) {
@@ -80,46 +77,6 @@ class HeroBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (greeting != null && greeting!.trim().isNotEmpty)
-                  Positioned(
-                    top: 20,
-                    right: 20,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 11, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Hi, ',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: .78),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                greeting!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: Column(

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/event_model.dart';
 import '../../logic/blocs/social/social_bloc.dart';
@@ -32,22 +33,15 @@ class _EventMapScreenState extends State<EventMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Fallback coordinates if none are available.
-    final lat = widget.event.venue?.latitude != null
-        ? double.tryParse(widget.event.venue!.latitude!) ?? 0.0
-        : 0.0;
-    final lng = widget.event.venue?.longitude != null
-        ? double.tryParse(widget.event.venue!.longitude!) ?? 0.0
-        : 0.0;
-
-    final center = LatLng(lat, lng);
+    final coordinates = _eventCoordinates;
+    final center = coordinates ?? const LatLng(-17.8252, 31.0335);
 
     return Scaffold(
       body: Stack(
         children: [
           _buildMap(center),
           _buildBackButton(),
-          _buildBottomCard(),
+          _buildBottomCard(coordinates),
         ],
       ),
     );
@@ -126,10 +120,7 @@ class _EventMapScreenState extends State<EventMapScreen> {
           ),
           children: [
             TileLayer(
-              // CartoDB Dark Matter for a sleek, premium dark map aesthetic
-              urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-              subdomains: const ['a', 'b', 'c', 'd'],
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.futuretimes.events',
             ),
             MarkerLayer(markers: markers),
@@ -158,7 +149,7 @@ class _EventMapScreenState extends State<EventMapScreen> {
     );
   }
 
-  Widget _buildBottomCard() {
+  Widget _buildBottomCard(LatLng? coordinates) {
     return Positioned(
       bottom: 40,
       left: 20,
@@ -210,10 +201,56 @@ class _EventMapScreenState extends State<EventMapScreen> {
                 ],
               ),
             ),
+            if (coordinates != null) ...[
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: () => _openDirections(
+                  coordinates.latitude,
+                  coordinates.longitude,
+                ),
+                icon: const Icon(Icons.directions_rounded, color: Colors.white),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppTheme.electricIndigo,
+                ),
+                tooltip: 'Get Directions',
+              ),
+            ],
           ],
         ),
       ).animate().slideY(
           begin: 1, end: 0, duration: 600.ms, curve: Curves.easeOutQuart),
     );
+  }
+
+  LatLng? get _eventCoordinates {
+    final latitude = double.tryParse(widget.event.venue?.latitude ?? '');
+    final longitude = double.tryParse(widget.event.venue?.longitude ?? '');
+    if (latitude == null ||
+        longitude == null ||
+        !latitude.isFinite ||
+        !longitude.isFinite ||
+        latitude == 0 ||
+        longitude == 0 ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180) {
+      return null;
+    }
+    return LatLng(latitude, longitude);
+  }
+
+  Future<void> _openDirections(double lat, double lng) async {
+    final googleMapsUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    );
+    if (await canLaunchUrl(googleMapsUri)) {
+      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+    if (await canLaunchUrl(geoUri)) {
+      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+    }
   }
 }
