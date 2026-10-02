@@ -10,6 +10,10 @@ import '../../data/models/wallet_ticket.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../widgets/event_network_image.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/common/error_state.dart';
+import '../widgets/common/premium_sheet.dart';
+import '../widgets/common/skeleton.dart';
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key, required this.authRepository});
@@ -144,8 +148,9 @@ class _TicketCard extends StatelessWidget {
               context: context,
               isScrollControlled: true,
               useSafeArea: true,
-              showDragHandle: true,
-              builder: (_) => _TicketDetail(ticket: ticket)),
+              builder: (_) => PremiumBottomSheet(
+                    child: _TicketDetail(ticket: ticket),
+                  )),
           child: Column(children: [
             SizedBox(
                 height: 156,
@@ -337,8 +342,7 @@ class _TicketDetail extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Clipboard.setData(
-                        ClipboardData(text: ticket.ticketNumber));
+                    Clipboard.setData(ClipboardData(text: ticket.ticketNumber));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Reference copied to clipboard.'),
@@ -381,16 +385,14 @@ class _TicketDetail extends StatelessWidget {
               decoration: BoxDecoration(
                   color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(18)),
-              child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.shield_outlined, color: Colors.red),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Text(
-                            'This ticket has been ${ticket.status}. '
-                            'Entry QR code is no longer active for this admission.')),
-                  ])),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.shield_outlined, color: Colors.red),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Text('This ticket has been ${ticket.status}. '
+                        'Entry QR code is no longer active for this admission.')),
+              ])),
       ]));
 }
 
@@ -425,81 +427,40 @@ String _status(String value) => switch (value) {
 class _EmptyTickets extends StatelessWidget {
   const _EmptyTickets();
   @override
-  Widget build(BuildContext context) => _EmptyState(
+  Widget build(BuildContext context) => EmptyState(
       icon: Icons.confirmation_number_outlined,
       title: 'Your tickets',
-      detail: 'When you book events, your tickets will appear here.',
-      primaryLabel: 'Explore Events',
-      onPrimary: () => context.go('/explore'));
+      message: 'When you book events, your tickets will appear here.',
+      actionLabel: 'Explore Events',
+      onAction: () => context.go('/explore'));
 }
 
 class _SignedOut extends StatelessWidget {
   const _SignedOut();
   @override
   Widget build(BuildContext context) => Scaffold(
-      body: _EmptyState(
-          icon: Icons.confirmation_number_outlined,
-          title: 'Your tickets',
-          detail: 'Book an event or sign in to sync tickets from your account.',
-          primaryLabel: 'Explore Events',
-          onPrimary: () => context.go('/explore'),
-          secondaryLabel: 'Sign in',
-          onSecondary: () => context.go('/profile')));
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState(
-      {required this.icon,
-      required this.title,
-      required this.detail,
-      this.primaryLabel,
-      this.onPrimary,
-      this.secondaryLabel,
-      this.onSecondary});
-  final IconData icon;
-  final String title;
-  final String detail;
-  final String? primaryLabel;
-  final VoidCallback? onPrimary;
-  final String? secondaryLabel;
-  final VoidCallback? onSecondary;
-  @override
-  Widget build(BuildContext context) => Center(
-      child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                    color: AppColors.purple.withValues(alpha: .07),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: AppColors.purple.withValues(alpha: .14))),
-                child: Icon(icon, size: 48, color: AppColors.purple)),
-            const SizedBox(height: 24),
-            Text(title,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(detail,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.textMuted, fontSize: 16, height: 1.5)),
-            if (primaryLabel != null) ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                  onPressed: onPrimary,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  iconAlignment: IconAlignment.end,
-                  label: Text(primaryLabel!)),
-            ],
-            if (secondaryLabel != null) ...[
-              const SizedBox(height: 16),
-              OutlinedButton(
-                  onPressed: onSecondary, child: Text(secondaryLabel!)),
-            ],
-          ])));
+        body: Column(
+          children: [
+            Expanded(
+              child: EmptyState(
+                icon: Icons.confirmation_number_outlined,
+                title: 'Your tickets',
+                message:
+                    'Book an event or sign in to sync tickets from your account.',
+                actionLabel: 'Explore Events',
+                onAction: () => context.go('/explore'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: TextButton(
+                onPressed: () => context.go('/profile'),
+                child: const Text('Sign in'),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _TicketSkeleton extends StatelessWidget {
@@ -508,24 +469,15 @@ class _TicketSkeleton extends StatelessWidget {
   Widget build(BuildContext context) => ListView.builder(
       padding: const EdgeInsets.all(18),
       itemCount: 3,
-      itemBuilder: (_, __) => Container(
-          height: 270,
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-              color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(22))));
+      itemBuilder: (_, __) => const Padding(
+            padding: EdgeInsets.only(bottom: 14),
+            child: SkeletonBox(height: 270, radius: 22),
+          ));
 }
 
 class _TicketError extends StatelessWidget {
   const _TicketError({required this.onRetry});
   final VoidCallback onRetry;
   @override
-  Widget build(BuildContext context) => Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.cloud_off_outlined,
-            size: 54, color: AppColors.textMuted),
-        const SizedBox(height: 12),
-        const Text('Your tickets are unavailable.'),
-        TextButton(onPressed: onRetry, child: const Text('Try again')),
-      ]));
+  Widget build(BuildContext context) => ErrorState(onRetry: onRetry);
 }

@@ -4,8 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/zimbabwe_locations_repository.dart';
+import '../../widgets/common/premium_app_bar.dart';
+import '../../widgets/common/premium_button.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key, required this.authRepository});
@@ -177,13 +180,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Account Settings'),
-        centerTitle: true,
+      appBar: const PremiumAppBar(
+        title: 'Account Settings',
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: AppSpacing.screenAll,
           child: Form(
             key: _formKey,
             child: Column(
@@ -361,43 +363,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 const SizedBox(height: 28),
 
                 // Save Button
-                FilledButton(
+                PrimaryButton(
+                  label: 'Save Changes',
                   onPressed: _saving ? null : _save,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    backgroundColor: AppColors.purple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                  isLoading: _saving,
+                  isDisabled: _saving,
                 ),
                 const SizedBox(height: 18),
-                OutlinedButton(
+                SecondaryButton(
+                  label: 'Request account deletion',
                   onPressed: _saving ? null : _requestAccountDeletion,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    minimumSize: const Size.fromHeight(48),
-                    side: BorderSide(
-                      color: AppColors.error.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: const Text('Request account deletion'),
+                  foregroundColor: AppColors.error,
+                  borderColor: AppColors.error.withValues(alpha: 0.5),
                 ),
               ],
             ),

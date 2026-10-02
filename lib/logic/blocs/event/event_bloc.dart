@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/models/event_model.dart';
 import '../../../data/repositories/event_repository.dart';
 import 'event_event.dart';
 import 'event_state.dart';
@@ -16,6 +17,24 @@ class EventBloc extends Bloc<EventEvent, EventState> {
   }
 
   final EventRepository _repository;
+
+  Future<List<EventModel>> getEventsWithinBounds({
+    required double northEastLat,
+    required double northEastLng,
+    required double southWestLat,
+    required double southWestLng,
+    int limit = 100,
+  }) =>
+      _repository.getEventsWithinBounds(
+        northEastLat: northEastLat,
+        northEastLng: northEastLng,
+        southWestLat: southWestLat,
+        southWestLng: southWestLng,
+        limit: limit,
+      );
+
+  Future<Map<String, int>> getStartingPrices(Iterable<String> eventIds) =>
+      _repository.getStartingPrices(eventIds);
 
   // ─── FetchEvents ───────────────────────────────────────────────────────────
 

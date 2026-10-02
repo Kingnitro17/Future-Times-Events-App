@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../core/theme/app_radius.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_text.dart';
 import '../../core/utils/event_discovery.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
@@ -14,6 +17,12 @@ import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/save_event_button.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/common/error_state.dart';
+import '../widgets/common/premium_card.dart';
+import '../widgets/common/premium_chip.dart';
+import '../widgets/common/premium_button.dart';
+import '../widgets/common/skeleton.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
@@ -234,7 +243,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
+                          child: SecondaryButton(
+                            label: 'Reset',
                             onPressed: () {
                               _search.clear();
                               setState(() {
@@ -249,12 +259,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   .add(const ClearFilters());
                               Navigator.pop(sheetContext);
                             },
-                            child: const Text('Reset'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: FilledButton(
+                          child: PrimaryButton(
+                            label: 'Apply',
                             onPressed: () {
                               setState(() {
                                 _city = city;
@@ -273,7 +283,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   );
                               Navigator.pop(sheetContext);
                             },
-                            child: const Text('Apply'),
                           ),
                         ),
                       ],
@@ -368,11 +377,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     .recentSearches.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(width: 8),
-                                itemBuilder: (_, index) => ActionChip(
-                                  visualDensity: VisualDensity.compact,
-                                  label: Text(widget.preferencesRepository
-                                      .recentSearches[index]),
-                                  onPressed: () {
+                                itemBuilder: (_, index) => PremiumChip(
+                                  label: widget.preferencesRepository
+                                      .recentSearches[index],
+                                  selected: false,
+                                  onTap: () {
                                     _search.text = widget.preferencesRepository
                                         .recentSearches[index];
                                     _submitSearch();
@@ -397,15 +406,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                   if (state is EventLoading || state is EventInitial)
-                    const SliverToBoxAdapter(child: _Loading())
+                    SliverPadding(
+                      padding: AppSpacing.cardH,
+                      sliver: SliverList.separated(
+                        itemCount: 4,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSpacing.md),
+                        itemBuilder: (_, __) => const SkeletonCard(),
+                      ),
+                    )
                   else if (state is EventError)
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _State(
-                        icon: Icons.cloud_off_outlined,
-                        title: 'Could not load events',
-                        detail: state.message,
-                        onTap: () => context.read<EventBloc>().add(
+                      child: ErrorState(
+                        onRetry: () => context.read<EventBloc>().add(
                               const FetchEvents(forceRefresh: true),
                             ),
                       ),
@@ -413,11 +427,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   else if (filtered.isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _State(
+                      child: EmptyState(
                         icon: Icons.explore_outlined,
                         title: 'No results yet',
-                        detail: 'Try another search, date, or city filter.',
-                        onTap: () {
+                        message: 'Try another search, date, or city filter.',
+                        actionLabel: 'Reset filters',
+                        onAction: () {
                           _search.clear();
                           setState(() {
                             _category = null;
@@ -471,87 +486,70 @@ class _DiscoverCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse(event.start.local) ?? DateTime.now();
-    return Material(
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: InkWell(
-        onTap: () => context.push('/event/${event.id}', extra: event),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(
-                  width: 110,
-                  height: 98,
-                  child: EventNetworkImage.forEvent(event),
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () => context.push('/event/${event.id}', extra: event),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: AppRadius.rMd,
+            child: SizedBox(
+              width: 110,
+              height: 98,
+              child: EventNetworkImage.forEvent(event),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Pill(value: event.categoryLabel ?? event.categoryId),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  event.name.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body.copyWith(fontWeight: FontWeight.w800),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: AppSpacing.xs + 2),
+                Text(
+                  '${event.venue?.name ?? 'Venue'} • ${event.venue?.address?.city ?? 'Zimbabwe'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.micro.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: AppSpacing.xs + 2),
+                Text(
+                  DateFormat('EEE, d MMM • h:mm a').format(date),
+                  style: AppText.micro.copyWith(
+                    color: AppColors.purple,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
                   children: [
-                    _Pill(value: event.categoryLabel ?? event.categoryId),
-                    const SizedBox(height: 8),
-                    Text(
-                      event.name.text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${event.venue?.name ?? 'Venue'} • ${event.venue?.address?.city ?? 'Zimbabwe'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      DateFormat('EEE, d MMM • h:mm a').format(date),
-                      style: const TextStyle(
-                        color: AppColors.purple,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            event.isFree ? 'Free' : 'Paid',
-                            style: const TextStyle(
-                              color: AppColors.text,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        event.isFree ? 'Free' : 'Paid',
+                        style: AppText.micro.copyWith(
+                          color: AppColors.text,
+                          fontWeight: FontWeight.w800,
                         ),
-                        SaveEventButton(
-                          eventId: event.id,
-                          repository: savedEventsRepository,
-                        ),
-                      ],
+                      ),
+                    ),
+                    SaveEventButton(
+                      eventId: event.id,
+                      repository: savedEventsRepository,
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -647,10 +645,10 @@ class _Chip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
+  Widget build(BuildContext context) => PremiumChip(
+        label: label,
         selected: selected,
-        onSelected: (_) => onTap(),
+        onTap: onTap,
       );
 }
 
@@ -666,10 +664,10 @@ class _CategoryChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
+  Widget build(BuildContext context) => PremiumChip(
+        label: label,
         selected: selected,
-        onSelected: (_) => onTap(),
+        onTap: onTap,
       );
 }
 
@@ -680,67 +678,19 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: AppColors.purple.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Text(
           (value ?? 'Event').toUpperCase(),
-          style: const TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
+          style: AppText.micro.copyWith(
             color: AppColors.purple,
-          ),
-        ),
-      );
-}
-
-class _Loading extends StatelessWidget {
-  const _Loading();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.all(20),
-        child: Center(child: CircularProgressIndicator()),
-      );
-}
-
-class _State extends StatelessWidget {
-  const _State({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String detail;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 54, color: AppColors.textMuted),
-              const SizedBox(height: 16),
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 18),
-              FilledButton.tonal(
-                onPressed: onTap,
-                child: const Text('Try again'),
-              ),
-            ],
+            fontWeight: FontWeight.w800,
           ),
         ),
       );

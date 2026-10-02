@@ -3,8 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
+import '../../widgets/common/empty_state.dart';
+import '../../widgets/common/error_state.dart';
+import '../../widgets/common/premium_app_bar.dart';
+import '../../widgets/common/premium_card.dart';
+import '../../widgets/common/skeleton.dart';
 
 class OrganizerHomeScreen extends StatefulWidget {
   const OrganizerHomeScreen({
@@ -55,14 +61,22 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
         'Organizer';
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Organizer Dashboard')),
+      appBar: const PremiumAppBar(
+        title: 'Organizer Dashboard',
+        showBackButton: false,
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           setState(_load);
           await Future.wait([_stats, _activity]);
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xxl,
+          ),
           children: [
             Text('Welcome back, $name',
                 style: const TextStyle(
@@ -102,12 +116,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                     childAspectRatio: 1.55,
                     children: List.generate(
                       4,
-                      (_) => Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
+                      (_) => const SkeletonCard(),
                     ),
                   );
                 }
@@ -143,7 +152,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
               future: _activity,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const LinearProgressIndicator();
+                  return const SkeletonLine();
                 }
                 if (snapshot.hasError) {
                   return _ErrorCard(onRetry: () => setState(_load));
@@ -177,13 +186,8 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-        ),
+  Widget build(BuildContext context) => PremiumCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, color: AppColors.purple),
           const Spacer(),
@@ -245,11 +249,12 @@ class _ActivityTile extends StatelessWidget {
 class _EmptyActivity extends StatelessWidget {
   const _EmptyActivity();
   @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(
-            child: Text('No ticket activity yet.',
-                style: TextStyle(color: AppColors.textMuted))),
+  Widget build(BuildContext context) => EmptyState(
+        icon: Icons.confirmation_number_outlined,
+        title: 'No ticket activity yet',
+        message: 'Ticket sales will show here when guests book your events.',
+        actionLabel: 'Create event',
+        onAction: () => context.push('/organizer/events/new'),
       );
 }
 
@@ -257,11 +262,5 @@ class _ErrorCard extends StatelessWidget {
   const _ErrorCard({required this.onRetry});
   final VoidCallback onRetry;
   @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          leading: const Icon(Icons.error_outline, color: AppColors.error),
-          title: const Text('Could not load dashboard data'),
-          trailing: TextButton(onPressed: onRetry, child: const Text('Retry')),
-        ),
-      );
+  Widget build(BuildContext context) => ErrorState(onRetry: onRetry);
 }

@@ -17,6 +17,7 @@ import '../../data/repositories/attendance_group_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/venue_commerce_repository.dart';
+import '../../services/maps/map_launcher_service.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
@@ -25,6 +26,7 @@ import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
 import '../widgets/whos_going_sheet.dart';
 import '../widgets/friends_group_suggestion_banner.dart';
+import '../widgets/common/premium_card.dart';
 
 class DetailsScreen extends StatefulWidget {
   const DetailsScreen(
@@ -645,16 +647,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
       );
 
   Widget _map() {
-    final lat = double.tryParse(widget.event.venue?.latitude ?? '');
-    final lng = double.tryParse(widget.event.venue?.longitude ?? '');
+    final coordinates = _eventCoordinates;
+    final lat = coordinates?.latitude;
+    final lng = coordinates?.longitude;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Text('Address', style: Theme.of(context).textTheme.titleLarge),
         const Spacer(),
         if (lat != null && lng != null) ...[
           TextButton.icon(
-            onPressed: () =>
-                _openDirections(lat, lng, widget.event.name.text),
+            onPressed: () => _openDirections(lat, lng, widget.event.name.text),
             icon: const Icon(Icons.directions_rounded, size: 16),
             label: const Text('Directions'),
           ),
@@ -706,30 +708,25 @@ class _DetailsScreenState extends State<DetailsScreen> {
     ]);
   }
 
-  Widget _gettingThere() => Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => context.push('/ride/book?eventId=${widget.event.id}'),
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(children: [
-              Icon(Icons.directions_car_rounded, color: AppColors.purple),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Getting there?',
-                          style: TextStyle(fontWeight: FontWeight.w800)),
-                      SizedBox(height: 4),
-                      Text('Book a ride to this event',
-                          style: TextStyle(color: AppColors.textMuted)),
-                    ]),
-              ),
-              Icon(Icons.chevron_right_rounded),
-            ]),
+  Widget _gettingThere() => PremiumCard(
+        onTap: () => context.push('/ride/book?eventId=${widget.event.id}'),
+        child: const Row(children: [
+          Icon(Icons.directions_car_rounded, color: AppColors.purple),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Getting there?',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+                SizedBox(height: 4),
+                Text('Book a ride to this event',
+                    style: TextStyle(color: AppColors.textMuted)),
+              ],
+            ),
           ),
-        ),
+          Icon(Icons.chevron_right_rounded),
+        ]),
       );
 
   Widget _reserveTableCard() => Card(
@@ -1107,17 +1104,29 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   Future<void> _openDirections(double lat, double lng, String label) async {
-    final googleMapsUri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    await MapLauncherService.navigateTo(
+      context: context,
+      latitude: lat,
+      longitude: lng,
+      destinationTitle: label,
     );
-    if (await canLaunchUrl(googleMapsUri)) {
-      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
-      return;
+  }
+
+  LatLng? get _eventCoordinates {
+    final latitude = double.tryParse(widget.event.venue?.latitude ?? '');
+    final longitude = double.tryParse(widget.event.venue?.longitude ?? '');
+    if (latitude == null ||
+        longitude == null ||
+        !latitude.isFinite ||
+        !longitude.isFinite ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180 ||
+        (latitude == 0 && longitude == 0)) {
+      return null;
     }
-    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng($label)');
-    if (await canLaunchUrl(geoUri)) {
-      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
-    }
+    return LatLng(latitude, longitude);
   }
 
   bool get _eventEnded => _end.isBefore(DateTime.now());

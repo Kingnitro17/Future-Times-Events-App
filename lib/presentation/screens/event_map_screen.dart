@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/event_model.dart';
+import '../../services/maps/map_launcher_service.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
@@ -229,28 +229,22 @@ class _EventMapScreenState extends State<EventMapScreen> {
         longitude == null ||
         !latitude.isFinite ||
         !longitude.isFinite ||
-        latitude == 0 ||
-        longitude == 0 ||
         latitude < -90 ||
         latitude > 90 ||
         longitude < -180 ||
-        longitude > 180) {
+        longitude > 180 ||
+        (latitude == 0 && longitude == 0)) {
       return null;
     }
     return LatLng(latitude, longitude);
   }
 
   Future<void> _openDirections(double lat, double lng) async {
-    final googleMapsUri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+    await MapLauncherService.navigateTo(
+      context: context,
+      latitude: lat,
+      longitude: lng,
+      destinationTitle: widget.event.name.text,
     );
-    if (await canLaunchUrl(googleMapsUri)) {
-      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
-      return;
-    }
-    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
-    if (await canLaunchUrl(geoUri)) {
-      await launchUrl(geoUri, mode: LaunchMode.externalApplication);
-    }
   }
 }

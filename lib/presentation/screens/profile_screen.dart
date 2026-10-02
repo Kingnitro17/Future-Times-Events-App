@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../data/models/social_models.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
@@ -18,6 +19,9 @@ import '../../data/models/organizer_application.dart';
 import '../../data/models/attendance_group.dart';
 import '../../data/repositories/organizer_repository.dart';
 import '../../data/repositories/attendance_group_repository.dart';
+import '../widgets/common/premium_app_bar.dart';
+import '../widgets/common/premium_avatar.dart';
+import '../widgets/common/skeleton.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -230,16 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (profileLoading) {
       return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              Text('Loading your profile...'),
-            ],
-          ),
-        ),
+        body: Center(child: SizedBox(width: 280, child: SkeletonCard())),
       );
     }
 
@@ -262,8 +257,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Profile'),
+      appBar: PremiumAppBar(
+        title: 'Profile',
+        showBackButton: false,
         actions: [
           IconButton(
             onPressed: () => context.push('/account-settings'),
@@ -273,7 +269,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxl,
+        ),
         children: [
           if (profileError != null)
             Container(
@@ -306,22 +307,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    CircleAvatar(
-                      radius: 42,
-                      backgroundColor: AppColors.purple.withValues(alpha: 0.12),
-                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? NetworkImage(avatarUrl)
-                          : null,
-                      child: avatarUrl == null || avatarUrl.isEmpty
-                          ? Text(
-                              initials,
-                              style: const TextStyle(
-                                color: AppColors.purple,
-                                fontSize: 30,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            )
-                          : null,
+                    PremiumAvatar(
+                      imageUrl: avatarUrl,
+                      initials: initials,
+                      size: 84,
                     ),
                     Positioned(
                       right: -4,

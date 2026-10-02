@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../data/models/wallet_item.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../widgets/qr_viewer.dart';
 import '../widgets/wallet_item_card.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/common/error_state.dart';
+import '../widgets/common/skeleton.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({
@@ -79,8 +82,15 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.authRepository.isSignedIn) {
-      return const Scaffold(
-          body: Center(child: Text('Sign in to view your wallet.')));
+      return Scaffold(
+        body: EmptyState(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'Your wallet',
+          message: 'Sign in to view your tickets and payments.',
+          actionLabel: 'Sign in',
+          onAction: () => context.go('/profile'),
+        ),
+      );
     }
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -112,7 +122,12 @@ class _WalletScreenState extends State<WalletScreen> {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.xs,
+                      AppSpacing.lg,
+                      AppSpacing.xxl,
+                    ),
                     sliver: SliverList.separated(
                       itemCount: items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -170,39 +185,15 @@ class _WalletSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView.separated(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
-        itemCount: 3,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, __) => Shimmer.fromColors(
-          baseColor: AppColors.surfaceMuted,
-          highlightColor: AppColors.surface,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                Container(width: 48, height: 48, color: AppColors.surfaceMuted),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(height: 16, color: AppColors.surfaceMuted),
-                        const SizedBox(height: 10),
-                        Container(
-                            height: 12,
-                            width: 180,
-                            color: AppColors.surfaceMuted),
-                        const SizedBox(height: 10),
-                        Container(
-                            height: 10,
-                            width: 100,
-                            color: AppColors.surfaceMuted),
-                      ]),
-                ),
-              ]),
-            ),
-          ),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xl,
+          AppSpacing.lg,
+          AppSpacing.xxl,
         ),
+        itemCount: 3,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (_, __) => const SkeletonCard(),
       );
 }
 
@@ -210,26 +201,12 @@ class _WalletEmpty extends StatelessWidget {
   const _WalletEmpty();
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.account_balance_wallet_outlined,
-                  size: 68, color: AppColors.purple),
-              const SizedBox(height: 16),
-              const Text('Nothing here yet — grab a ticket to get started',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: () => context.go('/explore'),
-                child: const Text('Discover events'),
-              ),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => EmptyState(
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'Nothing here yet',
+        message: 'Grab a ticket or make a payment to get started.',
+        actionLabel: 'Discover events',
+        onAction: () => context.go('/explore'),
       );
 }
 
@@ -238,16 +215,5 @@ class _WalletError extends StatelessWidget {
   final Future<void> Function() onRetry;
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 48),
-            const SizedBox(height: 12),
-            const Text('Could not load your wallet.'),
-            const SizedBox(height: 14),
-            FilledButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) => ErrorState(onRetry: onRetry);
 }

@@ -100,32 +100,95 @@ class EventRepository {
   Future<List<EventModel>> getEventsByIds(Iterable<String> eventIds) =>
       _service.fetchEventsByIds(eventIds);
 
+  Future<Map<String, int>> getStartingPrices(Iterable<String> eventIds) async {
+    final ids = eventIds.toSet().toList(growable: false);
+    if (ids.isEmpty) return const {};
+    final rows = await _supabaseClient
+        .from('events')
+        .select('id,price')
+        .inFilter('id', ids)
+        .eq('status', 'published');
+    final prices = <String, int>{};
+    for (final row in rows) {
+      final price = double.tryParse(row['price']?.toString() ?? '');
+      if (price != null && price.isFinite && price >= 0) {
+        prices[row['id'].toString()] = (price * 100).round();
+      }
+    }
+    return prices;
+  }
+
   Future<List<EventModel>> getNearbyEvents({
-    required double lat,
-    required double lng,
+    required double latitude,
+    required double longitude,
     double radiusKm = 50,
     int limit = 50,
   }) async {
-    final response = await getEvents(forceRefresh: true, page: 1);
+    if (!_validEventCoordinate(latitude, longitude) ||
+        !radiusKm.isFinite ||
+        radiusKm < 0 ||
+        limit <= 0) {
+      return const [];
+    }
+    final events = await _fetchPublishedEvents();
     const distance = Distance();
-    final origin = LatLng(lat, lng);
-    final nearby = response.events.where((event) {
-      if (event.status != 'published') return false;
-      final eventLat = double.tryParse(event.venue?.latitude ?? '');
-      final eventLng = double.tryParse(event.venue?.longitude ?? '');
-      if (eventLat == null || eventLng == null) return false;
-      return distance.as(
-            LengthUnit.Kilometer,
-            origin,
-            LatLng(eventLat, eventLng),
-          ) <=
-          radiusKm;
+    final origin = LatLng(latitude, longitude);
+    final nearby = events.where((event) {
+      final point = _pointForEvent(event);
+      return event.status == 'published' &&
+          point != null &&
+          distance.as(LengthUnit.Kilometer, origin, point) <= radiusKm;
     }).toList()
-      ..sort((a, b) => distance
-          .as(LengthUnit.Meter, origin, _pointForEvent(a)!)
-          .compareTo(
-              distance.as(LengthUnit.Meter, origin, _pointForEvent(b)!)));
+      ..sort((a, b) =>
+          distance.as(LengthUnit.Meter, origin, _pointForEvent(a)!).compareTo(
+                distance.as(LengthUnit.Meter, origin, _pointForEvent(b)!),
+              ));
     return nearby.take(limit).toList();
+  }
+
+  Future<List<EventModel>> getEventsWithinBounds({
+    required double northEastLat,
+    required double northEastLng,
+    required double southWestLat,
+    required double southWestLng,
+    int limit = 100,
+  }) async {
+    if (!_validGeoCoordinate(northEastLat, northEastLng) ||
+        !_validGeoCoordinate(southWestLat, southWestLng) ||
+        northEastLat < southWestLat ||
+        limit <= 0) {
+      return const [];
+    }
+
+    final events = await _fetchPublishedEvents();
+    final bounded = events.where((event) {
+      if (event.status != 'published') return false;
+      final point = _pointForEvent(event);
+      if (point == null ||
+          point.latitude < southWestLat ||
+          point.latitude > northEastLat) {
+        return false;
+      }
+      if (southWestLng <= northEastLng) {
+        return point.longitude >= southWestLng &&
+            point.longitude <= northEastLng;
+      }
+      return point.longitude >= southWestLng || point.longitude <= northEastLng;
+    }).toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    return bounded.take(limit).toList(growable: false);
+  }
+
+  Future<List<EventModel>> _fetchPublishedEvents() async {
+    final events = <EventModel>[];
+    var page = 1;
+    while (true) {
+      final response = await _service.fetchEvents(page: page);
+      events.addAll(response.events);
+      if (!response.pagination.hasMoreItems) break;
+      page++;
+    }
+    return events;
   }
 
   Future<List<TicketClass>> getTicketClasses(String eventId) async =>
@@ -149,9 +212,23 @@ class EventRepository {
   LatLng? _pointForEvent(EventModel event) {
     final lat = double.tryParse(event.venue?.latitude ?? '');
     final lng = double.tryParse(event.venue?.longitude ?? '');
-    if (lat == null || lng == null || (lat == 0 && lng == 0)) return null;
+    if (lat == null || lng == null || !_validEventCoordinate(lat, lng)) {
+      return null;
+    }
     return LatLng(lat, lng);
   }
+
+  static bool _validGeoCoordinate(double latitude, double longitude) =>
+      latitude.isFinite &&
+      latitude >= -90 &&
+      latitude <= 90 &&
+      longitude.isFinite &&
+      longitude >= -180 &&
+      longitude <= 180;
+
+  static bool _validEventCoordinate(double latitude, double longitude) =>
+      _validGeoCoordinate(latitude, longitude) &&
+      !(latitude == 0 && longitude == 0);
 
   Future<EventListResponse?> _readPersisted(String key, int page) async {
     try {

@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../widgets/common/premium_app_bar.dart';
+import '../../widgets/common/premium_button.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key, required this.authRepository});
@@ -98,13 +101,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Security & Password'),
-        centerTitle: true,
-      ),
+      appBar: const PremiumAppBar(title: 'Security & Password'),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: AppSpacing.screenAll,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -316,28 +316,11 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      FilledButton(
+                      PrimaryButton(
+                        label: 'Update Password',
                         onPressed: _submitting ? null : _changePassword,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          backgroundColor: AppColors.purple,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        child: _submitting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Update Password',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
+                        isLoading: _submitting,
+                        isDisabled: _submitting,
                       ),
                     ],
                   ),

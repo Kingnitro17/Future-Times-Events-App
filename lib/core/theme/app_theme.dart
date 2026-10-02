@@ -47,7 +47,7 @@ abstract final class AppTheme {
         useMaterial3: true,
         colorScheme: scheme,
         snackBarTheme: const SnackBarThemeData(
-        behavior: SnackBarBehavior.fixed,
+          behavior: SnackBarBehavior.fixed,
         ));
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,

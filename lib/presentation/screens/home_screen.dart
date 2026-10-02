@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/utils/event_discovery.dart';
 import '../../data/models/event_model.dart';
 import '../../data/models/zimbabwe_location.dart';
@@ -25,6 +25,10 @@ import '../widgets/share_event_button.dart';
 import '../widgets/event_social_row.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/ft_services_section.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/common/error_state.dart';
+import '../widgets/common/premium_avatar.dart';
+import '../widgets/common/skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -157,12 +161,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     else if (state is EventError)
                       SliverFillRemaining(
                         hasScrollBody: false,
-                        child: _State(
-                          icon: Icons.cloud_off_outlined,
-                          title: "We couldn't load your feed.",
-                          detail: 'Check your connection and try again.',
-                          action: 'Try again',
-                          onTap: () => context.read<EventBloc>().add(
+                        child: ErrorState(
+                          onRetry: () => context.read<EventBloc>().add(
                                 const FetchEvents(forceRefresh: true),
                               ),
                         ),
@@ -170,13 +170,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     else if (recommended.isEmpty)
                       SliverFillRemaining(
                         hasScrollBody: false,
-                        child: _State(
+                        child: EmptyState(
                           icon: Icons.event_busy_outlined,
                           title: 'Nothing new right now',
-                          detail:
+                          message:
                               'Check back soon for fresh events in Harare and beyond.',
-                          action: 'Refresh',
-                          onTap: () => context.read<EventBloc>().add(
+                          actionLabel: 'Refresh',
+                          onAction: () => context.read<EventBloc>().add(
                                 const FetchEvents(forceRefresh: true),
                               ),
                         ),
@@ -321,28 +321,11 @@ class _ProfileAvatar extends StatelessWidget {
     final initials = displayName == 'Welcome'
         ? 'W'
         : displayName.substring(0, 1).toUpperCase();
-    Widget fallback() => CircleAvatar(
-          backgroundColor: AppColors.purple,
-          child: Text(initials,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w800)),
-        );
-    return Container(
-      width: 40,
-      height: 40,
-      padding: const EdgeInsets.all(2),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.fromBorderSide(
-          BorderSide(color: AppColors.purple, width: 2),
-        ),
-      ),
-      child: ClipOval(
-        child: url != null && url.isNotEmpty
-            ? Image.network(url,
-                fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback())
-            : fallback(),
-      ),
+    return PremiumAvatar(
+      imageUrl: url,
+      initials: initials,
+      size: 40,
+      ringColor: AppColors.purple,
     );
   }
 }
@@ -833,7 +816,12 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
         child: Text(
           title,
           style: Theme.of(context).textTheme.titleLarge,
@@ -1242,115 +1230,57 @@ class _HomeSkeleton extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = ResponsiveUtils.responsiveCardWidth(viewportWidth);
 
-    return Shimmer.fromColors(
-      baseColor: AppColors.surfaceMuted,
-      highlightColor: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Container(
-              width: 120,
-              height: 22,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.md,
           ),
-          SizedBox(
-            height: 340,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (_, __) => SizedBox(
-                width: cardWidth,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
+          child: SkeletonLine(width: AppSpacing.xxxl * 3),
+        ),
+        SizedBox(
+          height: AppSpacing.xxxl * 7,
+          child: ListView.separated(
+            padding: AppSpacing.cardH,
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            itemBuilder: (_, __) => SizedBox(
+              width: cardWidth,
+              child: const SkeletonCard(),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-            child: Container(
-              width: 160,
-              height: 22,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: List.generate(
-                3,
-                (_) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    height: 92,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-}
-
-class _State extends StatelessWidget {
-  const _State({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.action,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String detail;
-  final String action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 54, color: AppColors.textMuted),
-              const SizedBox(height: 16),
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 18),
-              FilledButton.tonal(onPressed: onTap, child: Text(action)),
-            ],
           ),
         ),
-      );
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: SkeletonLine(width: AppSpacing.xxxl * 4),
+        ),
+        Padding(
+          padding: AppSpacing.cardH,
+          child: Column(
+            children: List.generate(
+              3,
+              (_) => const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: SkeletonCard(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
 }
 
 DateTime _eventDate(EventModel event) {

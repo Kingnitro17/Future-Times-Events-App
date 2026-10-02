@@ -53,6 +53,7 @@ dependencies:
   share_plus: ^13.0.0
   http: ^1.6.0
   permission_handler: ^13.0.2
+  map_launcher: ^6.0.0
 
 dev_dependencies:
   flutter_test:
