@@ -17,6 +17,8 @@ import '../../data/repositories/attendance_group_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/venue_commerce_repository.dart';
+import '../../data/repositories/product_repository.dart';
+import '../../data/models/organizer_product.dart';
 import '../../services/maps/map_launcher_service.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../logic/blocs/social/social_event.dart';
@@ -24,6 +26,8 @@ import '../../logic/blocs/social/social_state.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
+import '../widgets/like_button.dart';
+import '../widgets/price_label.dart';
 import '../widgets/whos_going_sheet.dart';
 import '../widgets/friends_group_suggestion_banner.dart';
 import '../widgets/common/premium_card.dart';
@@ -36,13 +40,15 @@ class DetailsScreen extends StatefulWidget {
       required this.authRepository,
       required this.socialRepository,
       required this.groupRepository,
-      required this.venueCommerceRepository});
+      required this.venueCommerceRepository,
+      required this.productRepository});
   final EventModel event;
   final SavedEventsRepository savedEventsRepository;
   final AuthRepository authRepository;
   final SocialRepository socialRepository;
   final AttendanceGroupRepository groupRepository;
   final VenueCommerceRepository venueCommerceRepository;
+  final ProductRepository productRepository;
   @override
   State<DetailsScreen> createState() => _DetailsScreenState();
 }
@@ -59,6 +65,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
   late Future<bool> _hasTablesFuture;
   late Future<bool> _hasMenuFuture;
   late Future<_EventPartnerData> _partnersFuture;
+  late Future<List<OrganizerProduct>> _productsFuture;
 
   DateTime get _start => DateTime.parse(widget.event.start.local);
   DateTime get _end => DateTime.parse(widget.event.end.local);
@@ -82,7 +89,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
         .getEventMenu(widget.event.id)
         .then((items) => items.any((item) => item.isAvailable));
     _partnersFuture = _loadEventPartners();
+    _productsFuture = _loadProducts();
   }
+
+  Future<List<OrganizerProduct>> _loadProducts() =>
+      widget.productRepository.getEventProducts(widget.event.id);
 
   Future<_EventPartnerData> _loadEventPartners() async {
     final client = Supabase.instance.client;
@@ -248,6 +259,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 const SizedBox(height: 28),
                 _organizer(),
               ],
+              const SizedBox(height: 20),
+              _productsSection(),
               if (widget.event.ticketClasses.isNotEmpty) ...[
                 const SizedBox(height: 28),
                 _tickets(),
@@ -258,6 +271,46 @@ class _DetailsScreenState extends State<DetailsScreen> {
           ),
         ]),
         bottomNavigationBar: _bottomBar(),
+      );
+
+  Widget _productsSection() => FutureBuilder<List<OrganizerProduct>>(
+        future: _productsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Card(
+              child: ListTile(
+                leading:
+                    const Icon(Icons.error_outline, color: AppColors.error),
+                title: const Text('Organizer products could not be loaded'),
+                trailing: IconButton(
+                  tooltip: 'Retry',
+                  onPressed: () =>
+                      setState(() => _productsFuture = _loadProducts()),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+            );
+          }
+          final products = snapshot.data;
+          if (products == null || products.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                child:
+                    Icon(Icons.shopping_bag_outlined, color: AppColors.purple),
+              ),
+              title: const Text('Order from the organizer',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(
+                '${products.length} ${products.length == 1 ? 'product' : 'products'} available to preorder',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/events/${widget.event.id}/products'),
+            ),
+          );
+        },
       );
 
   Widget _partnersSection() => FutureBuilder<_EventPartnerData>(
@@ -349,6 +402,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       fontWeight: FontWeight.w800,
                       shadows: [Shadow(color: Colors.black38, blurRadius: 8)])),
               const Spacer(),
+              LikeButton(eventId: widget.event.id, compact: true),
+              const SizedBox(width: 6),
               ShareEventButton(event: widget.event, size: 42),
               const SizedBox(width: 8),
               SaveHeartButton(
@@ -405,10 +460,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   decoration: BoxDecoration(
                       color: AppColors.purple.withValues(alpha: .11),
                       borderRadius: BorderRadius.circular(12)),
-                  child: Text(_price,
-                      style: const TextStyle(
-                          color: AppColors.purple,
-                          fontWeight: FontWeight.w800)),
+                  child: PriceLabel(
+                    isFree: widget.event.isFree,
+                    ticketClasses: widget.event.ticketClasses,
+                  ),
                 ),
               ]),
             ),

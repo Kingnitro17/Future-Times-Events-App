@@ -61,6 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   SocialStats _socialStats = const SocialStats();
   OrganizerApplication? _myApplication;
   bool _applicationLoading = true;
+  int _friendCount = 0;
 
   @override
   void initState() {
@@ -126,10 +127,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadStats() async {
     if (!widget.authRepository.isSignedIn) return;
     try {
-      final stats = await widget.socialRepository.getSocialStats();
+      final values = await Future.wait([
+        widget.socialRepository.getSocialStats(),
+        widget.socialRepository.getFriends(),
+      ]);
       if (mounted) {
         setState(() {
-          _socialStats = stats;
+          _socialStats = values[0] as SocialStats;
+          _friendCount = (values[1] as List<UserProfileCard>).length;
         });
       }
     } catch (_) {
@@ -399,6 +404,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'Notifications',
               'SMS and marketing preferences',
               () => context.push('/notifications'),
+              trailing: _notificationBadge(),
+            ),
+            _buildRow(
+              Icons.people_alt_outlined,
+              'Friends',
+              '$_friendCount ${_friendCount == 1 ? 'friend' : 'friends'}',
+              () => context.push('/friends'),
+              trailing: _friendsBadge(),
             ),
             _buildRow(
               Icons.lock_outline_rounded,
@@ -520,6 +533,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  Widget _friendsBadge() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.purple.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          '$_friendCount',
+          style: const TextStyle(
+            color: AppColors.purple,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
 
   String _formatProfileAmount(Object value) {
     final amount = num.tryParse(value.toString()) ?? 0;
@@ -920,7 +948,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Icons.notifications_none_rounded,
               'Notifications',
               'Ticket status, updates and follower alerts',
-              () => context.push('/notifications')),
+              () => context.push('/notifications'),
+              trailing: _notificationBadge()),
         ]),
 
         const SizedBox(height: 20),
@@ -1056,6 +1085,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: isDestructive ? Colors.red : AppColors.textMuted),
     );
   }
+
+  Widget _notificationBadge() => ListenableBuilder(
+        listenable: widget.notificationRepository,
+        builder: (context, _) {
+          final count = widget.notificationRepository.unreadCount;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (count > 0)
+                Badge(
+                  label: Text(count > 99 ? '99+' : '$count'),
+                  child: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: AppColors.purple,
+                  ),
+                ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textMuted),
+            ],
+          );
+        },
+      );
 
   Future<void> _showSignIn([bool initialSignUp = false]) =>
       _showAuthModal(isSignUp: initialSignUp);

@@ -33,7 +33,7 @@ class _SaveHeartButtonState extends State<SaveHeartButton> {
         final isSaved = widget.repository.isSaved(widget.eventId);
 
         return Semantics(
-          label: isSaved ? 'Remove from saved' : 'Save event',
+          label: isSaved ? 'Remove bookmark' : 'Bookmark event',
           button: true,
           child: GestureDetector(
             onTapDown: (_) => setState(() => _scaleDown = true),
@@ -62,7 +62,7 @@ class _SaveHeartButtonState extends State<SaveHeartButton> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSaved
-                        ? const Color(0xFFFF2B56).withValues(alpha: 0.3)
+                        ? AppColors.purple.withValues(alpha: 0.3)
                         : AppColors.border,
                     width: 1.2,
                   ),
@@ -77,11 +77,9 @@ class _SaveHeartButtonState extends State<SaveHeartButton> {
                 child: Center(
                   child: Icon(
                     isSaved
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: isSaved
-                        ? const Color(0xFFFF2B56)
-                        : AppColors.textSecondary,
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    color: isSaved ? AppColors.purple : AppColors.textSecondary,
                     size: widget.size * 0.52,
                   ),
                 ),

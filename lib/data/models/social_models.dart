@@ -124,6 +124,7 @@ class NotificationModel {
     required this.body,
     this.type,
     this.eventId,
+    this.payload = const {},
     this.read = false,
     this.createdAt,
   });
@@ -133,19 +134,29 @@ class NotificationModel {
   final String body;
   final String? type;
   final String? eventId;
+  final Map<String, dynamic> payload;
   final bool read;
   final DateTime? createdAt;
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final rawPayload = json['payload'];
+    final payload = rawPayload is Map
+        ? Map<String, dynamic>.from(rawPayload)
+        : const <String, dynamic>{};
     return NotificationModel(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ??
           json['heading']?.toString() ??
           'Notification',
       body: json['body']?.toString() ?? json['message']?.toString() ?? '',
-      type: json['type']?.toString(),
-      eventId: json['event_id']?.toString(),
-      read: json['read'] == true || json['is_read'] == true,
+      type: json['kind']?.toString() ?? json['type']?.toString(),
+      eventId: json['event_id']?.toString() ??
+          payload['event_id']?.toString() ??
+          payload['eventId']?.toString(),
+      payload: payload,
+      read: json['read'] == true ||
+          json['is_read'] == true ||
+          json['read_at'] != null,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
     );
   }

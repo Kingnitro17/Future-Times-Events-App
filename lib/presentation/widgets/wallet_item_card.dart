@@ -18,6 +18,8 @@ class WalletItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(item.statusLabel);
     final order = item is WalletItemOrder ? item as WalletItemOrder : null;
+    final preorder =
+        item is WalletItemPreorder ? item as WalletItemPreorder : null;
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -58,6 +60,17 @@ class WalletItemCard extends StatelessWidget {
                         '${order.itemCount} '
                         '${order.itemCount == 1 ? 'item' : 'items'} · '
                         '${order.currency} ${order.total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                    if (preorder != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${preorder.quantity} × ${preorder.currency} '
+                        '${preorder.unitPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -114,6 +127,7 @@ class WalletItemCard extends StatelessWidget {
         'reservation' => Icons.table_restaurant_rounded,
         'order' => Icons.restaurant_rounded,
         'ft_service' => Icons.handyman_rounded,
+        'preorder' => Icons.shopping_bag_outlined,
         'payment' => Icons.receipt_long_rounded,
         _ => Icons.wallet_rounded,
       };

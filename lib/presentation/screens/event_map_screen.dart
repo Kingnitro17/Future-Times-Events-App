@@ -12,6 +12,7 @@ import '../../logic/blocs/social/social_event.dart';
 import '../../logic/blocs/social/social_state.dart';
 import '../widgets/glassmorphism_card.dart';
 import '../widgets/event_network_image.dart';
+import '../widgets/map/event_map_pin.dart';
 
 class EventMapScreen extends StatefulWidget {
   final EventModel event;
@@ -53,20 +54,17 @@ class _EventMapScreenState extends State<EventMapScreen> {
         final attendees = state is SocialLoaded ? state.attendees : [];
 
         final markers = <Marker>[
-          // Main event marker
           Marker(
             point: center,
-            width: 80,
-            height: 80,
-            child: const Icon(Icons.location_on,
-                    color: AppTheme.electricIndigo, size: 60)
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .moveY(
-                    begin: -5,
-                    end: 5,
-                    duration: 1.seconds,
-                    curve: Curves.easeInOut)
-                .shimmer(duration: 2.seconds, color: Colors.white54),
+            width: 186,
+            height: 60,
+            alignment: Alignment.bottomCenter,
+            child: EventMapPin(
+              eventImageUrl:
+                  widget.event.logo?.original?.url ?? widget.event.logo?.url,
+              eventName: widget.event.name.text.trim(),
+              category: widget.event.categoryLabel ?? widget.event.categoryId,
+            ),
           ),
         ];
 

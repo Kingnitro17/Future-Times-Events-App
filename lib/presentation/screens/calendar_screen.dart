@@ -11,6 +11,7 @@ import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
 import '../widgets/event_network_image.dart';
+import '../widgets/price_label.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -332,11 +333,13 @@ class _CalendarEventCard extends StatelessWidget {
                   ]),
             ),
             const SizedBox(width: 8),
-            Text(event.isFree ? 'Free' : 'Tickets',
-                style: const TextStyle(
-                    color: AppColors.pink,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12)),
+            Flexible(
+              child: PriceLabel(
+                isFree: event.isFree,
+                ticketClasses: event.ticketClasses,
+                compact: true,
+              ),
+            ),
           ]),
         ),
       ),

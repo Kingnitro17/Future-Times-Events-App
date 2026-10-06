@@ -13,4 +13,20 @@ abstract final class AppColors {
   static const border = Color(0x14000000);
   static const success = Color(0xFF087F5B);
   static const error = Color(0xFFB42318);
+
+  // Category colors — used by map pins, chips, and cards.
+  static const categoryMusic = Color(0xFF8B5CF6);
+  static const categorySports = Color(0xFF10B981);
+  static const categoryFood = Color(0xFFF59E0B);
+  static const categoryNightlife = Color(0xFF3B82F6);
+  static const categoryExpos = Color(0xFFEF4444);
+  static const categoryArts = Color(0xFFEC4899);
+  static const categoryBusiness = Color(0xFF0EA5E9);
+  static const categoryOther = Color(0xFF64748B);
+
+  // Glassmorphism surfaces.
+  static const glassLight = Color(0x33FFFFFF);
+  static const glassMedium = Color(0x4DFFFFFF);
+  static const glassDark = Color(0x33000000);
+  static const glassBorder = Color(0x1FFFFFFF);
 }

@@ -20,11 +20,14 @@ class OrganizerDetailScreen extends StatefulWidget {
 
 class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
   late bool _isFollowing;
+  bool _followLoading = false;
+  late int _followersCount;
 
   @override
   void initState() {
     super.initState();
     _isFollowing = widget.organizer.isFollowing;
+    _followersCount = widget.organizer.followersCount;
   }
 
   @override
@@ -106,7 +109,7 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
-                  '${org.followersCount} Followers',
+                  '$_followersCount Followers',
                   style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: AppColors.purple,
@@ -118,34 +121,31 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
               SizedBox(
                 width: 200,
                 height: 44,
-                child: _isFollowing
-                    ? OutlinedButton(
-                        onPressed: () async {
-                          setState(() => _isFollowing = false);
-                          await widget.socialRepository.unfollowUser(org.id);
-                        },
-                        child: const Text('Following'),
-                      )
-                    : Container(
-                        decoration: BoxDecoration(
-                          gradient: AppGradients.brand,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            setState(() => _isFollowing = true);
-                            await widget.socialRepository.followUser(org.id);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
+                child: _followLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : _isFollowing
+                        ? OutlinedButton(
+                            onPressed: () => _setFollowing(false),
+                            child: const Text('Following'),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: AppGradients.brand,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () => _setFollowing(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                              ),
+                              child: const Text('Follow Organizer',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800)),
+                            ),
                           ),
-                          child: const Text('Follow Organizer',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800)),
-                        ),
-                      ),
               ),
               const SizedBox(height: 28),
               if (org.description != null && org.description!.isNotEmpty) ...[
@@ -183,6 +183,34 @@ class _OrganizerDetailScreenState extends State<OrganizerDetailScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _setFollowing(bool following) async {
+    final previous = _isFollowing;
+    final previousCount = _followersCount;
+    setState(() {
+      _isFollowing = following;
+      final nextCount = previousCount + (following ? 1 : -1);
+      _followersCount = nextCount < 0 ? 0 : nextCount;
+      _followLoading = true;
+    });
+    try {
+      if (following) {
+        await widget.socialRepository.followOrganizer(widget.organizer.id);
+      } else {
+        await widget.socialRepository.unfollowOrganizer(widget.organizer.id);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _isFollowing = previous);
+        setState(() => _followersCount = previousCount);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update follow: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _followLoading = false);
+    }
   }
 
   Widget _avatarFallback(String name) {

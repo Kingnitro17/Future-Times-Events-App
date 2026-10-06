@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,7 +37,6 @@ void main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    await FCMService().initialize();
   } catch (e) {
     if (kDebugMode) {
       debugPrint('[FCM] Firebase initialization skipped or pending setup: $e');
@@ -71,6 +72,18 @@ void main() async {
   final eventRepository = EventRepository();
   final authRepository = AuthRepository();
   await authRepository.initialize();
+  final fcmService = FCMService();
+  await fcmService.initialize();
+  var syncedFcmUserId = authRepository.user?.id;
+  authRepository.addListener(() {
+    final userId = authRepository.user?.id;
+    if (userId == null) {
+      syncedFcmUserId = null;
+    } else if (userId != syncedFcmUserId) {
+      syncedFcmUserId = userId;
+      unawaited(fcmService.syncCurrentTokenToSupabase());
+    }
+  });
   final socialRepository = SocialRepository();
   final savedEventsRepository =
       SavedEventsRepository(authRepository: authRepository);

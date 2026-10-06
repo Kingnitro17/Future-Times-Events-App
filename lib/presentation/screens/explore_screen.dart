@@ -16,6 +16,7 @@ import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
 import '../widgets/event_network_image.dart';
+import '../widgets/price_label.dart';
 import '../widgets/save_event_button.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/error_state.dart';
@@ -532,12 +533,10 @@ class _DiscoverCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        event.isFree ? 'Free' : 'Paid',
-                        style: AppText.micro.copyWith(
-                          color: AppColors.text,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      child: PriceLabel(
+                        isFree: event.isFree,
+                        ticketClasses: event.ticketClasses,
+                        compact: true,
                       ),
                     ),
                     SaveEventButton(

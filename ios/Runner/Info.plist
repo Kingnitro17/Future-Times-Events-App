@@ -8,8 +8,14 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Future Times Events</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Future Times Events uses the camera to scan QR codes at event check-in.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Future Times Events uses your photo library to upload event images and profile pictures.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Future Times uses your location only when you ask to discover events near you.</string>
+	<string>Future Times Events uses your location to show nearby events and provide directions.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Future Times Events uses your location to show nearby events and provide directions.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

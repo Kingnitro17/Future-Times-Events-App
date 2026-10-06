@@ -9,20 +9,24 @@ class NotificationRepository extends ChangeNotifier {
   final SupabaseClient _client;
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
+  String? _lastError;
 
   List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
+  String? get lastError => _lastError;
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
   Future<List<NotificationModel>> fetchNotifications() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       _notifications = const [];
+      _lastError = null;
       notifyListeners();
       return const [];
     }
 
     _isLoading = true;
+    _lastError = null;
     notifyListeners();
 
     try {
@@ -38,6 +42,7 @@ class NotificationRepository extends ChangeNotifier {
               NotificationModel.fromJson(Map<String, dynamic>.from(row as Map)))
           .toList();
     } catch (e) {
+      _lastError = 'Notifications could not be loaded. Please try again.';
       if (kDebugMode) debugPrint('[notifications] query error: $e');
     } finally {
       _isLoading = false;
@@ -48,9 +53,10 @@ class NotificationRepository extends ChangeNotifier {
 
   Future<void> markAsRead(String notificationId) async {
     try {
-      await _client
-          .from('notifications')
-          .update({'read': true}).eq('id', notificationId);
+      await _client.from('notifications').update({
+        'read': true,
+        'read_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', notificationId);
       _notifications = _notifications.map((n) {
         if (n.id == notificationId) {
           return NotificationModel(
@@ -59,6 +65,7 @@ class NotificationRepository extends ChangeNotifier {
             body: n.body,
             type: n.type,
             eventId: n.eventId,
+            payload: n.payload,
             read: true,
             createdAt: n.createdAt,
           );
@@ -68,6 +75,19 @@ class NotificationRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) debugPrint('[notifications] markAsRead error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _client.from('notifications').delete().eq('id', notificationId);
+      _notifications =
+          _notifications.where((item) => item.id != notificationId).toList();
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[notifications] delete error: $e');
+      rethrow;
     }
   }
 }

@@ -88,9 +88,9 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                                             org.logoUrl!.isNotEmpty)
                                         ? Image.network(org.logoUrl!,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error,
-                                                    stackTrace) =>
-                                                _logoFallback(org.name))
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    _logoFallback(org.name))
                                         : _logoFallback(org.name),
                                   ),
                                 ),
@@ -137,18 +137,38 @@ class _OrganizersScreenState extends State<OrganizersScreen> {
                                   child: org.isFollowing
                                       ? OutlinedButton(
                                           onPressed: () async {
-                                            await widget.socialRepository
-                                                .unfollowUser(org.id);
-                                            _load();
+                                            try {
+                                              await widget.socialRepository
+                                                  .unfollowOrganizer(org.id);
+                                              _load();
+                                            } catch (error) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(SnackBar(
+                                                  content: Text(
+                                                      'Could not unfollow organizer: $error'),
+                                                ));
+                                              }
+                                            }
                                           },
                                           child: const Text('Following',
                                               style: TextStyle(fontSize: 12)),
                                         )
                                       : FilledButton(
                                           onPressed: () async {
-                                            await widget.socialRepository
-                                                .followUser(org.id);
-                                            _load();
+                                            try {
+                                              await widget.socialRepository
+                                                  .followOrganizer(org.id);
+                                              _load();
+                                            } catch (error) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(SnackBar(
+                                                  content: Text(
+                                                      'Could not follow organizer: $error'),
+                                                ));
+                                              }
+                                            }
                                           },
                                           style: FilledButton.styleFrom(
                                               backgroundColor:

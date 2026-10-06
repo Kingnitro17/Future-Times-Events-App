@@ -98,14 +98,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (widget.authRepository.isSignedIn) {
         context.go('/profile');
       } else {
-        // Email confirmation is required before the session activates.
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Check your inbox to confirm your email, then sign in.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        context.go(
+          '/auth/verify-email?${Uri(queryParameters: {'email': email}).query}',
         );
-        context.go('/login');
       }
     } on AppFailure catch (failure) {
       if (mounted) setState(() => _error = failure.message);
@@ -128,7 +123,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) setState(() => _googleSubmitting = false);
     }
   }
-@override
+
+  @override
   Widget build(BuildContext context) {
     final busy = _submitting || _googleSubmitting;
 
@@ -160,17 +156,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'Create your account',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.text,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.text,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Join Future Times to save events, claim free tickets and connect with friends.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: AppColors.textMuted, height: 1.45, fontSize: 14),
+                          color: AppColors.textMuted,
+                          height: 1.45,
+                          fontSize: 14),
                     ),
                     const SizedBox(height: 24),
 
@@ -181,8 +180,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +234,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       autofillHints: const [AutofillHints.email],
                       enabled: !busy,
                       validator: (value) {
-                        if (value == null || !_emailPattern.hasMatch(value.trim())) {
+                        if (value == null ||
+                            !_emailPattern.hasMatch(value.trim())) {
                           return 'Enter a valid email address';
                         }
                         return null;
@@ -347,8 +347,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                         foregroundColor: AppColors.text,
-                        side:
-                            const BorderSide(color: AppColors.border, width: 1.4),
+                        side: const BorderSide(
+                            color: AppColors.border, width: 1.4),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(999)),
                       ),

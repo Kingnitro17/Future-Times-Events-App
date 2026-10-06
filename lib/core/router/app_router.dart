@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/models/social_models.dart';
+import '../../data/models/organizer_product.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/social_repository.dart';
@@ -17,6 +18,8 @@ import '../../presentation/screens/organizer/organizer_home_screen.dart';
 import '../../presentation/screens/organizer/organizer_events_screen.dart';
 import '../../presentation/screens/organizer/edit_event_screen.dart';
 import '../../presentation/screens/organizer/organizer_event_detail_screen.dart';
+import '../../presentation/screens/organizer/organizer_products_screen.dart';
+import '../../presentation/screens/organizer/organizer_product_edit_screen.dart';
 import '../../presentation/screens/organizer/venue_setup_screen.dart';
 import '../../presentation/screens/organizer/edit_table_screen.dart';
 import '../../presentation/screens/organizer/edit_menu_item_screen.dart';
@@ -31,6 +34,7 @@ import '../../data/repositories/wallet_repository.dart';
 import '../../data/repositories/ride_repository.dart';
 import '../../data/repositories/attendance_group_repository.dart';
 import '../../data/repositories/venue_commerce_repository.dart';
+import '../../data/repositories/product_repository.dart';
 import '../../data/repositories/payment_repository.dart';
 import '../../data/models/menu_item.dart';
 import '../../data/models/venue_table.dart';
@@ -64,6 +68,7 @@ import '../../presentation/screens/login_screen.dart';
 import '../../presentation/screens/onboarding_screen.dart';
 import '../../presentation/screens/profile_screen.dart';
 import '../../presentation/screens/register_screen.dart';
+import '../../presentation/screens/auth/verify_email_screen.dart';
 import '../../presentation/screens/tickets_screen.dart';
 import '../../presentation/screens/saved_events_screen.dart';
 import '../../presentation/screens/friends_screen.dart';
@@ -73,6 +78,7 @@ import '../../presentation/screens/notifications_screen.dart';
 import '../../presentation/screens/user_profile_screen.dart';
 import '../../presentation/screens/ft_services/ft_services_list_screen.dart';
 import '../../presentation/screens/ft_services/ft_service_detail_screen.dart';
+import '../../presentation/screens/product_preorder_screen.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -233,6 +239,7 @@ class _EventDetailsLoader extends StatefulWidget {
     required this.socialRepository,
     required this.groupRepository,
     required this.venueCommerceRepository,
+    required this.productRepository,
   });
 
   final String eventId;
@@ -243,6 +250,7 @@ class _EventDetailsLoader extends StatefulWidget {
   final SocialRepository socialRepository;
   final AttendanceGroupRepository groupRepository;
   final VenueCommerceRepository venueCommerceRepository;
+  final ProductRepository productRepository;
 
   @override
   State<_EventDetailsLoader> createState() => _EventDetailsLoaderState();
@@ -275,6 +283,7 @@ class _EventDetailsLoaderState extends State<_EventDetailsLoader> {
             socialRepository: widget.socialRepository,
             groupRepository: widget.groupRepository,
             venueCommerceRepository: widget.venueCommerceRepository,
+            productRepository: widget.productRepository,
           ),
         );
       },
@@ -347,13 +356,16 @@ GoRouter buildAppRouter({
   required AdminRepository adminRepository,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final productRepository = ProductRepository();
   return GoRouter(
     navigatorKey: rootKey,
     refreshListenable: authRepository,
     initialLocation: '/launch',
     redirect: (context, state) {
       final location = state.uri.path;
-      final isAuthRoute = location == '/login' || location == '/register';
+      final isAuthRoute = location == '/login' ||
+          location == '/register' ||
+          location == '/auth/verify-email';
 
       // Keep the launch animation visible while the initial session is
       // resolving. AuthRepository is initialized before the app starts, but
@@ -409,6 +421,12 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/register',
         builder: (_, __) => RegisterScreen(authRepository: authRepository),
+      ),
+      GoRoute(
+        path: '/auth/verify-email',
+        builder: (_, state) => VerifyEmailScreen(
+          email: state.uri.queryParameters['email'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -686,6 +704,27 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/organizer/events/:id/products/new',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
+        builder: (_, state) => OrganizerProductEditScreen(
+          eventId: state.pathParameters['id']!,
+          productRepository: productRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/products/:productId/edit',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
+        builder: (_, state) => OrganizerProductEditScreen(
+          eventId: state.pathParameters['id']!,
+          productRepository: productRepository,
+          product: state.extra is OrganizerProduct
+              ? state.extra as OrganizerProduct
+              : null,
+        ),
+      ),
+      GoRoute(
         path: '/organizer/complete-profile',
         builder: (_, state) => OrganizerProfilePhotoScreen(
           authRepository: authRepository,
@@ -739,6 +778,16 @@ GoRouter buildAppRouter({
           eventId: state.pathParameters['id']!,
           authRepository: authRepository,
           organizerRepository: organizerRepository,
+          productRepository: productRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/organizer/events/:id/products',
+        redirect: (context, state) =>
+            _organizerToolsRedirect(authRepository, state),
+        builder: (_, state) => OrganizerProductsScreen(
+          eventId: state.pathParameters['id']!,
+          productRepository: productRepository,
         ),
       ),
       GoRoute(
@@ -830,6 +879,7 @@ GoRouter buildAppRouter({
             socialRepository: socialRepository,
             groupRepository: groupRepository,
             venueCommerceRepository: venueCommerceRepository,
+            productRepository: productRepository,
           );
         },
       ),
@@ -854,6 +904,13 @@ GoRouter buildAppRouter({
           eventId: state.pathParameters['id']!,
           venueRepository: venueCommerceRepository,
           paymentRepository: paymentRepository,
+        ),
+      ),
+      GoRoute(
+        path: '/events/:id/products',
+        builder: (_, state) => ProductPreorderScreen(
+          eventId: state.pathParameters['id']!,
+          productRepository: productRepository,
         ),
       ),
     ],

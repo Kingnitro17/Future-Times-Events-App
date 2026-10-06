@@ -14,7 +14,6 @@ import 'package:permission_handler/permission_handler.dart' as permissions;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_gradients.dart';
 import '../../data/models/event_model.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../services/maps/location_service.dart';
@@ -24,6 +23,7 @@ import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
 import '../widgets/event_network_image.dart';
+import '../widgets/map/event_map_pin.dart';
 import '../widgets/save_event_button.dart';
 
 class MapDiscoveryScreen extends StatefulWidget {
@@ -782,8 +782,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           if (mapPointForEvent(event) case final point?)
             Marker(
               point: point,
-              width: 186,
-              height: 48,
+              width: 194,
+              height: 60,
               alignment: Alignment.bottomCenter,
               child: _EventMapMarker(
                 event: event,
@@ -804,8 +804,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           if (mapPointForEvent(event) case final point?)
             Marker(
               point: point,
-              width: 186,
-              height: 48,
+              width: 194,
+              height: 60,
               alignment: Alignment.bottomCenter,
               child: _EventMapMarker(
                 event: event,
@@ -836,8 +836,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
         if (items.length == 1)
           Marker(
             point: mapPointForEvent(items.single)!,
-            width: 186,
-            height: 48,
+            width: 194,
+            height: 60,
             alignment: Alignment.bottomCenter,
             child: _EventMapMarker(
               event: items.single,
@@ -1281,16 +1281,6 @@ String _categoryForEvent(EventModel event) {
   return 'Other';
 }
 
-IconData _categoryIcon(EventModel event) => switch (_categoryForEvent(event)) {
-      'Music' => Icons.music_note_rounded,
-      'Sports' => Icons.sports_soccer_rounded,
-      'Food' => Icons.restaurant_rounded,
-      'Nightlife' => Icons.nightlife_rounded,
-      'Arts' => Icons.palette_rounded,
-      'Business' => Icons.business_center_rounded,
-      _ => Icons.event_rounded,
-    };
-
 class _EventMapMarker extends StatelessWidget {
   const _EventMapMarker({
     required this.event,
@@ -1304,54 +1294,12 @@ class _EventMapMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = event.name.text.trim();
-    final label = title.isEmpty
-        ? ''
-        : (title.length > 18 ? '${title.substring(0, 18)}…' : title);
-    return GestureDetector(
+    return EventMapPin(
+      eventImageUrl: event.logo?.original?.url ?? event.logo?.url,
+      eventName: event.name.text.trim(),
+      category: event.categoryLabel ?? event.categoryId,
+      isSelected: selected,
       onTap: onTap,
-      child: AnimatedScale(
-        scale: selected ? 1.15 : 1,
-        duration: const Duration(milliseconds: 180),
-        child: Container(
-          height: 36,
-          constraints: const BoxConstraints(maxWidth: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          decoration: BoxDecoration(
-            gradient: AppGradients.brand,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.purple.withValues(alpha: selected ? .48 : .27),
-                blurRadius: selected ? 18 : 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_categoryIcon(event), size: 16, color: Colors.white),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

@@ -22,7 +22,9 @@ import '../../data/repositories/social_repository.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/save_heart_button.dart';
 import '../widgets/share_event_button.dart';
+import '../widgets/like_button.dart';
 import '../widgets/event_social_row.dart';
+import '../widgets/price_label.dart';
 import '../widgets/hero_banner.dart';
 import '../widgets/ft_services_section.dart';
 import '../widgets/common/empty_state.dart';
@@ -116,6 +118,11 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: false,
           child: BlocBuilder<EventBloc, EventState>(
             builder: (context, state) {
+              final isLandscape =
+                  MediaQuery.orientationOf(context) == Orientation.landscape;
+              final showHero =
+                  !isLandscape || MediaQuery.sizeOf(context).height > 500;
+              final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
               final loadedEvents =
                   state is EventLoaded ? state.events : <EventModel>[];
               final recommended = _recommendedEvents(loadedEvents);
@@ -143,19 +150,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         preferencesRepository: widget.preferencesRepository,
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: HeroBanner(
-                        imageAsset: 'assets/images/hero.png',
-                        headline: 'Discover What’s Happening',
-                        subheadline:
-                            'Find events, buy tickets, and never miss out.',
-                        buttonLabel: 'Explore Events',
-                        onButtonPressed: () => context.push('/explore'),
-                        greeting: _firstName(widget.authRepository),
-                        semanticLabel:
-                            'Explore events banner. Opens event search.',
+                    if (showHero)
+                      SliverToBoxAdapter(
+                        child: HeroBanner(
+                          imageAsset: 'assets/images/hero.png',
+                          headline: 'Discover What’s Happening',
+                          subheadline:
+                              'Find events, buy tickets, and never miss out.',
+                          buttonLabel: 'Explore Events',
+                          onButtonPressed: () => context.push('/explore'),
+                          greeting: _firstName(widget.authRepository),
+                          semanticLabel:
+                              'Explore events banner. Opens event search.',
+                        ),
                       ),
-                    ),
                     if (state is EventLoading || state is EventInitial)
                       const SliverToBoxAdapter(child: _HomeSkeleton())
                     else if (state is EventError)
@@ -267,7 +275,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SizedBox(height: 8),
                       ),
                     ],
-                    SliverToBoxAdapter(child: FtServicesSection()),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: bottomInset),
+                        child: FtServicesSection(),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -815,18 +828,22 @@ class _Section extends StatelessWidget {
   final String title;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.md,
-        ),
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-      );
+  Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        isLandscape ? AppSpacing.md : AppSpacing.lg,
+        AppSpacing.lg,
+        isLandscape ? AppSpacing.sm : AppSpacing.md,
+      ),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
+  }
 }
 
 class _FeaturedRail extends StatelessWidget {
@@ -847,6 +864,8 @@ class _FeaturedRail extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = ResponsiveUtils.responsiveCardWidth(viewportWidth);
     final isExpanded = ResponsiveUtils.isExpanded(context);
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
 
     if (isExpanded) {
       final columns = ResponsiveUtils.responsiveGridColumns(viewportWidth);
@@ -879,7 +898,7 @@ class _FeaturedRail extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 360,
+      height: isLandscape ? 300 : 360,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         scrollDirection: Axis.horizontal,
@@ -948,6 +967,8 @@ class _Featured extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        LikeButton(eventId: event.id, compact: true),
+                        const SizedBox(width: 6),
                         ShareEventButton(event: event, size: 36),
                         const SizedBox(width: 6),
                         SaveHeartButton(
@@ -1058,7 +1079,7 @@ class _Upcoming extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(right: 40),
+                          padding: const EdgeInsets.only(right: 100),
                           child: _Pill(
                             value: event.categoryLabel ?? event.categoryId,
                             compact: true,
@@ -1091,13 +1112,10 @@ class _Upcoming extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              event.isFree ? 'Free' : 'Paid',
-                              style: const TextStyle(
-                                color: AppColors.purple,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
+                            PriceLabel(
+                              isFree: event.isFree,
+                              ticketClasses: event.ticketClasses,
+                              compact: true,
                             ),
                           ],
                         ),
@@ -1111,11 +1129,18 @@ class _Upcoming extends StatelessWidget {
           Positioned(
             top: 4,
             right: 4,
-            child: SaveHeartButton(
-              eventId: event.id,
-              repository: savedEventsRepository,
-              authRepository: authRepository,
-              size: 34,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LikeButton(eventId: event.id, compact: true),
+                const SizedBox(width: 6),
+                SaveHeartButton(
+                  eventId: event.id,
+                  repository: savedEventsRepository,
+                  authRepository: authRepository,
+                  size: 34,
+                ),
+              ],
             ),
           ),
         ],
@@ -1175,23 +1200,17 @@ class _PriceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paid = event.ticketClasses.where((ticket) => !ticket.free).toList();
-    final text = event.isFree
-        ? 'Free'
-        : paid.isEmpty
-            ? 'Paid'
-            : 'From ${paid.map((ticket) => ticket.cost?.display).whereType<String>().firstOrNull ?? ''}';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.purple.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(text,
-          style: const TextStyle(
-              color: AppColors.purple,
-              fontSize: 11,
-              fontWeight: FontWeight.w700)),
+      child: PriceLabel(
+        isFree: event.isFree,
+        ticketClasses: event.ticketClasses,
+        compact: true,
+      ),
     );
   }
 }

@@ -15,10 +15,11 @@ class SocialRepository {
   Future<SocialStats> getSocialStats() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const SocialStats();
+    int? eventsAttended;
     try {
       final res = await _client.rpc('get_my_social_stats');
       if (res is Map<String, dynamic>) {
-        return SocialStats.fromJson(res);
+        eventsAttended = SocialStats.fromJson(res).eventsAttended;
       }
     } on PostgrestException catch (e) {
       if (kDebugMode) debugPrint('[social] get_my_social_stats RPC failed: $e');
@@ -30,18 +31,20 @@ class SocialRepository {
       final followsCount = await _client
           .from('user_follows')
           .select('id')
-          .eq('follower_id', userId);
+          .eq('follower_id', userId)
+          .eq('target_type', 'user');
       final followersCount = await _client
           .from('user_follows')
           .select('id')
-          .eq('following_id', userId);
+          .eq('following_id', userId)
+          .eq('target_type', 'user');
       final rsvpsCount = await _client
           .from('rsvps')
           .select('id')
           .eq('user_id', userId)
           .eq('status', 'going');
       return SocialStats(
-        eventsAttended: (rsvpsCount as List).length,
+        eventsAttended: eventsAttended ?? (rsvpsCount as List).length,
         followingCount: (followsCount as List).length,
         followersCount: (followersCount as List).length,
       );
@@ -68,7 +71,8 @@ class SocialRepository {
       }
     } on PostgrestException catch (e) {
       if (kDebugMode) {
-        debugPrint('[social] get_event_social_summary RPC failed: $e — trying direct query');
+        debugPrint(
+            '[social] get_event_social_summary RPC failed: $e — trying direct query');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -81,14 +85,14 @@ class SocialRepository {
       final userId = _client.auth.currentUser?.id;
       final rows = await _client
           .from('rsvps')
-          .select('user_id, is_public, profiles!inner(display_name, avatar_url)')
+          .select(
+              'user_id, is_public, profiles!inner(display_name, avatar_url)')
           .eq('event_id', eventId)
           .eq('status', 'going');
 
       final totalGoing = rows.length;
-      final publicRows = (rows as List)
-          .where((r) => r['is_public'] == true)
-          .toList();
+      final publicRows =
+          (rows as List).where((r) => r['is_public'] == true).toList();
       final publicAvatars = publicRows
           .map((r) {
             final p = r['profiles'];
@@ -104,11 +108,14 @@ class SocialRepository {
         final friendIds = await _client
             .from('user_follows')
             .select('following_id')
-            .eq('follower_id', userId);
-        final friendSet =
-            (friendIds as List).map((r) => r['following_id']?.toString() ?? '').toSet();
-        final friendRows =
-            rows.where((r) => friendSet.contains(r['user_id']?.toString())).toList();
+            .eq('follower_id', userId)
+            .eq('target_type', 'user');
+        final friendSet = (friendIds as List)
+            .map((r) => r['following_id']?.toString() ?? '')
+            .toSet();
+        final friendRows = rows
+            .where((r) => friendSet.contains(r['user_id']?.toString()))
+            .toList();
         friendCount = friendRows.length;
         friendAvatars = friendRows
             .map((r) {
@@ -226,23 +233,41 @@ class SocialRepository {
 
   /// Follow a user
   Future<void> followUser(String targetUserId) async {
+    await _followTarget(targetUserId, 'user');
+  }
+
+  Future<void> followOrganizer(String organizerId) async {
+    await _followTarget(organizerId, 'organizer');
+  }
+
+  Future<void> _followTarget(String targetId, String targetType) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw const AuthException('Sign in required.');
     await _client.from('user_follows').upsert({
       'follower_id': userId,
-      'following_id': targetUserId,
-    }, onConflict: 'follower_id,following_id');
+      'following_id': targetId,
+      'target_type': targetType,
+    }, onConflict: 'follower_id,following_id,target_type');
   }
 
   /// Unfollow a user
   Future<void> unfollowUser(String targetUserId) async {
+    await _unfollowTarget(targetUserId, 'user');
+  }
+
+  Future<void> unfollowOrganizer(String organizerId) async {
+    await _unfollowTarget(organizerId, 'organizer');
+  }
+
+  Future<void> _unfollowTarget(String targetId, String targetType) async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) throw const AuthException('Sign in required.');
     await _client
         .from('user_follows')
         .delete()
         .eq('follower_id', userId)
-        .eq('following_id', targetUserId);
+        .eq('following_id', targetId)
+        .eq('target_type', targetType);
   }
 
   /// Get list of organizers followed by current user
@@ -278,7 +303,8 @@ class SocialRepository {
         final follows = await _client
             .from('user_follows')
             .select('following_id')
-            .eq('follower_id', userId) as List;
+            .eq('follower_id', userId)
+            .eq('target_type', 'organizer') as List;
         for (final f in follows) {
           followingSet.add(f['following_id'].toString());
         }
@@ -304,7 +330,8 @@ class SocialRepository {
           .from('user_follows')
           .select(
               'following_id, profiles!user_follows_following_id_fkey(display_name, avatar_url)')
-          .eq('follower_id', userId);
+          .eq('follower_id', userId)
+          .eq('target_type', 'user');
       final list = rows as List;
       return list.map((row) {
         final profile = row['profiles'] as Map<String, dynamic>? ?? {};
@@ -330,7 +357,8 @@ class SocialRepository {
           .from('user_follows')
           .select(
               'follower_id, profiles!user_follows_follower_id_fkey(display_name, avatar_url)')
-          .eq('following_id', userId);
+          .eq('following_id', userId)
+          .eq('target_type', 'user');
       final list = rows as List;
       return list.map((row) {
         final profile = row['profiles'] as Map<String, dynamic>? ?? {};
@@ -413,7 +441,8 @@ class SocialRepository {
         final follows = await _client
             .from('user_follows')
             .select('following_id')
-            .eq('follower_id', userId) as List;
+            .eq('follower_id', userId)
+            .eq('target_type', 'user') as List;
         for (final f in follows) {
           followingSet.add(f['following_id'].toString());
         }
@@ -520,6 +549,7 @@ class SocialRepository {
             .select(
                 'following_id, profiles!user_follows_following_id_fkey(id, display_name, avatar_url)')
             .eq('following_id', targetUserId)
+            .eq('target_type', 'user')
             .limit(1);
         if ((joinRows as List).isNotEmpty) {
           final profileData = joinRows.first['profiles'];
@@ -538,6 +568,7 @@ class SocialRepository {
             .select(
                 'follower_id, profiles!user_follows_follower_id_fkey(id, display_name, avatar_url)')
             .eq('follower_id', targetUserId)
+            .eq('target_type', 'user')
             .limit(1);
         if ((joinRows as List).isNotEmpty) {
           final profileData = joinRows.first['profiles'];
@@ -588,6 +619,7 @@ class SocialRepository {
             .select('id')
             .eq('follower_id', currentUserId)
             .eq('following_id', targetUserId)
+            .eq('target_type', 'user')
             .maybeSingle();
         isFollowing = f1 != null;
 
@@ -596,6 +628,7 @@ class SocialRepository {
             .select('id')
             .eq('follower_id', targetUserId)
             .eq('following_id', currentUserId)
+            .eq('target_type', 'user')
             .maybeSingle();
         isFollowedBy = f2 != null;
       } catch (_) {}
@@ -609,13 +642,15 @@ class SocialRepository {
       final fc = await _client
           .from('user_follows')
           .select('id')
-          .eq('follower_id', targetUserId);
+          .eq('follower_id', targetUserId)
+          .eq('target_type', 'user');
       followingCount = (fc as List).length;
 
       final fwc = await _client
           .from('user_follows')
           .select('id')
-          .eq('following_id', targetUserId);
+          .eq('following_id', targetUserId)
+          .eq('target_type', 'user');
       followersCount = (fwc as List).length;
 
       final ec = await _client

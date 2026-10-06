@@ -10,6 +10,7 @@ import 'payment_repository.dart';
 import 'ride_repository.dart';
 import 'ticket_repository.dart';
 import 'venue_commerce_repository.dart';
+import 'product_repository.dart';
 
 class WalletRepository {
   WalletRepository({
@@ -19,6 +20,7 @@ class WalletRepository {
     required RideRepository rideRepository,
     required VenueCommerceRepository venueCommerceRepository,
     FtServicesRepository? ftServicesRepository,
+    ProductRepository? productRepository,
     SupabaseClient? client,
   })  : _auth = authRepository,
         _tickets = ticketRepository,
@@ -27,6 +29,7 @@ class WalletRepository {
         _venueCommerce = venueCommerceRepository,
         _ftServices =
             ftServicesRepository ?? FtServicesRepository(client: client),
+        _products = productRepository ?? ProductRepository(client: client),
         _client = client ?? Supabase.instance.client;
 
   final AuthRepository _auth;
@@ -34,6 +37,7 @@ class WalletRepository {
   final PaymentRepository _payments;
   final RideRepository _rides;
   final VenueCommerceRepository _venueCommerce;
+  final ProductRepository _products;
   final FtServicesRepository _ftServices;
   final SupabaseClient _client;
 
@@ -44,6 +48,7 @@ class WalletRepository {
     final reservations = await _venueCommerce.getMyReservations(limit: 20);
     final orders = await _venueCommerce.getMyOrders(limit: 20);
     final serviceBookings = await _ftServices.myBookings(limit: 30);
+    final preorders = await _products.getMyPreorders(limit: 50);
     final items = <WalletItem>[
       ...tickets.map(WalletItem.fromTicket),
       ...payments
@@ -53,6 +58,7 @@ class WalletRepository {
       ...reservations.map(WalletItem.fromReservation),
       ...orders.map(WalletItem.fromOrder),
       ...serviceBookings.map(WalletItem.fromFtService),
+      ...preorders.map(WalletItem.fromPreorder),
     ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return items.take(limit).toList(growable: false);
   }
@@ -157,6 +163,17 @@ class WalletRepository {
               filter: PostgresChangeFilter(
                 type: PostgresChangeFilterType.eq,
                 column: 'organizer_id',
+                value: userId,
+              ),
+              callback: (_) => scheduleRefresh(),
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'product_preorders',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'user_id',
                 value: userId,
               ),
               callback: (_) => scheduleRefresh(),

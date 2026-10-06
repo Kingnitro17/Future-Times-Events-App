@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
+import '../../../data/repositories/product_repository.dart';
+import 'organizer_products_screen.dart';
 import '../../widgets/event_network_image.dart';
 
 class OrganizerEventDetailScreen extends StatefulWidget {
@@ -14,11 +16,13 @@ class OrganizerEventDetailScreen extends StatefulWidget {
     required this.eventId,
     required this.authRepository,
     required this.organizerRepository,
+    required this.productRepository,
   });
 
   final String eventId;
   final AuthRepository authRepository;
   final OrganizerRepository organizerRepository;
+  final ProductRepository productRepository;
 
   @override
   State<OrganizerEventDetailScreen> createState() =>
@@ -67,7 +71,7 @@ class _OrganizerEventDetailScreenState
           }
           final event = snapshot.data!;
           return DefaultTabController(
-            length: 4,
+            length: 5,
             child: Scaffold(
               backgroundColor: AppColors.background,
               appBar: AppBar(
@@ -78,6 +82,7 @@ class _OrganizerEventDetailScreenState
                     Tab(text: 'Overview'),
                     Tab(text: 'Ticket Types'),
                     Tab(text: 'Attendees'),
+                    Tab(text: 'Products'),
                     Tab(text: 'Scan'),
                   ],
                 ),
@@ -98,6 +103,10 @@ class _OrganizerEventDetailScreenState
                     query: _query,
                     controller: _searchController,
                     onExport: (rows) => _export(rows, event['title']),
+                  ),
+                  OrganizerProductsScreen(
+                    eventId: widget.eventId,
+                    productRepository: widget.productRepository,
                   ),
                   _ScanTab(eventId: widget.eventId),
                 ],

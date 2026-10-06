@@ -6,6 +6,7 @@ import 'table_reservation.dart';
 import '../../core/geo/geo_point.dart';
 import '../../services/payments/payment_gateway.dart';
 import 'ft_service_booking.dart';
+import 'organizer_product.dart';
 
 sealed class WalletItem {
   const WalletItem({
@@ -45,6 +46,41 @@ sealed class WalletItem {
 
   factory WalletItem.fromFtService(FtServiceBooking booking) =
       WalletItemFtService.fromBooking;
+
+  factory WalletItem.fromPreorder(ProductPreorder preorder) =
+      WalletItemPreorder.fromPreorder;
+}
+
+final class WalletItemPreorder extends WalletItem {
+  const WalletItemPreorder({
+    required super.id,
+    required super.title,
+    required super.subtitle,
+    required super.statusLabel,
+    required super.createdAt,
+    required super.eventId,
+    required this.quantity,
+    required this.unitPrice,
+    required this.currency,
+  }) : super(kind: 'preorder', deepLink: '/wallet');
+
+  final int quantity;
+  final double unitPrice;
+  final String currency;
+
+  factory WalletItemPreorder.fromPreorder(ProductPreorder preorder) =>
+      WalletItemPreorder(
+        id: preorder.id,
+        title: preorder.productName,
+        subtitle:
+            '${preorder.quantity} ${preorder.quantity == 1 ? 'item' : 'items'}',
+        statusLabel: preorder.status.replaceAll('_', ' '),
+        createdAt: preorder.createdAt,
+        eventId: preorder.eventId,
+        quantity: preorder.quantity,
+        unitPrice: preorder.unitPrice,
+        currency: preorder.currency,
+      );
 }
 
 final class WalletItemFtService extends WalletItem {

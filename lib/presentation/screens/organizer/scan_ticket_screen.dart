@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart' as permissions;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -29,7 +30,8 @@ class ScanTicketScreen extends StatefulWidget {
   State<ScanTicketScreen> createState() => _ScanTicketScreenState();
 }
 
-class _ScanTicketScreenState extends State<ScanTicketScreen> {
+class _ScanTicketScreenState extends State<ScanTicketScreen>
+    with WidgetsBindingObserver {
   final MobileScannerController _scannerController = MobileScannerController();
   final Map<String, DateTime> _recentScans = {};
   late Future<List<Map<String, dynamic>>> _eventsFuture;
@@ -46,13 +48,54 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
   bool _processing = false;
   int _checkedInCount = 0;
   bool _checkingRole = true;
+  bool _cameraPermissionGranted = false;
+  bool _cameraPermissionPermanentlyDenied = false;
+  bool _checkingCameraPermission = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedEventId = widget.initialEventId;
     _eventsFuture = widget.organizerRepository.getMyEvents();
     _verifyRole();
+    _checkCameraPermission(requestIfNeeded: true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkCameraPermission();
+  }
+
+  Future<void> _checkCameraPermission({bool requestIfNeeded = false}) async {
+    try {
+      var status = await permissions.Permission.camera.status;
+      if (!status.isGranted && requestIfNeeded && status.isDenied) {
+        status = await permissions.Permission.camera.request();
+      }
+      if (!mounted) return;
+      setState(() {
+        _cameraPermissionGranted = status.isGranted;
+        _cameraPermissionPermanentlyDenied =
+            status.isPermanentlyDenied || status.isRestricted;
+        _checkingCameraPermission = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _checkingCameraPermission = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not check camera access: $error')),
+      );
+    }
+  }
+
+  Future<void> _openCameraSettings() async {
+    final opened = await permissions.openAppSettings();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open device settings.')),
+      );
+    }
   }
 
   Future<void> _verifyRole() async {
@@ -82,6 +125,7 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _resultTimer?.cancel();
     _scannerController.dispose();
     super.dispose();
@@ -116,9 +160,9 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
       );
       if (!mounted) return;
       _showResult(result);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      _showResult({'valid': false, 'message': error.toString()});
+      await _showValidationError();
     }
   }
 
@@ -236,9 +280,74 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
         eventId: _selectedEventId,
       );
       if (mounted) _showResult(result);
-    } catch (error) {
-      if (mounted) _showResult({'valid': false, 'message': error.toString()});
+    } catch (_) {
+      await _showValidationError();
     }
+  }
+
+  Future<void> _showValidationError() async {
+    if (!mounted) return;
+    setState(() => _processing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Could not validate ticket. Check your connection and try again.'),
+      ),
+    );
+    if (_cameraPermissionGranted) {
+      try {
+        await _scannerController.start();
+      } on MobileScannerException catch (error) {
+        if (mounted) _showCameraError(error);
+      }
+    }
+  }
+
+  Widget _cameraAccessState() {
+    if (_checkingCameraPermission) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.no_photography_outlined,
+                  color: Colors.white, size: 52),
+              const SizedBox(height: 14),
+              const Text(
+                'Camera access is required to scan tickets',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              if (!_cameraPermissionPermanentlyDenied)
+                FilledButton.icon(
+                  onPressed: () =>
+                      _checkCameraPermission(requestIfNeeded: true),
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Allow camera access'),
+                ),
+              OutlinedButton.icon(
+                onPressed: _openCameraSettings,
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Open Settings'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -257,38 +366,45 @@ class _ScanTicketScreenState extends State<ScanTicketScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(
-            controller: _scannerController,
-            onDetect: _handleBarcode,
-            errorBuilder: (context, error) => ColoredBox(
-              color: Colors.black,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.no_photography_outlined,
-                          color: Colors.white, size: 52),
-                      const SizedBox(height: 14),
-                      Text(
-                        'Camera unavailable (${error.errorCode.name}). '
-                        'Check camera access and try again.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: _retryCamera,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Retry camera'),
-                      ),
-                    ],
+          if (_cameraPermissionGranted)
+            MobileScanner(
+              controller: _scannerController,
+              onDetect: _handleBarcode,
+              errorBuilder: (context, error) => ColoredBox(
+                color: Colors.black,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.no_photography_outlined,
+                            color: Colors.white, size: 52),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Camera unavailable (${error.errorCode.name}). '
+                          'Check camera access and try again.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _retryCamera,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Retry camera'),
+                        ),
+                        OutlinedButton(
+                          onPressed: _openCameraSettings,
+                          child: const Text('Open Settings'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            )
+          else
+            _cameraAccessState(),
           IgnorePointer(
             child: CustomPaint(painter: _ScannerOverlayPainter()),
           ),

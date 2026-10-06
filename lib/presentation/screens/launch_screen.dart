@@ -1,6 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_gradients.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/theme/app_text.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({
@@ -16,249 +22,189 @@ class LaunchScreen extends StatefulWidget {
 
 class _LaunchScreenState extends State<LaunchScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _logoController;
-  late final AnimationController _driftController;
-
-  late final Animation<double> _fadeAnimation;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _glowAnimation;
+  late final AnimationController _introController;
+  late final AnimationController _sparkleController;
+  late final AnimationController _brandController;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _brandOpacity;
 
   @override
   void initState() {
     super.initState();
-
-    // 1. Single once-only logo animation (900-1200ms)
-    _logoController = AnimationController(
+    _introController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 800),
     );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _logoController,
-      curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.90, end: 1.0).animate(
+    _logoScale = Tween<double>(begin: .9, end: 1).animate(
       CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic),
+        parent: _introController,
+        curve: Curves.easeOutBack,
       ),
     );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.15, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.3, 0.9, curve: Curves.easeInOut),
-      ),
-    );
-
-    // 2. Gentle slow drifting background motion controller
-    _driftController = AnimationController(
+    _brandController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 8),
-    )..repeat(reverse: true);
+      duration: AppMotion.slow,
+    );
+    _brandOpacity = CurvedAnimation(
+      parent: _brandController,
+      curve: Curves.easeIn,
+    );
+    _sparkleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
 
-    _logoController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _proceed();
-        }
+    Future<void>.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _brandController.forward();
+    });
+    _introController.forward().then((_) {
+      Future<void>.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _proceed();
       });
     });
   }
 
   void _proceed() {
-    final target = widget.showOnboarding ? '/onboarding' : '/';
-    context.go(target);
+    context.go(widget.showOnboarding ? '/onboarding' : '/');
   }
 
   @override
   void dispose() {
-    _logoController.dispose();
-    _driftController.dispose();
+    _introController.dispose();
+    _sparkleController.dispose();
+    _brandController.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Subtle radial background atmosphere
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.center,
-                radius: 0.85,
-                colors: [
-                  AppColors.purple.withValues(alpha: 0.06),
-                  AppColors.background,
-                ],
-              ),
-            ),
-          ),
-
-          // 4. Subtle Event-Inspired Background Motion Elements (Drifting)
-          AnimatedBuilder(
-            animation: _driftController,
-            builder: (context, _) {
-              final val = _driftController.value;
+  Widget build(BuildContext context) => Scaffold(
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: AppGradients.darkSurface),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = Size(constraints.maxWidth, constraints.maxHeight);
               return Stack(
+                alignment: Alignment.center,
                 children: [
-                  Positioned(
-                    top: 120 + (val * 12),
-                    left: 40 + (val * 8),
-                    child: Icon(
-                      Icons.confirmation_number_outlined,
-                      size: 32,
-                      color: AppColors.purple.withValues(alpha: 0.05),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _sparkleController,
+                        builder: (context, _) => CustomPaint(
+                          painter: _SparklePainter(_sparkleController.value),
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedBuilder(
+                    animation: _introController,
+                    builder: (context, _) => Transform.scale(
+                      scale: _logoScale.value,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 196,
+                            height: 196,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  AppColors.purple.withValues(alpha: .4),
+                                  AppColors.purple.withValues(alpha: .16),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Image.asset(
+                              'assets/images/appicon.png',
+                              width: 88,
+                              height: 88,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Positioned(
-                    top: 180 - (val * 10),
-                    right: 50 + (val * 6),
-                    child: Icon(
-                      Icons.music_note_rounded,
-                      size: 36,
-                      color: AppColors.pink.withValues(alpha: 0.05),
+                    left: 16,
+                    right: 16,
+                    top: size.height * .62,
+                    child: FadeTransition(
+                      opacity: _brandOpacity,
+                      child: Text(
+                        'FUTURE TIMES EVENTS',
+                        textAlign: TextAlign.center,
+                        style: AppText.micro.copyWith(
+                          color: Colors.white.withValues(alpha: .9),
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 4,
+                        ),
+                      ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 220 + (val * 14),
-                    left: 60 - (val * 8),
-                    child: Icon(
-                      Icons.location_on_outlined,
-                      size: 34,
-                      color: AppColors.purple.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 190 - (val * 12),
-                    right: 44 + (val * 10),
-                    child: Icon(
-                      Icons.calendar_today_outlined,
-                      size: 28,
-                      color: AppColors.pink.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  Positioned(
-                    top: 260 + (val * 16),
-                    left: 180 - (val * 10),
-                    child: Icon(
-                      Icons.circle,
-                      size: 14,
-                      color: AppColors.purple.withValues(alpha: 0.04),
+                  const Positioned(
+                    bottom: 40,
+                    left: 0,
+                    right: 0,
+                    child: SafeArea(
+                      top: false,
+                      child: Center(
+                        child: SizedBox(
+                          width: 40,
+                          height: 2,
+                          child: LinearProgressIndicator(
+                            backgroundColor: Color(0x33FFFFFF),
+                            color: Color(0xE6FFFFFF),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               );
             },
           ),
+        ),
+      );
+}
 
-          // 5. Centered Logo with Once-Only Entrance Animation
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedBuilder(
-                  animation: _logoController,
-                  builder: (context, child) {
-                    return FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Subtle soft purple glow behind settled logo
-                              Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.purple.withValues(
-                                          alpha: 0.18 * _glowAnimation.value),
-                                      blurRadius: 36,
-                                      spreadRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                              ),
+class _SparklePainter extends CustomPainter {
+  const _SparklePainter(this.progress);
 
-                              // Full branding crest androidlogo.png
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 220,
-                                  maxHeight: 120,
-                                ),
-                                child: Image.asset(
-                                  'assets/images/androidlogo.png',
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+  final double progress;
 
-          // 6. Bottom Brand + Single Circular Loader
-          const Positioned(
-            bottom: 48,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'FUTURE TIMES EVENTS',
-                    style: TextStyle(
-                      color: AppColors.purple,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.5,
-                    ),
-                  ),
-                  SizedBox(height: 14),
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppColors.purple),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  static const _points = <Offset>[
+    Offset(.12, .19),
+    Offset(.83, .16),
+    Offset(.73, .37),
+    Offset(.2, .62),
+    Offset(.88, .72),
+    Offset(.42, .84),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var index = 0; index < _points.length; index++) {
+      final phase = progress * math.pi * 2 + index * .9;
+      final center = Offset(
+        _points[index].dx * size.width,
+        _points[index].dy * size.height + math.sin(phase) * 5,
+      );
+      final paint = Paint()
+        ..color = Colors.white.withValues(
+          alpha: .12 + ((math.sin(phase) + 1) * .07),
+        );
+      canvas.drawCircle(center, index.isEven ? 2 : 1.5, paint);
+    }
   }
+
+  @override
+  bool shouldRepaint(_SparklePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

@@ -105,6 +105,17 @@ class FCMService {
     }
   }
 
+  Future<void> syncCurrentTokenToSupabase() async {
+    try {
+      final token = await _fcm.getToken();
+      if (token != null) await syncTokenToSupabase(token);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[FCM] Error retrieving token for signed-in user: $e');
+      }
+    }
+  }
+
   /// Saves or updates the FCM token in Supabase `user_fcm_tokens` table.
   Future<void> syncTokenToSupabase(String token) async {
     try {
