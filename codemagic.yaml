@@ -1,4 +1,4 @@
-﻿workflows:
+workflows:
   ios-unsigned:
     name: iOS Unsigned Build
     max_build_duration: 60
@@ -10,11 +10,34 @@
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
+
       - name: Build iOS without codesign
-        script: flutter build ipa --release --no-codesign
+        script: flutter build ios --release --no-codesign
+
+      - name: Locate .app and package as IPA
+        script: |
+          set -e
+          APP_PATH=$(find . -name "Runner.app" -type d | head -n 1)
+          echo "Found app bundle at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: Could not find Runner.app"
+            exit 1
+          fi
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r Runner.ipa Payload
+          rm -rf Payload
+          echo "IPA created at $(pwd)/Runner.ipa"
+
+      - name: Upload IPA to transfer.sh (backup)
+        script: |
+          curl --upload-file ./Runner.ipa https://transfer.sh/Runner.ipa || true
+
     artifacts:
+      - Runner.ipa
       - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+
     publishing:
       email:
         recipients:
