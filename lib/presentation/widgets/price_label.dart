@@ -29,7 +29,7 @@ class PriceLabel extends StatelessWidget {
       );
       return 'Starting from ${cheapest.cost?.display ?? '\$?'}';
     }
-    return 'Free';
+    return isFree ? 'Free' : 'View tickets';
   }
 
   @override

@@ -96,6 +96,9 @@ CREATE INDEX IF NOT EXISTS product_preorders_event_created_idx
 ALTER TABLE public.organizer_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_preorders ENABLE ROW LEVEL SECURITY;
 
+REVOKE INSERT, UPDATE ON public.product_preorders FROM PUBLIC, anon, authenticated;
+GRANT UPDATE (status) ON public.product_preorders TO authenticated;
+
 CREATE POLICY "Anyone can view active organizer products"
   ON public.organizer_products FOR SELECT
   USING (is_active OR organizer_id = auth.uid());
@@ -118,22 +121,35 @@ CREATE POLICY "Organizers manage their products"
 CREATE POLICY "Customers and organizers view product preorders"
   ON public.product_preorders FOR SELECT
   USING (user_id = auth.uid() OR organizer_id = auth.uid());
-CREATE POLICY "Customers may create their own product preorders"
-  ON public.product_preorders FOR INSERT
-  WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM public.organizer_products p
-      WHERE p.id = product_id
-        AND p.event_id = event_id
-        AND p.organizer_id = organizer_id
-        AND p.is_active
-    )
-  );
 CREATE POLICY "Organizers update preorder status"
   ON public.product_preorders FOR UPDATE
   USING (organizer_id = auth.uid())
   WITH CHECK (organizer_id = auth.uid());
+
+CREATE OR REPLACE FUNCTION public.guard_product_preorder_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.product_id IS DISTINCT FROM OLD.product_id
+    OR NEW.event_id IS DISTINCT FROM OLD.event_id
+    OR NEW.organizer_id IS DISTINCT FROM OLD.organizer_id
+    OR NEW.user_id IS DISTINCT FROM OLD.user_id
+    OR NEW.quantity IS DISTINCT FROM OLD.quantity
+    OR NEW.unit_price IS DISTINCT FROM OLD.unit_price
+    OR NEW.currency IS DISTINCT FROM OLD.currency
+    OR NEW.notes IS DISTINCT FROM OLD.notes
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'Only preorder status may be updated';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER product_preorders_guard_update
+  BEFORE UPDATE ON public.product_preorders
+  FOR EACH ROW EXECUTE FUNCTION public.guard_product_preorder_update();
 
 CREATE OR REPLACE FUNCTION public.restore_product_preorder_stock()
 RETURNS trigger
@@ -146,21 +162,21 @@ DECLARE
 BEGIN
   IF OLD.status <> 'cancelled' AND NEW.status = 'cancelled' THEN
     UPDATE public.organizer_products
-    SET stock_quantity = stock_quantity + NEW.quantity, updated_at = now()
-    WHERE id = NEW.product_id AND stock_quantity IS NOT NULL;
+    SET stock_quantity = stock_quantity + OLD.quantity, updated_at = now()
+    WHERE id = OLD.product_id AND stock_quantity IS NOT NULL;
   ELSIF OLD.status = 'cancelled' AND NEW.status <> 'cancelled' THEN
     SELECT * INTO product_row
     FROM public.organizer_products
-    WHERE id = NEW.product_id
+    WHERE id = OLD.product_id
     FOR UPDATE;
     IF product_row.stock_quantity IS NOT NULL
-      AND product_row.stock_quantity < NEW.quantity THEN
+      AND product_row.stock_quantity < OLD.quantity THEN
       RAISE EXCEPTION 'Not enough stock is available to reopen this preorder';
     END IF;
     IF product_row.stock_quantity IS NOT NULL THEN
       UPDATE public.organizer_products
-      SET stock_quantity = stock_quantity - NEW.quantity, updated_at = now()
-      WHERE id = NEW.product_id;
+      SET stock_quantity = stock_quantity - OLD.quantity, updated_at = now()
+      WHERE id = OLD.product_id;
     END IF;
   END IF;
   RETURN NEW;
