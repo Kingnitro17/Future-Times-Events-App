@@ -16,6 +16,10 @@ class PremiumTextField extends StatefulWidget {
     this.prefixIcon,
     this.keyboardType,
     this.maxLines = 1,
+    this.maxLength,
+    this.enabled = true,
+    this.validator,
+    this.onChanged,
   });
 
   final String label;
@@ -25,6 +29,10 @@ class PremiumTextField extends StatefulWidget {
   final IconData? prefixIcon;
   final TextInputType? keyboardType;
   final int maxLines;
+  final int? maxLength;
+  final bool enabled;
+  final FormFieldValidator<String>? validator;
+  final ValueChanged<String>? onChanged;
 
   @override
   State<PremiumTextField> createState() => _PremiumTextFieldState();
@@ -56,7 +64,8 @@ class _PremiumTextFieldState extends State<PremiumTextField> {
                   widget.maxLines == 1 ? AppSpacing.xxxl + AppSpacing.sm : 0,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color:
+                  widget.enabled ? AppColors.surface : AppColors.surfaceMuted,
               borderRadius: AppRadius.rLg,
               border: Border.all(
                 color: hasError
@@ -73,10 +82,14 @@ class _PremiumTextFieldState extends State<PremiumTextField> {
                     ]
                   : null,
             ),
-            child: TextField(
+            child: TextFormField(
               controller: widget.controller,
               keyboardType: widget.keyboardType,
               maxLines: widget.maxLines,
+              maxLength: widget.maxLength,
+              enabled: widget.enabled,
+              validator: widget.validator,
+              onChanged: widget.onChanged,
               style: AppText.body.copyWith(color: AppColors.text),
               decoration: InputDecoration(
                 hintText: widget.hint,

@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/error_state.dart';
+import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/premium_app_bar.dart';
-import '../../widgets/common/premium_card.dart';
 import '../../widgets/common/skeleton.dart';
 
 class OrganizerHomeScreen extends StatefulWidget {
@@ -27,6 +28,7 @@ class OrganizerHomeScreen extends StatefulWidget {
 }
 
 class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
+  final _analyticsKey = GlobalKey();
   late Future<Map<String, dynamic>> _stats;
   late Future<List<Map<String, dynamic>>> _activity;
 
@@ -39,6 +41,16 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
   void _load() {
     _stats = widget.organizerRepository.getMyStats();
     _activity = widget.organizerRepository.getRecentTicketSales();
+  }
+
+  void _viewAnalytics() {
+    final targetContext = _analyticsKey.currentContext;
+    if (targetContext == null) return;
+    Scrollable.ensureVisible(
+      targetContext,
+      duration: AppMotion.normal,
+      curve: AppMotion.easeOut,
+    );
   }
 
   void _redirectIfNeeded() {
@@ -78,45 +90,63 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
             AppSpacing.xxl,
           ),
           children: [
-            Text('Welcome back, $name',
-                style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.text)),
+            Text(
+              'Welcome back, $name',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.h1.copyWith(color: AppColors.text),
+            ),
             const SizedBox(height: 6),
             const Text('Keep your events moving forward.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: AppColors.textMuted)),
             const SizedBox(height: 22),
-            Row(children: [
-              Expanded(
-                  child: _ActionButton(
-                label: 'Create Event',
-                icon: Icons.add_rounded,
-                onTap: () => context.push('/organizer/events/new'),
-              )),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _ActionButton(
-                label: 'Scan Tickets',
-                icon: Icons.qr_code_scanner_rounded,
-                onTap: () => context.push('/organizer/scan'),
-              )),
-            ]),
+            SizedBox(
+              height: 106,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _ActionTile(
+                    label: 'Create Event',
+                    icon: Icons.add_rounded,
+                    onTap: () => context.push('/organizer/events/new'),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  _ActionTile(
+                    label: 'Scan Tickets',
+                    icon: Icons.qr_code_scanner_rounded,
+                    onTap: () => context.push('/organizer/scan'),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  _ActionTile(
+                    label: 'View Analytics',
+                    icon: Icons.insights_rounded,
+                    onTap: _viewAnalytics,
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 22),
+            SizedBox(key: _analyticsKey),
             FutureBuilder<Map<String, dynamic>>(
               future: _stats,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.55,
-                    children: List.generate(
-                      4,
-                      (_) => const SkeletonCard(),
+                  return AnimatedSwitcher(
+                    duration: AppMotion.normal,
+                    child: GridView.count(
+                      key: const ValueKey('organizer-stats-loading'),
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.3,
+                      children: List.generate(
+                        4,
+                        (_) => const SkeletonCard(),
+                      ),
                     ),
                   );
                 }
@@ -124,29 +154,37 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                   return _ErrorCard(onRetry: () => setState(_load));
                 }
                 final stats = snapshot.data ?? const <String, dynamic>{};
-                return GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.55,
-                  children: [
-                    _StatCard('Total Events', '${stats['total_events'] ?? 0}',
-                        Icons.event_available_rounded),
-                    _StatCard('Tickets Sold', '${stats['tickets_sold'] ?? 0}',
-                        Icons.confirmation_number_rounded),
-                    _StatCard('Revenue', '\$${_amount(stats['revenue'])}',
-                        Icons.payments_rounded),
-                    _StatCard('Upcoming', '${stats['upcoming_count'] ?? 0}',
-                        Icons.upcoming_rounded),
-                  ],
+                return AnimatedSwitcher(
+                  duration: AppMotion.normal,
+                  child: GridView.count(
+                    key: const ValueKey('organizer-stats-loaded'),
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.3,
+                    children: [
+                      _StatCard('Total Events', '${stats['total_events'] ?? 0}',
+                          Icons.event_available_rounded),
+                      _StatCard('Tickets Sold', '${stats['tickets_sold'] ?? 0}',
+                          Icons.confirmation_number_rounded),
+                      _StatCard('Revenue', '\$${_amount(stats['revenue'])}',
+                          Icons.payments_rounded),
+                      _StatCard('Upcoming', '${stats['upcoming_count'] ?? 0}',
+                          Icons.upcoming_rounded),
+                    ],
+                  ),
                 );
               },
             ),
             const SizedBox(height: 28),
-            const Text('Recent Activity',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            Text(
+              'Recent Activity',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.h2.copyWith(color: AppColors.text),
+            ),
             const SizedBox(height: 10),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _activity,
@@ -162,7 +200,14 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                   return const _EmptyActivity();
                 }
                 return Column(
-                  children: rows.map((row) => _ActivityTile(row: row)).toList(),
+                  children: rows
+                      .map(
+                        (row) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: _ActivityTile(row: row),
+                        ),
+                      )
+                      .toList(),
                 );
               },
             ),
@@ -186,43 +231,67 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => PremiumCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
+  Widget build(BuildContext context) => GlassCard(
+        elevated: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, color: AppColors.purple),
           const Spacer(),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          Text(label,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.display.copyWith(
+                fontSize: 28,
+                color: AppColors.text,
+              ),
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.micro.copyWith(color: AppColors.textMuted),
+          ),
         ]),
       );
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton(
-      {required this.label, required this.icon, required this.onTap});
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            gradient: AppGradients.brand,
-            borderRadius: BorderRadius.circular(18),
+  Widget build(BuildContext context) => SizedBox(
+        width: 148,
+        child: GlassCard(
+          elevated: true,
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: AppColors.purple),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.caption.copyWith(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          child: Column(children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(height: 5),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w800)),
-          ]),
         ),
       );
 }
@@ -231,18 +300,43 @@ class _ActivityTile extends StatelessWidget {
   const _ActivityTile({required this.row});
   final Map<String, dynamic> row;
   @override
-  Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const CircleAvatar(
-          backgroundColor: Color(0x147222E3),
-          child:
-              Icon(Icons.confirmation_number_outlined, color: AppColors.purple),
+  Widget build(BuildContext context) => GlassCard(
+        padding: EdgeInsets.zero,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0x147222E3),
+            child: Icon(
+              Icons.confirmation_number_outlined,
+              color: AppColors.purple,
+            ),
+          ),
+          title: Text(
+            row['attendee_name']?.toString() ?? 'Ticket sold',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            row['attendee_email']?.toString() ?? 'New attendee',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.textMuted),
+          ),
+          trailing: SizedBox(
+            width: 72,
+            child: Text(
+              row['ticket_number']?.toString() ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            ),
+          ),
         ),
-        title: Text(row['attendee_name']?.toString() ?? 'Ticket sold',
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(row['attendee_email']?.toString() ?? 'New attendee'),
-        trailing: Text(row['ticket_number']?.toString() ?? '',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
       );
 }
 

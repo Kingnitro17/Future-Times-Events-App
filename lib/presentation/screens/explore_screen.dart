@@ -46,7 +46,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool? _isFree;
   DateTime? _startDate;
   DateTime? _endDate;
-  bool _showMap = false;
 
   @override
   void initState() {
@@ -330,11 +329,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         children: [
                           const Text(
                             'Explore',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.text,
-                            ),
+                            style: AppText.h1,
                           ),
                           const SizedBox(height: 12),
                           Row(
@@ -392,16 +387,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                           ],
                           const SizedBox(height: 12),
-                          SegmentedButton<bool>(
-                            showSelectedIcon: false,
-                            segments: const [
-                              ButtonSegment(value: true, label: Text('List')),
-                              ButtonSegment(value: false, label: Text('Map')),
-                            ],
-                            selected: {_showMap ? false : true},
-                            onSelectionChanged: (selection) =>
-                                setState(() => _showMap = !selection.first),
-                          ),
                         ],
                       ),
                     ),
@@ -444,13 +429,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           });
                           context.read<EventBloc>().add(const ClearFilters());
                         },
-                      ),
-                    )
-                  else if (_showMap)
-                    SliverToBoxAdapter(
-                      child: _MapPreview(
-                        events: filtered,
-                        savedEventsRepository: widget.savedEventsRepository,
                       ),
                     )
                   else
@@ -548,67 +526,6 @@ class _DiscoverCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapPreview extends StatelessWidget {
-  const _MapPreview({
-    required this.events,
-    required this.savedEventsRepository,
-  });
-
-  final List<EventModel> events;
-  final SavedEventsRepository savedEventsRepository;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
-      child: Column(
-        children: [
-          Container(
-            height: 240,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.map_outlined,
-                    size: 42,
-                    color: AppColors.purple,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${events.length} event${events.length == 1 ? '' : 's'} on map',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Map discovery is available in the dedicated map flow.',
-                    style: TextStyle(color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...events.take(3).map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _DiscoverCard(
-                    event: event,
-                    savedEventsRepository: savedEventsRepository,
-                  ),
-                ),
-              ),
         ],
       ),
     );

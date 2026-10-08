@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_text.dart';
 import '../../data/models/wallet_item.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
@@ -94,7 +95,9 @@ class _WalletScreenState extends State<WalletScreen> {
     }
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Wallet')),
+      appBar: AppBar(
+        title: const Text('Wallet', style: AppText.h1),
+      ),
       body: FutureBuilder<List<WalletItem>>(
         future: _feedFuture,
         builder: (context, snapshot) {

@@ -179,6 +179,82 @@ class EventRepository {
     return bounded.take(limit).toList(growable: false);
   }
 
+  Future<List<EventModel>> getHotEvents({int limit = 10}) async {
+    if (limit <= 0) return const [];
+
+    final now = DateTime.now();
+    final from = now.subtract(const Duration(days: 30));
+    final until = now.add(const Duration(days: 30));
+
+    try {
+      final rows = await _supabaseClient
+          .from('events')
+          .select('id, title, slug, category, category_label, date, time, end_time, '
+              'venue, address, city, image_url, price, attendees, capacity, '
+              'featured, tags, lineup, organizer_name, lat, lng, status, '
+              'starts_at, ends_at, timezone, venue_name')
+          .eq('status', 'published')
+          .gte('starts_at', from.toUtc().toIso8601String())
+          .lte('starts_at', until.toUtc().toIso8601String())
+          .order('starts_at', ascending: true)
+          .limit(limit * 10);
+
+      if (rows.isEmpty) return const [];
+
+      final ids = rows
+          .map((row) => row['id']?.toString())
+          .whereType<String>()
+          .toList(growable: false);
+      if (ids.isEmpty) return const [];
+
+      final likesRows = await _supabaseClient
+          .from('event_likes')
+          .select('event_id')
+          .inFilter('event_id', ids);
+      final saveRows = await _supabaseClient
+          .from('saved_events')
+          .select('event_id')
+          .inFilter('event_id', ids);
+
+      final likeCounts = <String, int>{};
+      for (final row in likesRows) {
+        final id = row['event_id']?.toString();
+        if (id == null) continue;
+        likeCounts[id] = (likeCounts[id] ?? 0) + 1;
+      }
+      final saveCounts = <String, int>{};
+      for (final row in saveRows) {
+        final id = row['event_id']?.toString();
+        if (id == null) continue;
+        saveCounts[id] = (saveCounts[id] ?? 0) + 1;
+      }
+
+      final scored = rows.map((row) {
+        final event = eventFromSupabaseRow(row);
+        final eventId = event.id;
+        final likeCount = likeCounts[eventId] ?? 0;
+        final saveCount = saveCounts[eventId] ?? 0;
+        final ticketsSold = event.attendeeCount;
+        final hasAllMetrics = ticketsSold > 0 || likeCount > 0 || saveCount > 0;
+        final score = hasAllMetrics
+            ? (ticketsSold * 3) + (saveCount * 2) + (likeCount * 1)
+            : (saveCount * 2) + (likeCount * 1);
+        return MapEntry(event, score);
+      }).toList();
+
+      scored.sort((a, b) => b.value.compareTo(a.value));
+      return scored.take(limit).map((entry) => entry.key).toList(growable: false);
+    } catch (_) {
+      final events = await _fetchPublishedEvents();
+      final upcoming = events
+          .where((event) => !event.startsAt.isBefore(now) &&
+              !event.startsAt.isAfter(until))
+          .toList()
+        ..sort((a, b) => a.attendeeCount.compareTo(b.attendeeCount));
+      return upcoming.take(limit).toList(growable: false);
+    }
+  }
+
   Future<List<EventModel>> _fetchPublishedEvents() async {
     final events = <EventModel>[];
     var page = 1;

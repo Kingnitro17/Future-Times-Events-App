@@ -58,6 +58,7 @@ import '../../services/roles/role_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/social/social_bloc.dart';
 import '../../presentation/screens/details_screen.dart';
+import '../../presentation/screens/event/event_chat_screen.dart';
 import '../../presentation/screens/calendar_screen.dart';
 import '../../presentation/screens/event_map_screen.dart';
 import '../../presentation/screens/explore_screen.dart';
@@ -79,6 +80,7 @@ import '../../presentation/screens/user_profile_screen.dart';
 import '../../presentation/screens/ft_services/ft_services_list_screen.dart';
 import '../../presentation/screens/ft_services/ft_service_detail_screen.dart';
 import '../../presentation/screens/product_preorder_screen.dart';
+import '../../presentation/widgets/common/glass_container.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -127,21 +129,14 @@ class _FutureTimesNavigation extends StatelessWidget {
           alignment: Alignment.bottomCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
-            child: Container(
+            child: GlassContainer(
               height: 78,
               padding: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: .97),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: AppColors.border),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x260A0A14),
-                    blurRadius: 24,
-                    offset: Offset(0, 10),
-                  ),
-                ],
-              ),
+              blur: 18,
+              color: AppColors.glassBackdrop.withValues(alpha: 0.76),
+              borderRadius: BorderRadius.circular(28),
+              withBorder: true,
+              elevated: true,
               child: Row(
                 children: List.generate(_items.length, (index) {
                   final item = _items[index];
@@ -463,6 +458,7 @@ GoRouter buildAppRouter({
                 path: '/',
                 pageBuilder: (_, __) => NoTransitionPage(
                     child: HomeScreen(
+                        eventRepository: eventRepository,
                         authRepository: authRepository,
                         savedEventsRepository: savedEventsRepository,
                         preferencesRepository: discoveryPreferences,
@@ -882,6 +878,20 @@ GoRouter buildAppRouter({
             productRepository: productRepository,
           );
         },
+      ),
+      GoRoute(
+        path: '/event/:id/chat',
+        builder: (_, state) => EventChatScreen(
+          event: state.extra is EventModel ? state.extra as EventModel : EventModel(
+              id: state.pathParameters['id']!,
+              name: const EventText(text: 'Event', html: 'Event'),
+              url: '',
+              start: const EventDateTime(timezone: 'UTC', utc: '', local: ''),
+              end: const EventDateTime(timezone: 'UTC', utc: '', local: ''),
+            ),
+          authRepository: authRepository,
+          ticketRepository: TicketRepository(authRepository: authRepository),
+        ),
       ),
       GoRoute(
         path: '/event/:id/map',

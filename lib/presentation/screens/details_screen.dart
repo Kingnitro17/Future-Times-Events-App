@@ -30,6 +30,7 @@ import '../widgets/like_button.dart';
 import '../widgets/price_label.dart';
 import '../widgets/whos_going_sheet.dart';
 import '../widgets/friends_group_suggestion_banner.dart';
+import '../widgets/common/glass_card.dart';
 import '../widgets/common/premium_card.dart';
 
 class DetailsScreen extends StatefulWidget {
@@ -265,6 +266,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 const SizedBox(height: 28),
                 _tickets(),
               ],
+              const SizedBox(height: 18),
+              _chatCTA(),
               const SizedBox(height: 28),
               _partnersSection(),
             ]),
@@ -311,6 +314,21 @@ class _DetailsScreenState extends State<DetailsScreen> {
             ),
           );
         },
+      );
+
+  Widget _chatCTA() => GlassCard(
+        padding: const EdgeInsets.all(0),
+        child: ListTile(
+          leading: const CircleAvatar(
+            backgroundColor: AppColors.purpleLight,
+            child: Icon(Icons.chat_bubble_rounded, color: AppColors.purple),
+          ),
+          title: const Text('Chat with attendees',
+              style: TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: const Text('Join the live conversation for this event'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => context.push('/event/${widget.event.id}/chat', extra: widget.event),
+        ),
       );
 
   Widget _partnersSection() => FutureBuilder<_EventPartnerData>(

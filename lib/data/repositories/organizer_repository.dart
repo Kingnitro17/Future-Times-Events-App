@@ -12,6 +12,98 @@ class OrganizerRepository {
   })  : _auth = authRepository,
         _client = client ?? Supabase.instance.client;
 
+  static String generateEventSlug(String? title, {String? suffix}) {
+    final sanitized = (title ?? '').trim();
+    var slug = sanitized
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '')
+        .trim();
+    if (slug.isEmpty) {
+      slug = 'event';
+    }
+    final baseSuffix =
+        suffix ?? DateTime.now().millisecondsSinceEpoch.toString();
+    return '$slug-$baseSuffix';
+  }
+
+  static String formatEventMutationError(Object error) {
+    final text = error.toString();
+    final lower = text.toLowerCase();
+
+    if (lower.contains('duplicate key') || lower.contains('already exists')) {
+      return 'This event URL is already in use. Please change the title and try again.';
+    }
+    if (lower.contains('slug') || lower.contains('not-null constraint')) {
+      return 'Your event is missing a valid slug or required details. Please add a title and try again.';
+    }
+    if (lower.contains('bucket') ||
+        lower.contains('storage') ||
+        lower.contains('policy')) {
+      return 'Image upload is blocked by the current storage policy. Please check the events_images storage bucket and upload permissions.';
+    }
+    if (lower.contains('latitude') ||
+        lower.contains('longitude') ||
+        lower.contains('lat') ||
+        lower.contains('lng')) {
+      return 'Location fields are invalid. Please enter a valid latitude and longitude or clear them.';
+    }
+    if (lower.contains('permission') || lower.contains('row level security')) {
+      return 'This action is not allowed for your current account. Please verify your organizer permissions.';
+    }
+    return text;
+  }
+
+  static Map<String, dynamic> normalizeEventPayload(Map<String, dynamic> data) {
+    final normalized = <String, dynamic>{};
+    for (final entry in data.entries) {
+      if (entry.value == null) continue;
+      if (entry.key == 'slug' &&
+          entry.value is String &&
+          entry.value.trim().isEmpty) {
+        continue;
+      }
+      normalized[entry.key] = entry.value;
+    }
+
+    final rawLatitude = normalized['latitude'] ?? normalized['lat'];
+    final rawLongitude = normalized['longitude'] ?? normalized['lng'];
+
+    if (rawLatitude != null) {
+      final latitude = num.tryParse(rawLatitude.toString());
+      if (latitude != null) {
+        normalized['lat'] = latitude;
+        normalized['latitude'] = latitude;
+      }
+    }
+    if (rawLongitude != null) {
+      final longitude = num.tryParse(rawLongitude.toString());
+      if (longitude != null) {
+        normalized['lng'] = longitude;
+        normalized['longitude'] = longitude;
+      }
+    }
+
+    normalized.remove('latitude');
+    normalized.remove('longitude');
+    if (normalized['lat'] == null) {
+      normalized.remove('lat');
+    }
+    if (normalized['lng'] == null) {
+      normalized.remove('lng');
+    }
+
+    if ((normalized['slug'] as String?) == null ||
+        (normalized['slug'] as String).trim().isEmpty) {
+      normalized['slug'] = generateEventSlug(
+        normalized['title']?.toString(),
+        suffix: DateTime.now().millisecondsSinceEpoch.toString(),
+      );
+    }
+
+    return normalized;
+  }
+
   final AuthRepository _auth;
   final SupabaseClient _client;
 
@@ -133,41 +225,48 @@ class OrganizerRepository {
   Future<String> createEvent(Map<String, dynamic> data) async {
     final user = _auth.user;
     if (user == null) throw StateError('A signed-in organizer is required.');
-    final row = await _client
-        .from('events')
-        .insert({
-          ..._normalizeEventCoordinates(data),
-          'organizer_id': user.id,
-          'status': 'draft',
-        })
-        .select('id')
-        .single();
-    return row['id'].toString();
+    final payload = normalizeEventPayload({
+      ...data,
+      'slug': data['slug'] ?? '',
+    });
+    payload['slug'] ??= generateEventSlug(
+      payload['title']?.toString(),
+      suffix: user.id,
+    );
+
+    try {
+      final row = await _client
+          .from('events')
+          .insert({
+            ...payload,
+            'organizer_id': user.id,
+            'status': 'draft',
+          })
+          .select('id')
+          .single();
+      return row['id'].toString();
+    } on Object catch (error) {
+      throw StateError(formatEventMutationError(error));
+    }
   }
 
   Future<void> updateEvent(String eventId, Map<String, dynamic> data) async {
     final user = _auth.user;
     if (user == null) throw StateError('A signed-in organizer is required.');
-    await _client
-        .from('events')
-        .update(_normalizeEventCoordinates(data))
-        .eq('id', eventId)
-        .eq('organizer_id', user.id);
-  }
-
-  Map<String, dynamic> _normalizeEventCoordinates(
-    Map<String, dynamic> data,
-  ) {
-    final normalized = Map<String, dynamic>.from(data);
-    final latitude = normalized.remove('latitude');
-    final longitude = normalized.remove('longitude');
-    if (!normalized.containsKey('lat') && latitude != null) {
-      normalized['lat'] = latitude;
+    final payload = normalizeEventPayload(data);
+    if (payload['slug'] == null || (payload['slug'] as String).trim().isEmpty) {
+      payload['slug'] =
+          generateEventSlug(payload['title']?.toString(), suffix: eventId);
     }
-    if (!normalized.containsKey('lng') && longitude != null) {
-      normalized['lng'] = longitude;
+    try {
+      await _client
+          .from('events')
+          .update(payload)
+          .eq('id', eventId)
+          .eq('organizer_id', user.id);
+    } on Object catch (error) {
+      throw StateError(formatEventMutationError(error));
     }
-    return normalized;
   }
 
   Future<Map<String, dynamic>?> getEventForEdit(String eventId) async {
@@ -264,19 +363,33 @@ class OrganizerRepository {
   Future<String> uploadEventCover(Uint8List bytes, String fileName) async {
     final path =
         '${_auth.user?.id ?? 'anonymous'}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-    await _client.storage.from('events').uploadBinary(
-          path,
-          bytes,
-          fileOptions: const FileOptions(upsert: true),
-        );
-    return _client.storage.from('events').getPublicUrl(path);
+    try {
+      await _client.storage.from('events_images').uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+      return _client.storage.from('events_images').getPublicUrl(path);
+    } on Object catch (error) {
+      throw StateError(formatEventMutationError(error));
+    }
   }
 
   Future<void> submitEventForReview(String eventId) async {
-    await _client.rpc(
+    final result = await _client.rpc(
       'submit_event_for_review',
       params: {'p_event_id': eventId},
     );
+    Object? status;
+    if (result is Map) {
+      status = result['status'];
+    } else if (result is List && result.isNotEmpty) {
+      final first = result.first;
+      if (first is Map) status = first['status'];
+    }
+    if (status?.toString() != 'pending_review') {
+      throw StateError('The event was not submitted for review.');
+    }
   }
 
   Future<Map<String, dynamic>> getEventOwnerView(String eventId) async {

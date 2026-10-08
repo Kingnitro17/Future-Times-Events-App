@@ -9,6 +9,7 @@ import '../../core/errors/app_failure.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_text.dart';
 import '../../data/models/social_models.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
@@ -22,6 +23,7 @@ import '../../data/repositories/attendance_group_repository.dart';
 import '../widgets/common/premium_app_bar.dart';
 import '../widgets/common/premium_avatar.dart';
 import '../widgets/common/skeleton.dart';
+import '../widgets/profile_badges.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -253,12 +255,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final initials = profile?['initials']?.toString() ??
         (name.trim().isEmpty ? 'U' : name.trim()[0].toUpperCase());
     final role = profile?['role']?.toString();
-    final eventsAttended = profile?['events_attended'] ?? 0;
-    final loyaltyPoints = profile?['loyalty_points'] ?? 0;
-    final totalSpent = profile?['total_spent'] ?? 0;
+    final eventsAttended = num.tryParse(profile?['events_attended']?.toString() ?? '0') ?? 0;
+    final loyaltyPoints = num.tryParse(profile?['loyalty_points']?.toString() ?? '0') ?? 0;
+    final totalSpent = num.tryParse(profile?['total_spent']?.toString() ?? '0') ?? 0;
     final phone = profile?['phone']?.toString() ?? 'Not added';
     final city = profile?['city']?.toString() ?? 'Not added';
     final bio = profile?['bio']?.toString() ?? 'No bio added';
+    final profileIsVip = profile?['is_vip'] == true;
+    final DateTime createdAt = auth.user?.createdAt is DateTime
+        ? auth.user!.createdAt as DateTime
+        : DateTime.now();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -351,11 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: AppText.h1,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -378,6 +380,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     side: BorderSide.none,
                   ),
                 ],
+                const SizedBox(height: 20),
+                ProfileBadges(
+                  unlocked: <String, bool>{
+                    'first_event': eventsAttended >= 1,
+                    'social_10': _friendCount >= 10,
+                    'event_hopper': eventsAttended >= 10,
+                    'vip': profileIsVip,
+                    'organizer': role == 'organizer',
+                    'early_adopter': createdAt.isBefore(DateTime(2026, 12, 31)),
+                  },
+                ),
                 const SizedBox(height: 20),
                 Row(
                   children: [

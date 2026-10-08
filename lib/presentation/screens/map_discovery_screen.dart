@@ -22,6 +22,7 @@ import '../../services/maps/routing_service.dart';
 import '../../logic/blocs/event/event_bloc.dart';
 import '../../logic/blocs/event/event_event.dart';
 import '../../logic/blocs/event/event_state.dart';
+import '../widgets/common/glass_card.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/map/event_map_pin.dart';
 import '../widgets/save_event_button.dart';
@@ -782,8 +783,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           if (mapPointForEvent(event) case final point?)
             Marker(
               point: point,
-              width: 194,
-              height: 60,
+              width: 240,
+              height: 84,
               alignment: Alignment.bottomCenter,
               child: _EventMapMarker(
                 event: event,
@@ -804,8 +805,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
           if (mapPointForEvent(event) case final point?)
             Marker(
               point: point,
-              width: 194,
-              height: 60,
+              width: 240,
+              height: 84,
               alignment: Alignment.bottomCenter,
               child: _EventMapMarker(
                 event: event,
@@ -836,8 +837,8 @@ class _MapDiscoveryScreenState extends State<MapDiscoveryScreen>
         if (items.length == 1)
           Marker(
             point: mapPointForEvent(items.single)!,
-            width: 194,
-            height: 60,
+            width: 240,
+            height: 84,
             alignment: Alignment.bottomCenter,
             child: _EventMapMarker(
               event: items.single,
@@ -1366,10 +1367,8 @@ class _EventCarouselCard extends StatelessWidget {
   final VoidCallback onDirections;
 
   @override
-  Widget build(BuildContext context) => Card(
-        clipBehavior: Clip.antiAlias,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+  Widget build(BuildContext context) => GlassCard(
+        padding: EdgeInsets.zero,
         child: InkWell(
           onTap: onOpen,
           child: Column(

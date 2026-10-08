@@ -12,6 +12,7 @@ import '../../data/models/event_model.dart';
 import '../../data/models/zimbabwe_location.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/discovery_preferences_repository.dart';
+import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/saved_events_repository.dart';
 import '../../data/repositories/zimbabwe_locations_repository.dart';
 import '../../logic/blocs/event/event_bloc.dart';
@@ -29,18 +30,21 @@ import '../widgets/hero_banner.dart';
 import '../widgets/ft_services_section.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/error_state.dart';
+import '../widgets/common/glass_container.dart';
 import '../widgets/common/premium_avatar.dart';
 import '../widgets/common/skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
+    required this.eventRepository,
     required this.authRepository,
     required this.savedEventsRepository,
     required this.preferencesRepository,
     required this.socialRepository,
   });
 
+  final EventRepository eventRepository;
   final AuthRepository authRepository;
   final SavedEventsRepository savedEventsRepository;
   final DiscoveryPreferencesRepository preferencesRepository;
@@ -51,10 +55,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Future<List<EventModel>>? _hotEventsFuture;
+
   @override
   void initState() {
     super.initState();
     widget.preferencesRepository.addListener(_preferencesChanged);
+    _hotEventsFuture = widget.eventRepository.getHotEvents();
     if (context.read<EventBloc>().state is EventInitial) {
       context.read<EventBloc>().add(const FetchEvents());
     }
@@ -190,6 +197,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     else ...[
+                      SliverToBoxAdapter(
+                        child: FutureBuilder<List<EventModel>>(
+                          future: _hotEventsFuture,
+                          builder: (context, snapshot) {
+                            final hot = snapshot.data ?? const <EventModel>[];
+                            if (hot.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const _Section('🔥 Hot Right Now'),
+                                _FeaturedRail(
+                                  events: hot,
+                                  savedEventsRepository:
+                                      widget.savedEventsRepository,
+                                  authRepository: widget.authRepository,
+                                  socialRepository: widget.socialRepository,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
                       if (recommended.isNotEmpty) ...[
                         const SliverToBoxAdapter(child: _Section('For You')),
                         SliverToBoxAdapter(
@@ -388,60 +419,57 @@ class _HomeHeader extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _openLocationPicker(context),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                child: GlassContainer(
+                  blur: 18,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  borderRadius: BorderRadius.circular(18),
+                  color: AppColors.glassSurface,
+                  onTap: () => _openLocationPicker(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Discover what's\nhappening near",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.text,
+                          height: 1.15,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
                         children: [
-                          const Text(
-                            "Discover what's\nhappening near",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.text,
-                              height: 1.15,
-                              letterSpacing: -0.5,
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 14,
+                            color: AppColors.purple,
+                          ),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              locationText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                size: 14,
-                                color: AppColors.purple,
-                              ),
-                              const SizedBox(width: 3),
-                              Flexible(
-                                child: Text(
-                                  locationText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 16,
-                                color: AppColors.purple,
-                              ),
-                            ],
+                          const SizedBox(width: 3),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: AppColors.purple,
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -1078,6 +1106,25 @@ class _Upcoming extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        SizedBox(
+                          height: 40,
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                LikeButton(eventId: event.id, compact: true),
+                                const SizedBox(width: 6),
+                                SaveHeartButton(
+                                  eventId: event.id,
+                                  repository: savedEventsRepository,
+                                  authRepository: authRepository,
+                                  size: 34,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.only(right: 100),
                           child: _Pill(
@@ -1124,23 +1171,6 @@ class _Upcoming extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ),
-          Positioned(
-            top: 4,
-            right: 4,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                LikeButton(eventId: event.id, compact: true),
-                const SizedBox(width: 6),
-                SaveHeartButton(
-                  eventId: event.id,
-                  repository: savedEventsRepository,
-                  authRepository: authRepository,
-                  size: 34,
-                ),
-              ],
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text.dart';
 import '../../../data/repositories/admin_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../services/roles/role_service.dart';
@@ -42,9 +43,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final userId = widget.authRepository.user?.id;
     _accessFuture = userId == null
         ? Future.value(false)
-        : RoleService.instance.isSuperAdmin(userId);
-    _kpisFuture = widget.adminRepository.getDashboardKpis();
-    _eventsFuture = widget.adminRepository.getRecentEvents(limit: 10);
+        : RoleService.instance
+            .isSuperAdmin(userId)
+            .timeout(const Duration(seconds: 15));
+    _kpisFuture = widget.adminRepository
+        .getDashboardKpis()
+        .timeout(const Duration(seconds: 15));
+    _eventsFuture = widget.adminRepository
+        .getRecentEvents(limit: 10)
+        .timeout(const Duration(seconds: 15));
   }
 
   void _redirectIfNeeded(bool allowed) {
@@ -64,6 +71,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           return const Scaffold(
             backgroundColor: AppColors.background,
             body: Center(child: SizedBox(width: 280, child: SkeletonCard())),
+          );
+        }
+        if (accessSnapshot.hasError) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: ErrorState(onRetry: () => setState(_load)),
+            ),
           );
         }
         final allowed = accessSnapshot.data == true;
@@ -120,11 +135,7 @@ class _DashboardBody extends StatelessWidget {
             AppSpacing.xxl,
           ),
           children: [
-            Text('Welcome back, $name',
-                style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.text)),
+            Text('Welcome back, $name', style: AppText.h1),
             const SizedBox(height: 6),
             const Text('Here is what is happening across Future Times.',
                 style: TextStyle(color: AppColors.textMuted)),
@@ -137,9 +148,9 @@ class _DashboardBody extends StatelessWidget {
                     crossAxisCount: 2,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: AppSpacing.md,
-                    mainAxisSpacing: AppSpacing.md,
-                    childAspectRatio: 1.55,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.3,
                     children: List.generate(
                       6,
                       (_) => const SkeletonBox(height: AppSpacing.xxl * 2),
@@ -156,7 +167,7 @@ class _DashboardBody extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.55,
+                  childAspectRatio: 1.3,
                   children: [
                     _StatCard(
                         'Total Events', kpis['total_events'], Icons.event),
@@ -192,8 +203,7 @@ class _DashboardBody extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 28),
-            const Text('Pending Reviews',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const Text('Pending Reviews', style: AppText.h2),
             const SizedBox(height: 10),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: eventsFuture,
@@ -221,8 +231,7 @@ class _DashboardBody extends StatelessWidget {
               },
             ),
             const SizedBox(height: 28),
-            const Text('Recent Activity',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const Text('Recent Activity', style: AppText.h2),
             const SizedBox(height: 10),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: eventsFuture,
@@ -272,10 +281,16 @@ class _StatCard extends StatelessWidget {
           Icon(icon, color: AppColors.purple),
           const Spacer(),
           Text(value?.toString() ?? '0',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style:
                   const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          Text(label,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
         ]),
       );
 }
@@ -301,6 +316,8 @@ class _ActionButton extends StatelessWidget {
             Icon(icon, color: Colors.white, size: 18),
             const SizedBox(width: 7),
             Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                     color: Colors.white, fontWeight: FontWeight.w800)),
           ]),
@@ -322,11 +339,24 @@ class _EventTile extends StatelessWidget {
         child: Icon(Icons.event_outlined, color: AppColors.purple),
       ),
       title: Text(event['title']?.toString() ?? 'Untitled event',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(
-          'Organizer: ${event['organizer_display_name']?.toString() ?? 'Unknown'}'),
-      trailing: Text(event['status']?.toString() ?? '',
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+        'Organizer: ${event['organizer_display_name']?.toString() ?? 'Unknown'}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: SizedBox(
+        width: 72,
+        child: Text(
+          event['status']?.toString() ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.end,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+        ),
+      ),
     );
     return tappable
         ? InkWell(

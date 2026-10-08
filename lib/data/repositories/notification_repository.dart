@@ -52,11 +52,16 @@ class NotificationRepository extends ChangeNotifier {
   }
 
   Future<void> markAsRead(String notificationId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('Sign in is required to manage notifications.');
+    }
+
     try {
       await _client.from('notifications').update({
         'read': true,
         'read_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', notificationId);
+      }).eq('id', notificationId).eq('user_id', userId);
       _notifications = _notifications.map((n) {
         if (n.id == notificationId) {
           return NotificationModel(
@@ -80,8 +85,17 @@ class NotificationRepository extends ChangeNotifier {
   }
 
   Future<void> deleteNotification(String notificationId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('Sign in is required to dismiss notifications.');
+    }
+
     try {
-      await _client.from('notifications').delete().eq('id', notificationId);
+      await _client
+          .from('notifications')
+          .delete()
+          .eq('id', notificationId)
+          .eq('user_id', userId);
       _notifications =
           _notifications.where((item) => item.id != notificationId).toList();
       notifyListeners();

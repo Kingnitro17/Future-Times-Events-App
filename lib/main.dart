@@ -109,6 +109,8 @@ void main() async {
     await notificationRepository.fetchNotifications();
   }
 
+  unawaited(_runTicketReminderSweep());
+
   // Centralized Supabase Realtime Service
   RealtimeService(
     authRepository: authRepository,
@@ -141,6 +143,17 @@ void main() async {
     paymentRepository: paymentRepository,
     adminRepository: adminRepository,
   ));
+}
+
+Future<void> _runTicketReminderSweep() async {
+  try {
+    await Supabase.instance.client.rpc(
+      'process_ticket_reminders',
+      params: {'p_limit': 50},
+    );
+  } catch (_) {
+    // Best effort: never block app startup if reminder processing fails.
+  }
 }
 
 class _ConfigurationErrorApp extends StatelessWidget {
@@ -257,7 +270,9 @@ class _FutureTimesAppState extends State<FutureTimesApp> {
       child: MaterialApp.router(
         title: 'Future Times Events',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
         routerConfig: _router,
       ),
     );

@@ -50,7 +50,7 @@ class EventMapPin extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: CustomPaint(
-                size: const Size(12, 8),
+                size: const Size(16, 12),
                 painter: _PinTailPainter(categoryColor),
               ),
             ),
@@ -75,17 +75,17 @@ class _PinHead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 44,
-      height: 44,
-      padding: EdgeInsets.all(selected ? 4 : 3),
+      width: 56,
+      height: 56,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
-        border: Border.all(color: color, width: selected ? 4 : 3),
+        border: Border.all(color: color, width: 4),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: .35),
-            blurRadius: selected ? 20 : 12,
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
@@ -139,7 +139,7 @@ class _EventNamePill extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: .1,
           ),

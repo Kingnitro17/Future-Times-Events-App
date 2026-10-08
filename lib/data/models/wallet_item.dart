@@ -17,6 +17,7 @@ sealed class WalletItem {
     required this.statusLabel,
     required this.createdAt,
     this.eventId,
+    this.imageUrl,
     this.qrPayload,
     this.deepLink,
   });
@@ -28,6 +29,7 @@ sealed class WalletItem {
   final String statusLabel;
   final DateTime createdAt;
   final String? eventId;
+  final String? imageUrl;
   final String? qrPayload;
   final String? deepLink;
 
@@ -91,6 +93,7 @@ final class WalletItemFtService extends WalletItem {
     required super.statusLabel,
     required super.createdAt,
     required super.eventId,
+    required super.imageUrl,
     required super.qrPayload,
     required super.deepLink,
     required this.bookingStatus,
@@ -111,6 +114,7 @@ final class WalletItemFtService extends WalletItem {
       statusLabel: _statusLabel(status),
       createdAt: booking.createdAt,
       eventId: booking.eventId,
+      imageUrl: booking.serviceImageUrl,
       qrPayload: booking.id,
       deepLink: '/wallet',
       bookingStatus: status,
@@ -132,6 +136,7 @@ final class WalletItemTicket extends WalletItem {
     required super.statusLabel,
     required super.createdAt,
     required super.eventId,
+    required super.imageUrl,
     required super.qrPayload,
     required super.deepLink,
     required this.ticketNumber,
@@ -149,6 +154,7 @@ final class WalletItemTicket extends WalletItem {
       statusLabel: ticket.status.replaceAll('_', ' '),
       createdAt: ticket.issuedAt,
       eventId: ticket.eventId,
+      imageUrl: ticket.imageUrl,
       qrPayload: ticket.effectiveQrPayload,
       deepLink: '/tickets',
       ticketNumber: ticket.ticketNumber,
@@ -281,6 +287,7 @@ final class WalletItemPayment extends WalletItem {
     required this.currency,
     required this.gateway,
     required this.purpose,
+    required super.imageUrl,
   }) : super(kind: 'payment');
 
   final double amount;
@@ -288,22 +295,44 @@ final class WalletItemPayment extends WalletItem {
   final String gateway;
   final PaymentPurpose purpose;
 
-  factory WalletItemPayment.fromPayment(PaymentTransaction payment) {
-    if (payment.status != PaymentStatus.paid) {
-      throw StateError('Only paid transactions can be added to the wallet.');
-    }
+  factory WalletItemPayment.fromPayment(
+    PaymentTransaction payment, {
+    String? displayTitle,
+    String? imageUrl,
+  }) {
     return WalletItemPayment(
       id: payment.id,
-      title: _purposeTitle(payment.purpose),
-      subtitle: '${payment.currency} ${payment.amount.toStringAsFixed(2)}',
-      statusLabel: 'Paid',
+      title: displayTitle ?? _purposeTitle(payment.purpose),
+      subtitle: '',
+      statusLabel: _statusLabel(payment.status),
       createdAt: payment.createdAt,
       deepLink: '/payments/${payment.id}',
       amount: payment.amount,
       currency: payment.currency,
       gateway: payment.gateway,
       purpose: payment.purpose,
+      imageUrl: imageUrl ??
+          _metadataString(payment.metadata, const [
+            'image_url',
+            'event_image_url',
+            'cover_image_url',
+            'venue_image_url',
+          ]),
     );
+  }
+
+  static String _statusLabel(PaymentStatus status) =>
+      status.name[0].toUpperCase() + status.name.substring(1);
+
+  static String? _metadataString(
+    Map<String, dynamic> metadata,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = metadata[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   static String _purposeTitle(PaymentPurpose purpose) => switch (purpose) {

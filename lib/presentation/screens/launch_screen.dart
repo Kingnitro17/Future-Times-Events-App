@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_text.dart';
+import '../widgets/common/glass_container.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({
@@ -22,45 +23,47 @@ class LaunchScreen extends StatefulWidget {
 
 class _LaunchScreenState extends State<LaunchScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _introController;
-  late final AnimationController _sparkleController;
-  late final AnimationController _brandController;
+  late final AnimationController _orbitController;
+  late final AnimationController _logoController;
   late final Animation<double> _logoScale;
-  late final Animation<double> _brandOpacity;
+
+  static const List<IconData> _orbitIcons = [
+    Icons.music_note_rounded,
+    Icons.sports_soccer_rounded,
+    Icons.restaurant_rounded,
+    Icons.local_bar_rounded,
+    Icons.celebration_rounded,
+    Icons.photo_camera_rounded,
+  ];
+
+  static const List<Color> _orbitColors = [
+    AppColors.categoryMusic,
+    AppColors.categorySports,
+    AppColors.categoryFood,
+    AppColors.categoryNightlife,
+    AppColors.categoryArts,
+    AppColors.categoryOther,
+  ];
 
   @override
   void initState() {
     super.initState();
-    _introController = AnimationController(
+    _orbitController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _logoScale = Tween<double>(begin: .9, end: 1).animate(
-      CurvedAnimation(
-        parent: _introController,
-        curve: Curves.easeOutBack,
-      ),
-    );
-    _brandController = AnimationController(
+      duration: const Duration(seconds: 20),
+    )..repeat();
+
+    _logoController = AnimationController(
       vsync: this,
       duration: AppMotion.slow,
     );
-    _brandOpacity = CurvedAnimation(
-      parent: _brandController,
-      curve: Curves.easeIn,
-    );
-    _sparkleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat();
+    _logoScale = Tween<double>(begin: 0.9, end: 1.0).chain(
+      CurveTween(curve: Curves.easeOutBack),
+    ).animate(_logoController);
 
-    Future<void>.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _brandController.forward();
-    });
-    _introController.forward().then((_) {
-      Future<void>.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) _proceed();
-      });
+    _logoController.forward();
+    Future<void>.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) _proceed();
     });
   }
 
@@ -70,141 +73,143 @@ class _LaunchScreenState extends State<LaunchScreen>
 
   @override
   void dispose() {
-    _introController.dispose();
-    _sparkleController.dispose();
-    _brandController.dispose();
+    _orbitController.dispose();
+    _logoController.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: DecoratedBox(
-          decoration: const BoxDecoration(gradient: AppGradients.darkSurface),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final size = Size(constraints.maxWidth, constraints.maxHeight);
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _sparkleController,
-                        builder: (context, _) => CustomPaint(
-                          painter: _SparklePainter(_sparkleController.value),
-                        ),
-                      ),
-                    ),
-                  ),
-                  AnimatedBuilder(
-                    animation: _introController,
-                    builder: (context, _) => Transform.scale(
-                      scale: _logoScale.value,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 196,
-                            height: 196,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  AppColors.purple.withValues(alpha: .4),
-                                  AppColors.purple.withValues(alpha: .16),
-                                  Colors.transparent,
-                                ],
+  Widget build(BuildContext context) {
+    const orbitRadius = 100.0;
+
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppGradients.darkSurface),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _orbitController,
+                  builder: (context, _) {
+                    final rotation = _orbitController.value * math.pi * 2;
+                    return Transform.rotate(
+                      angle: rotation,
+                      child: SizedBox(
+                        width: 240,
+                        height: 240,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: List.generate(_orbitIcons.length, (index) {
+                            final angle = (index / _orbitIcons.length) * math.pi * 2;
+                            final x = math.cos(angle) * orbitRadius;
+                            final y = math.sin(angle) * orbitRadius;
+                            return Positioned(
+                              left: 120 + x - 22,
+                              top: 120 + y - 22,
+                              child: GlassContainer(
+                                width: 44,
+                                height: 44,
+                                blur: 18,
+                                borderRadius: BorderRadius.circular(22),
+                                color: AppColors.glassSurface,
+                                child: Center(
+                                  child: Icon(
+                                    _orbitIcons[index],
+                                    size: 20,
+                                    color: _orbitColors[index],
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: Image.asset(
-                              'assets/images/appicon.png',
-                              width: 88,
-                              height: 88,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.high,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    top: size.height * .62,
-                    child: FadeTransition(
-                      opacity: _brandOpacity,
-                      child: Text(
-                        'FUTURE TIMES EVENTS',
-                        textAlign: TextAlign.center,
-                        style: AppText.micro.copyWith(
-                          color: Colors.white.withValues(alpha: .9),
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 4,
+                            );
+                          }),
                         ),
                       ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            AnimatedBuilder(
+              animation: _logoController,
+              builder: (context, _) => Transform.scale(
+                scale: _logoScale.value,
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.purple.withValues(alpha: 0.45),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
                   ),
-                  const Positioned(
-                    bottom: 40,
-                    left: 0,
-                    right: 0,
-                    child: SafeArea(
-                      top: false,
-                      child: Center(
-                        child: SizedBox(
-                          width: 40,
-                          height: 2,
-                          child: LinearProgressIndicator(
-                            backgroundColor: Color(0x33FFFFFF),
-                            color: Color(0xE6FFFFFF),
-                          ),
-                        ),
+                  padding: const EdgeInsets.all(8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/images/appicon.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.event,
+                        size: 44,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 44,
+              child: SafeArea(
+                top: false,
+                child: Center(
+                  child: Text(
+                    'FUTURE TIMES EVENTS',
+                    textAlign: TextAlign.center,
+                    style: AppText.micro.copyWith(
+                      color: AppColors.textOnDark,
+                      letterSpacing: 3,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SizedBox(
+                  width: 42,
+                  height: 2,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Color(0x33FFFFFF),
+                    color: Color(0xE6FFFFFF),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      );
-}
-
-class _SparklePainter extends CustomPainter {
-  const _SparklePainter(this.progress);
-
-  final double progress;
-
-  static const _points = <Offset>[
-    Offset(.12, .19),
-    Offset(.83, .16),
-    Offset(.73, .37),
-    Offset(.2, .62),
-    Offset(.88, .72),
-    Offset(.42, .84),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (var index = 0; index < _points.length; index++) {
-      final phase = progress * math.pi * 2 + index * .9;
-      final center = Offset(
-        _points[index].dx * size.width,
-        _points[index].dy * size.height + math.sin(phase) * 5,
-      );
-      final paint = Paint()
-        ..color = Colors.white.withValues(
-          alpha: .12 + ((math.sin(phase) + 1) * .07),
-        );
-      canvas.drawCircle(center, index.isEven ? 2 : 1.5, paint);
-    }
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_SparklePainter oldDelegate) =>
-      oldDelegate.progress != progress;
 }

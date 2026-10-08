@@ -6,8 +6,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
+import '../../data/models/event_model.dart';
 import '../../data/models/wallet_ticket.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../widgets/event_network_image.dart';
 import '../widgets/common/empty_state.dart';
@@ -24,6 +27,8 @@ class TicketsScreen extends StatefulWidget {
 
 class _TicketsScreenState extends State<TicketsScreen> {
   late final TicketRepository _repository;
+  late final EventRepository _eventRepository;
+  final Map<String, String> _priceCache = {};
   Future<List<WalletTicket>>? _future;
   String _filter = 'All';
 
@@ -31,6 +36,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
   void initState() {
     super.initState();
     _repository = TicketRepository(authRepository: widget.authRepository);
+    _eventRepository = EventRepository();
     widget.authRepository.addListener(_authChanged);
     _refresh();
   }
@@ -39,8 +45,37 @@ class _TicketsScreenState extends State<TicketsScreen> {
     if (mounted) _refresh();
   }
 
+  Future<String> _resolvePrice(WalletTicket ticket) async {
+    final cached = _priceCache[ticket.id];
+    if (cached != null) return cached;
+
+    try {
+      final event = await _eventRepository.getEventById(ticket.eventId);
+      final match = event.ticketClasses.firstWhere(
+        (entry) =>
+            entry.name.toLowerCase() == ticket.ticketType.toLowerCase() ||
+            entry.name.toLowerCase().contains(ticket.ticketType.toLowerCase()),
+        orElse: () => const TicketClass(
+          id: '',
+          name: '',
+          cost: EventCost(currency: 'USD', value: 0, display: 'Free'),
+        ),
+      );
+      final value = match.cost?.display ?? (event.isFree ? 'Free' : 'Paid');
+      _priceCache[ticket.id] = value;
+      return value;
+    } catch (_) {
+      final fallback = ticket.ticketType.toLowerCase().contains('free')
+          ? 'Free'
+          : (ticket.ticketType.toLowerCase().contains('vip') ? 'Paid' : 'Free');
+      _priceCache[ticket.id] = fallback;
+      return fallback;
+    }
+  }
+
   void _refresh() => setState(() {
         _future = _repository.getMyTickets();
+        _priceCache.clear();
       });
 
   @override
@@ -90,8 +125,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     sliver: SliverList.separated(
                       itemCount: tickets.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (_, index) =>
-                          _TicketCard(ticket: tickets[index]),
+                      itemBuilder: (_, index) => _TicketCard(
+                            ticket: tickets[index],
+                            resolvePrice: _resolvePrice,
+                          ),
                     ),
                   ),
               ],
@@ -128,100 +165,151 @@ class _Filters extends StatelessWidget {
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket});
+  const _TicketCard({
+    required this.ticket,
+    required this.resolvePrice,
+  });
+
   final WalletTicket ticket;
+  final Future<String> Function(WalletTicket) resolvePrice;
+
   @override
   Widget build(BuildContext context) {
-    final color = ticket.isActive
-        ? AppColors.success
-        : ticket.isUsed
-            ? AppColors.purple
-            : AppColors.textMuted;
     return Material(
       color: AppColors.surface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: const BorderSide(color: AppColors.border)),
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: AppColors.border),
+      ),
       child: InkWell(
-          onTap: () => showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
-              builder: (_) => PremiumBottomSheet(
-                    child: _TicketDetail(ticket: ticket),
-                  )),
-          child: Column(children: [
-            SizedBox(
-                height: 156,
-                width: double.infinity,
-                child: Stack(fit: StackFit.expand, children: [
+        onTap: () => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => PremiumBottomSheet(
+            child: _TicketDetail(ticket: ticket),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
                   EventNetworkImage(
-                      url: ticket.imageUrl,
-                      semanticLabel: '${ticket.eventTitle} artwork'),
+                    url: ticket.imageUrl,
+                    semanticLabel: '${ticket.eventTitle} artwork',
+                  ),
                   const DecoratedBox(
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                              colors: [Colors.transparent, Color(0xB8000000)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter))),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, Color(0xB8000000)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
                   Positioned(
-                      left: 16,
-                      right: 16,
-                      bottom: 14,
-                      child: Text(ticket.eventTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              height: 1.1,
-                              fontWeight: FontWeight.w900))),
-                ])),
-            Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(children: [
-                  Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Text(
-                            ticket.eventStart == null
-                                ? 'Date TBA'
-                                : DateFormat('EEE, d MMM · h:mm a')
-                                    .format(ticket.eventStart!),
-                            style: const TextStyle(
-                                color: AppColors.purple,
-                                fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 5),
-                        Text('${ticket.ticketType} · ${ticket.venue}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: AppColors.textMuted, fontSize: 12)),
-                        const SizedBox(height: 7),
-                        Text(ticket.ticketNumber,
-                            style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                fontFeatures: [FontFeature.tabularFigures()])),
-                      ])),
-                  Container(
+                    left: 12,
+                    top: 12,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                          color: color.withValues(alpha: .1),
-                          borderRadius: BorderRadius.circular(999)),
-                      child: Text(_status(ticket.status),
-                          style: TextStyle(
-                              color: color,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800))),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.expand_more_rounded,
-                      color: AppColors.textMuted),
-                ])),
-          ])),
+                        color: Colors.black.withValues(alpha: 0.54),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        ticket.ticketType,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ticket.ticketType,
+                    style: AppText.body.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  FutureBuilder<String>(
+                    future: resolvePrice(ticket),
+                    builder: (context, snapshot) {
+                      final value = snapshot.data ?? 'Free';
+                      final isFree = value.toLowerCase() == 'free';
+                      return Text(
+                        value,
+                        style: AppText.caption.copyWith(
+                          color: isFree ? AppColors.textMuted : AppColors.purple,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Bought ${_relative(ticket.issuedAt)}',
+                    style: AppText.micro.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${ticket.eventTitle} • ${_eventShortDate(ticket.eventStart)}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.micro.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => PremiumBottomSheet(
+                          child: _TicketDetail(ticket: ticket),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor:
+                            AppColors.purple.withValues(alpha: 0.08),
+                        foregroundColor: AppColors.purple,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('View QR'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -414,6 +502,20 @@ class _DetailRow extends StatelessWidget {
                 style: const TextStyle(
                     color: AppColors.text, fontWeight: FontWeight.w700))),
       ]));
+}
+
+String _relative(DateTime date) {
+  final difference = DateTime.now().difference(date.toLocal());
+  if (difference.inMinutes < 1) return 'Just now';
+  if (difference.inHours < 1) return '${difference.inMinutes} minutes ago';
+  if (difference.inDays < 1) return '${difference.inHours} hours ago';
+  if (difference.inDays < 7) return '${difference.inDays} days ago';
+  return DateFormat('MMM d, yyyy').format(date.toLocal());
+}
+
+String _eventShortDate(DateTime? date) {
+  if (date == null) return 'Date TBA';
+  return DateFormat('EEE, d MMM').format(date);
 }
 
 String _status(String value) => switch (value) {

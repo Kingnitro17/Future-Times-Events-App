@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/wallet_item.dart';
 import '../models/payment_transaction.dart';
+import '../../services/payments/payment_gateway.dart';
 import 'ft_services_repository.dart';
 import 'auth_repository.dart';
 import 'payment_repository.dart';
@@ -49,11 +50,86 @@ class WalletRepository {
     final orders = await _venueCommerce.getMyOrders(limit: 20);
     final serviceBookings = await _ftServices.myBookings(limit: 30);
     final preorders = await _products.getMyPreorders(limit: 50);
+    final ticketImagesByEvent = <String, String>{
+      for (final ticket in tickets)
+        if (ticket.imageUrl.trim().isNotEmpty)
+          ticket.eventId: ticket.imageUrl,
+    };
+    String? paymentImage(PaymentTransaction payment) {
+      final eventId = switch (payment.purpose) {
+        PaymentPurpose.ticket =>
+          payment.metadata['event_id']?.toString() ??
+              tickets
+                  .where((ticket) =>
+                      ticket.id == payment.relatedEntityId ||
+                      ticket.eventId == payment.relatedEntityId)
+                  .firstOrNull
+                  ?.eventId,
+        PaymentPurpose.table => reservations
+            .where((reservation) =>
+                reservation.tableId == payment.relatedEntityId ||
+                reservation.id == payment.relatedEntityId)
+            .firstOrNull
+            ?.eventId,
+        PaymentPurpose.order => orders
+            .where((order) =>
+                order.eventId == payment.relatedEntityId ||
+                order.id == payment.relatedEntityId)
+            .firstOrNull
+            ?.eventId,
+        PaymentPurpose.service =>
+          payment.metadata['event_id']?.toString(),
+      };
+      return ticketImagesByEvent[eventId];
+    }
+
+    String paymentTitle(PaymentTransaction payment) {
+      switch (payment.purpose) {
+        case PaymentPurpose.ticket:
+          final ticket = tickets
+              .where((ticket) =>
+                  ticket.id == payment.relatedEntityId ||
+                  ticket.eventId == payment.relatedEntityId)
+              .firstOrNull;
+          return ticket == null
+              ? 'Ticket payment'
+              : '${ticket.ticketType} — ${ticket.eventTitle}';
+        case PaymentPurpose.table:
+          final reservation = reservations
+              .where((reservation) =>
+                  reservation.tableId == payment.relatedEntityId ||
+                  reservation.id == payment.relatedEntityId)
+              .firstOrNull;
+          return reservation == null
+              ? 'Table reservation'
+              : '${reservation.tableName ?? 'Table'} reservation — '
+                  '${reservation.eventTitle ?? 'Event'}';
+        case PaymentPurpose.order:
+          final order = orders
+              .where((order) =>
+                  order.eventId == payment.relatedEntityId ||
+                  order.id == payment.relatedEntityId)
+              .firstOrNull;
+          if (order == null) return 'Venue order';
+          final firstItem = order.items.firstOrNull;
+          final purchase = firstItem == null
+              ? 'Venue order'
+              : '${firstItem.quantity}x ${firstItem.itemName}';
+          return '$purchase — ${order.eventTitle ?? 'Event'}';
+        case PaymentPurpose.service:
+          return 'Service deposit';
+      }
+    }
+
     final items = <WalletItem>[
       ...tickets.map(WalletItem.fromTicket),
-      ...payments
-          .where((payment) => payment.status == PaymentStatus.paid)
-          .map(WalletItem.fromPayment),
+      ...payments.map(
+        (payment) => WalletItemPayment.fromPayment(
+          payment,
+          displayTitle: paymentTitle(payment),
+          imageUrl: paymentImage(payment),
+        ),
+      ),
       ...rides.map(WalletItem.fromRide),
       ...reservations.map(WalletItem.fromReservation),
       ...orders.map(WalletItem.fromOrder),

@@ -32,7 +32,7 @@ class ScanTicketScreen extends StatefulWidget {
 
 class _ScanTicketScreenState extends State<ScanTicketScreen>
     with WidgetsBindingObserver {
-  final MobileScannerController _scannerController = MobileScannerController();
+  late final MobileScannerController _scannerController;
   final Map<String, DateTime> _recentScans = {};
   late Future<List<Map<String, dynamic>>> _eventsFuture;
   String? _selectedEventId;
@@ -51,10 +51,12 @@ class _ScanTicketScreenState extends State<ScanTicketScreen>
   bool _cameraPermissionGranted = false;
   bool _cameraPermissionPermanentlyDenied = false;
   bool _checkingCameraPermission = true;
+  String? _cameraErrorMessage;
 
   @override
   void initState() {
     super.initState();
+    _scannerController = MobileScannerController();
     WidgetsBinding.instance.addObserver(this);
     _selectedEventId = widget.initialEventId;
     _eventsFuture = widget.organizerRepository.getMyEvents();
@@ -216,8 +218,20 @@ class _ScanTicketScreenState extends State<ScanTicketScreen>
   }
 
   Future<void> _retryCamera() async {
+    if (mounted) {
+      setState(() => _cameraErrorMessage = null);
+    }
     try {
       await _scannerController.start();
+    } on MobileScannerException catch (error) {
+      if (mounted) _showCameraError(error);
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    try {
+      await _scannerController.switchCamera();
+      if (mounted) setState(() => _cameraErrorMessage = null);
     } on MobileScannerException catch (error) {
       if (mounted) _showCameraError(error);
     }
@@ -232,10 +246,46 @@ class _ScanTicketScreenState extends State<ScanTicketScreen>
   }
 
   void _showCameraError(MobileScannerException error) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Camera unavailable (${error.errorCode.name}). Try again.'),
-    ));
+    setState(() {
+      _cameraErrorMessage = error.errorDetails?.message ??
+          'Camera unavailable (${error.errorCode.name}). Check camera access and try again.';
+    });
   }
+
+  Widget _cameraErrorOverlay(String message) => ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.no_photography_outlined,
+                  color: Colors.white,
+                  size: 52,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _retryCamera,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Restart camera'),
+                ),
+                OutlinedButton(
+                  onPressed: _openCameraSettings,
+                  child: const Text('Open Settings'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Future<void> _manualEntry() async {
     final controller = TextEditingController();
@@ -372,39 +422,19 @@ class _ScanTicketScreenState extends State<ScanTicketScreen>
               onDetect: _handleBarcode,
               errorBuilder: (context, error) => ColoredBox(
                 color: Colors.black,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.no_photography_outlined,
-                            color: Colors.white, size: 52),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Camera unavailable (${error.errorCode.name}). '
-                          'Check camera access and try again.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: _retryCamera,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Retry camera'),
-                        ),
-                        OutlinedButton(
-                          onPressed: _openCameraSettings,
-                          child: const Text('Open Settings'),
-                        ),
-                      ],
-                    ),
-                  ),
+                child: _cameraErrorOverlay(
+                  _cameraErrorMessage ??
+                      error.errorDetails?.message ??
+                      'Camera unavailable (${error.errorCode.name}). Check camera access and try again.',
                 ),
               ),
             )
           else
             _cameraAccessState(),
+          if (_cameraErrorMessage != null && _cameraPermissionGranted)
+            Positioned.fill(
+              child: _cameraErrorOverlay(_cameraErrorMessage!),
+            ),
           IgnorePointer(
             child: CustomPaint(painter: _ScannerOverlayPainter()),
           ),
@@ -421,18 +451,30 @@ class _ScanTicketScreenState extends State<ScanTicketScreen>
                     Expanded(child: _eventSelector()),
                     ValueListenableBuilder<MobileScannerState>(
                       valueListenable: _scannerController,
-                      builder: (context, state, _) => IconButton(
-                        tooltip: state.torchState == TorchState.on
-                            ? 'Turn torch off'
-                            : 'Turn torch on',
-                        onPressed: _processing ||
-                                state.torchState == TorchState.unavailable
-                            ? null
-                            : _toggleTorch,
-                        color: Colors.white,
-                        icon: Icon(state.torchState == TorchState.on
-                            ? Icons.flash_on_rounded
-                            : Icons.flash_off_rounded),
+                      builder: (context, state, _) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if ((state.availableCameras ?? 0) > 1)
+                            IconButton(
+                              tooltip: 'Flip camera',
+                              onPressed: _processing ? null : _switchCamera,
+                              color: Colors.white,
+                              icon: const Icon(Icons.cameraswitch_rounded),
+                            ),
+                          IconButton(
+                            tooltip: state.torchState == TorchState.on
+                                ? 'Turn torch off'
+                                : 'Turn torch on',
+                            onPressed: _processing ||
+                                    state.torchState == TorchState.unavailable
+                                ? null
+                                : _toggleTorch,
+                            color: Colors.white,
+                            icon: Icon(state.torchState == TorchState.on
+                                ? Icons.flash_on_rounded
+                                : Icons.flash_off_rounded),
+                          ),
+                        ],
                       ),
                     ),
                   ],

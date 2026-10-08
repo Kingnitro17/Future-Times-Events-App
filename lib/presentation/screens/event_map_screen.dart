@@ -56,8 +56,8 @@ class _EventMapScreenState extends State<EventMapScreen> {
         final markers = <Marker>[
           Marker(
             point: center,
-            width: 186,
-            height: 60,
+            width: 240,
+            height: 84,
             alignment: Alignment.bottomCenter,
             child: EventMapPin(
               eventImageUrl:

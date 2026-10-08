@@ -6,12 +6,21 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text.dart';
 import '../../../data/models/ft_service.dart';
 import '../../../data/models/ft_service_booking.dart';
 import '../../../data/repositories/ft_services_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/organizer_repository.dart';
 import '../../../data/repositories/payment_repository.dart';
+import '../../widgets/common/glass_app_bar.dart';
+import '../../widgets/common/glass_card.dart';
+import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/premium_button.dart';
+import '../../widgets/common/premium_card.dart';
+import '../../widgets/common/premium_text_field.dart';
 import '../ft_services/ft_service_detail_screen.dart';
 
 class EditEventScreen extends StatefulWidget {
@@ -57,6 +66,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
   String? _rejectionReason;
   bool _loading = false;
   bool _saving = false;
+  bool _uploadingCover = false;
+  bool _submittingForReview = false;
   String? _error;
 
   static const _categories = [
@@ -74,6 +85,32 @@ class _EditEventScreenState extends State<EditEventScreen> {
 
   bool get _isLocked =>
       _status == 'published' || _status == 'live' || _status == 'ended';
+
+  bool get _isFormValid {
+    if (_title.text.trim().isEmpty ||
+        _description.text.trim().isEmpty ||
+        _venueName.text.trim().isEmpty ||
+        _venueAddress.text.trim().isEmpty ||
+        _category?.trim().isNotEmpty != true ||
+        _startsAt == null ||
+        _endsAt == null ||
+        !_endsAt!.isAfter(_startsAt!)) {
+      return false;
+    }
+    if (_tickets.any((ticket) =>
+        ticket.name.text.trim().isEmpty ||
+        num.tryParse(ticket.price.text.trim()) == null ||
+        int.tryParse(ticket.quantity.text.trim()) == null)) {
+      return false;
+    }
+    return _partners.every((partner) {
+      if (partner.name.text.trim().isEmpty) return false;
+      final website = partner.website.text.trim();
+      if (website.isEmpty) return true;
+      final uri = Uri.tryParse(website);
+      return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+    });
+  }
 
   @override
   void initState() {
@@ -161,15 +198,16 @@ class _EditEventScreenState extends State<EditEventScreen> {
     try {
       final file = await _picker.pickImage(source: ImageSource.gallery);
       if (file == null) return;
-      setState(() => _saving = true);
-      _coverUrl = await widget.organizerRepository.uploadEventCover(
+      setState(() => _uploadingCover = true);
+      final coverUrl = await widget.organizerRepository.uploadEventCover(
         await file.readAsBytes(),
         file.name,
       );
+      if (mounted) setState(() => _coverUrl = coverUrl);
     } catch (error) {
       if (mounted) setState(() => _error = 'Cover upload failed: $error');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _uploadingCover = false);
     }
   }
 
@@ -199,6 +237,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   Future<void> _save({required bool submit}) async {
+    if (_saving || _uploadingCover) return;
     if (!_formKey.currentState!.validate()) return;
     if (_startsAt == null || _endsAt == null) {
       setState(() => _error = 'Choose both start and end times.');
@@ -210,6 +249,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
     setState(() {
       _saving = true;
+      _submittingForReview = submit;
       _error = null;
     });
     try {
@@ -217,9 +257,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
         'description': _description.text.trim(),
       };
       if (!_isLocked) {
+        final category = _category?.trim();
+        final normalizedCategory =
+            category?.isNotEmpty == true ? category : _categories.first;
         data.addAll({
           'title': _title.text.trim(),
-          'category': _category,
+          'category': normalizedCategory,
           'image_url': _coverUrl,
           'venue_name': _venueName.text.trim(),
           'address': _venueAddress.text.trim(),
@@ -314,13 +357,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(widget.eventId == null ? 'Create Event' : 'Edit Event'),
+      appBar: GlassAppBar(
+        title: widget.eventId == null ? 'Create Event' : 'Edit Event',
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
           children: [
             if (_status == 'rejected')
               _Notice(
@@ -335,11 +378,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
                     'Published events can only have descriptions and ticket quantities updated.',
               ),
             if (_error != null) _Notice(color: AppColors.error, text: _error!),
+            _sectionHeader('Event details'),
             _field(_title, 'Title', maxLength: 100, enabled: !_isLocked),
             _field(_description, 'Description', maxLength: 2000, maxLines: 5),
             DropdownButtonFormField<String>(
               initialValue: _category,
               decoration: const InputDecoration(labelText: 'Category'),
+              style: const TextStyle(color: AppColors.text),
               items: _categories
                   .map((category) => DropdownMenuItem(
                         value: category,
@@ -351,33 +396,71 @@ class _EditEventScreenState extends State<EditEventScreen> {
                   : (value) => setState(() => _category = value),
               validator: (value) => value == null ? 'Choose a category' : null,
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _saving || _isLocked ? null : _pickCover,
-              icon: const Icon(Icons.image_outlined),
-              label: Text(_coverUrl == null
-                  ? 'Choose cover image'
-                  : 'Replace cover image'),
-            ),
-            if (_coverUrl != null && _coverUrl!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.network(
-                  _coverUrl!,
-                  height: 150,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 150,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                      child:
-                          Icon(Icons.broken_image_outlined, color: Colors.grey),
+            const SizedBox(height: AppSpacing.md),
+            PremiumCard(
+              elevated: true,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedSwitcher(
+                    duration: AppMotion.normal,
+                    child: Text(
+                      _uploadingCover ? 'Uploading cover image' : 'Cover image',
+                      key: ValueKey(_uploadingCover),
+                      style: AppText.h2.copyWith(color: AppColors.text),
                     ),
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (_coverUrl != null && _coverUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        _coverUrl!,
+                        width: double.infinity,
+                        height: 170,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox(
+                          height: 170,
+                          child: Center(
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.textMuted,
+                              size: 36,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(
+                      height: 120,
+                      child: Center(
+                        child: Icon(
+                          Icons.add_photo_alternate_outlined,
+                          color: AppColors.textMuted,
+                          size: 42,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SecondaryButton(
+                    label: _uploadingCover
+                        ? 'Uploading cover...'
+                        : _coverUrl == null
+                            ? 'Choose cover image'
+                            : 'Replace cover image',
+                    icon: Icons.image_outlined,
+                    onPressed: _uploadingCover || _saving || _isLocked
+                        ? null
+                        : _pickCover,
+                  ),
+                ],
               ),
-            ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _sectionHeader('Venue'),
             _field(_venueName, 'Venue name', enabled: !_isLocked),
             _field(_venueAddress, 'Venue address', enabled: !_isLocked),
             Row(
@@ -393,18 +476,25 @@ class _EditEventScreenState extends State<EditEventScreen> {
                         keyboardType: TextInputType.number)),
               ],
             ),
+            _sectionHeader('Schedule'),
             _dateButton('Start', _startsAt, () => _pickDateTime(start: true),
                 enabled: !_isLocked),
             _dateButton('End', _endsAt, () => _pickDateTime(start: false),
                 enabled: !_isLocked),
-            const SizedBox(height: 16),
-            const Text('Ticket types',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            ..._tickets
-                .asMap()
-                .entries
-                .map((entry) => _ticketRow(entry.key, entry.value)),
+            _sectionHeader('Ticket types'),
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _tickets.length,
+              onReorderItem: (oldIndex, newIndex) {
+                setState(() {
+                  final ticket = _tickets.removeAt(oldIndex);
+                  _tickets.insert(newIndex, ticket);
+                });
+              },
+              itemBuilder: (context, index) =>
+                  _ticketRow(index, _tickets[index]),
+            ),
             TextButton.icon(
               onPressed: _isLocked
                   ? null
@@ -412,31 +502,88 @@ class _EditEventScreenState extends State<EditEventScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add ticket type'),
             ),
-            const SizedBox(height: 8),
+            if (widget.eventId != null) ...[
+              _sectionHeader('Menu items'),
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Manage event food and drink items separately.',
+                      style: AppText.body.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    PrimaryButton(
+                      label: 'Manage menu items',
+                      icon: Icons.restaurant_menu_rounded,
+                      onPressed: () => context
+                          .push('/organizer/events/${widget.eventId}/venue'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             _buildFtServicesSection(),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.lg),
             _buildPartnersSection(),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: _saving ? null : () => _save(submit: false),
-              child: _saving
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save as draft'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed:
-                  _saving || _isLocked ? null : () => _save(submit: true),
-              child: const Text('Submit for review'),
-            ),
+            const SizedBox(height: 24),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: GlassContainer(
+            blur: 16,
+            color: AppColors.surface.withValues(alpha: .94),
+            elevated: true,
+            borderRadius: BorderRadius.circular(22),
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Save draft',
+                    isLoading: _saving && !_submittingForReview,
+                    isDisabled: !_isFormValid ||
+                        _uploadingCover ||
+                        _submittingForReview,
+                    onPressed: () => _save(submit: false),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Submit for review',
+                    isLoading: _saving && _submittingForReview,
+                    isDisabled: !_isFormValid ||
+                        _uploadingCover ||
+                        _isLocked ||
+                        (_saving && !_submittingForReview),
+                    onPressed: () => _save(submit: true),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+
+  Widget _sectionHeader(String title) => Padding(
+        padding: const EdgeInsets.only(
+          top: AppSpacing.lg,
+          bottom: AppSpacing.md,
+        ),
+        child: Text(
+          title,
+          style: AppText.h2.copyWith(color: AppColors.text),
+        ),
+      );
 
   Widget _field(
     TextEditingController controller,
@@ -447,17 +594,18 @@ class _EditEventScreenState extends State<EditEventScreen> {
     TextInputType? keyboardType,
   }) =>
       Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: TextFormField(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: PremiumTextField(
+          label: label,
           controller: controller,
           enabled: enabled,
           maxLines: maxLines,
           maxLength: maxLength,
           keyboardType: keyboardType,
-          decoration: InputDecoration(labelText: label),
           validator: (value) => value == null || value.trim().isEmpty
               ? '$label is required'
               : null,
+          onChanged: (_) => setState(() {}),
         ),
       );
 
@@ -473,63 +621,90 @@ class _EditEventScreenState extends State<EditEventScreen> {
         ),
       );
 
-  Widget _ticketRow(int index, _TicketDraft ticket) => Card(
-        color: AppColors.surface,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                  child: TextFormField(
-                controller: ticket.name,
-                enabled: !_isLocked,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Required' : null,
-              )),
-              const SizedBox(width: 8),
-              SizedBox(
-                  width: 82,
-                  child: TextFormField(
-                    controller: ticket.price,
-                    enabled: !_isLocked,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Price'),
-                    validator: (value) =>
-                        num.tryParse(value ?? '') == null ? 'Invalid' : null,
-                  )),
-              const SizedBox(width: 8),
-              SizedBox(
-                  width: 82,
-                  child: TextFormField(
-                    controller: ticket.quantity,
-                    enabled: !_isLocked,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Qty'),
-                    validator: (value) =>
-                        int.tryParse(value ?? '') == null ? 'Invalid' : null,
-                  )),
-              IconButton(
-                onPressed: _tickets.length == 1 || _isLocked
-                    ? null
-                    : () => setState(() {
-                          final removed = _tickets.removeAt(index);
-                          removed.dispose();
-                        }),
-                icon: const Icon(Icons.delete_outline),
+  Widget _ticketRow(int index, _TicketDraft ticket) => PremiumCard(
+        key: ObjectKey(ticket),
+        elevated: true,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.only(top: 30, right: AppSpacing.sm),
+                child: Icon(Icons.drag_handle_rounded),
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  PremiumTextField(
+                    label: 'Ticket name',
+                    controller: ticket.name,
+                    enabled: !_isLocked,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Ticket name is required'
+                        : null,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: PremiumTextField(
+                          label: 'Price',
+                          controller: ticket.price,
+                          enabled: !_isLocked,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: (value) =>
+                              num.tryParse(value?.trim() ?? '') == null
+                                  ? 'Enter a price'
+                                  : null,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: PremiumTextField(
+                          label: 'Quantity',
+                          controller: ticket.quantity,
+                          enabled: !_isLocked,
+                          keyboardType: TextInputType.number,
+                          validator: (value) =>
+                              int.tryParse(value?.trim() ?? '') == null
+                                  ? 'Enter a quantity'
+                                  : null,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Remove ticket type',
+              onPressed: _tickets.length == 1 || _isLocked
+                  ? null
+                  : () => setState(() {
+                        final removed = _tickets.removeAt(index);
+                        removed.dispose();
+                      }),
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
         ),
       );
 
   Widget _buildFtServicesSection() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Future Times Services (optional)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: AppText.h2.copyWith(color: AppColors.text),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -636,9 +811,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
             ),
           if (_serviceBookings.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Booked services',
-              style: TextStyle(fontWeight: FontWeight.w800),
+              style: AppText.h2.copyWith(color: AppColors.text),
             ),
             ..._serviceBookings.map(_bookedServiceTile),
           ],
@@ -779,9 +954,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
   Widget _buildPartnersSection() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Partners (optional)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: AppText.h2.copyWith(color: AppColors.text),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -802,127 +977,119 @@ class _EditEventScreenState extends State<EditEventScreen> {
             },
             itemBuilder: (context, index) {
               final partner = _partners[index];
-              return Card(
+              return PremiumCard(
                 key: ObjectKey(partner),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.drag_handle),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextFormField(
-                              controller: partner.name,
-                              onChanged: (_) => _partnersChanged = true,
-                              enabled: !_isLocked,
-                              decoration: const InputDecoration(
-                                labelText: 'Partner name',
-                              ),
-                              validator: (value) =>
-                                  value == null || value.trim().isEmpty
-                                      ? 'Partner name is required'
-                                      : null,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: AppSpacing.sm),
+                            child: Icon(Icons.drag_handle_rounded),
+                          ),
+                        ),
+                        Expanded(
+                          child: PremiumTextField(
+                            label: 'Partner name',
+                            controller: partner.name,
+                            enabled: !_isLocked,
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                    ? 'Partner name is required'
+                                    : null,
+                            onChanged: (_) => setState(() {
+                              _partnersChanged = true;
+                            }),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove partner',
+                          onPressed: _isLocked
+                              ? null
+                              : () => setState(() {
+                                    _partners.removeAt(index).dispose();
+                                    _partnersChanged = true;
+                                  }),
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                    PremiumTextField(
+                      label: 'Website URL (optional)',
+                      controller: partner.website,
+                      enabled: !_isLocked,
+                      keyboardType: TextInputType.url,
+                      validator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return null;
+                        final uri = Uri.tryParse(text);
+                        return uri == null || !uri.hasScheme || uri.host.isEmpty
+                            ? 'Enter a valid URL'
+                            : null;
+                      },
+                      onChanged: (_) => setState(() {
+                        _partnersChanged = true;
+                      }),
+                    ),
+                    DropdownButton<String>(
+                      value: partner.tier,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'partner',
+                          child: Text('Partner'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'featured_partner',
+                          child: Text('Featured Partner'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'official_partner',
+                          child: Text('Official Partner'),
+                        ),
+                      ],
+                      onChanged: _isLocked
+                          ? null
+                          : (value) => setState(() {
+                                partner.tier = value ?? 'partner';
+                                _partnersChanged = true;
+                              }),
+                    ),
+                    Row(
+                      children: [
+                        if (partner.logoBytes != null)
+                          ClipOval(
+                            child: Image.memory(
+                              partner.logoBytes!,
+                              width: 42,
+                              height: 42,
+                              fit: BoxFit.cover,
                             ),
+                          )
+                        else if (partner.logoUrl != null &&
+                            partner.logoUrl!.isNotEmpty)
+                          CircleAvatar(
+                            radius: 21,
+                            backgroundImage: NetworkImage(partner.logoUrl!),
+                          )
+                        else
+                          const CircleAvatar(
+                            radius: 21,
+                            child: Icon(Icons.business_outlined),
                           ),
-                          IconButton(
-                            tooltip: 'Remove partner',
-                            onPressed: _isLocked
-                                ? null
-                                : () => setState(() {
-                                      _partners.removeAt(index).dispose();
-                                      _partnersChanged = true;
-                                    }),
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: partner.website,
-                              onChanged: (_) => _partnersChanged = true,
-                              enabled: !_isLocked,
-                              keyboardType: TextInputType.url,
-                              decoration: const InputDecoration(
-                                labelText: 'Website URL (optional)',
-                              ),
-                              validator: (value) {
-                                final text = value?.trim() ?? '';
-                                if (text.isEmpty) return null;
-                                final uri = Uri.tryParse(text);
-                                return uri == null ||
-                                        !uri.hasScheme ||
-                                        uri.host.isEmpty
-                                    ? 'Enter a valid URL'
-                                    : null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          DropdownButton<String>(
-                            value: partner.tier,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'partner',
-                                child: Text('Partner'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'featured_partner',
-                                child: Text('Featured Partner'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'official_partner',
-                                child: Text('Official Partner'),
-                              ),
-                            ],
-                            onChanged: _isLocked
-                                ? null
-                                : (value) => setState(
-                                      () {
-                                        partner.tier = value ?? 'partner';
-                                        _partnersChanged = true;
-                                      },
-                                    ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          if (partner.logoBytes != null)
-                            ClipOval(
-                              child: Image.memory(
-                                partner.logoBytes!,
-                                width: 42,
-                                height: 42,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          else if (partner.logoUrl != null &&
-                              partner.logoUrl!.isNotEmpty)
-                            CircleAvatar(
-                              radius: 21,
-                              backgroundImage: NetworkImage(partner.logoUrl!),
-                            )
-                          else
-                            const CircleAvatar(
-                              radius: 21,
-                              child: Icon(Icons.business_outlined),
-                            ),
-                          const SizedBox(width: 8),
-                          TextButton.icon(
-                            onPressed: _isLocked
-                                ? null
-                                : () => _pickPartnerLogo(partner),
-                            icon: const Icon(Icons.upload_outlined),
-                            label: const Text('Upload logo'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: AppSpacing.sm),
+                        TextButton.icon(
+                          onPressed: _isLocked
+                              ? null
+                              : () => _pickPartnerLogo(partner),
+                          icon: const Icon(Icons.upload_outlined),
+                          label: const Text('Upload logo'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },

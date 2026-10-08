@@ -230,24 +230,28 @@ class TicketRepository {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('[tickets] validate RPC fallback: $e');
-      if (eventId != null) {
-        throw const DataFailure(
-          'Could not validate this ticket for the selected event. Try again or contact support.',
-        );
-      }
+      // Keep scanning working even if the event-scoped RPC is unavailable or
+      // the selected event does not yet have the matching database signature.
     }
 
     // 2. Direct table fallback for verification
     try {
-      var query = _client.from('tickets').select(
-          'id, ticket_number, status, attendee_name, checked_in_at, event_id');
-      if (eventId != null) query = query.eq('event_id', eventId);
-      final row = await query
+      final row = await _client
+          .from('tickets')
+          .select('id, ticket_number, status, attendee_name, checked_in_at, event_id')
           .or('qr_code.eq.$clean,ticket_number.eq.$clean,id.eq.$clean')
           .maybeSingle();
 
       if (row == null) {
         return {'valid': false, 'message': 'Ticket not found.'};
+      }
+
+      if (eventId != null && row['event_id']?.toString() != eventId) {
+        return {
+          'valid': false,
+          'error': 'wrong_event',
+          'message': 'This ticket is for a different event.',
+        };
       }
 
       final status = row['status']?.toString();
@@ -260,6 +264,8 @@ class TicketRepository {
           'already_checked_in': true,
           'message':
               'Ticket was already checked in at ${row['checked_in_at']}.',
+          'ticket_number': row['ticket_number']?.toString(),
+          'attendee_name': row['attendee_name']?.toString(),
         };
       }
 
