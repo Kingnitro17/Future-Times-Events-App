@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Top-level background notification message handler
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (kIsWeb) return;
+
   try {
     await Firebase.initializeApp();
     if (kDebugMode) {
@@ -24,7 +26,7 @@ class FCMService {
   FCMService._internal();
   static final FCMService _instance = FCMService._internal();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -39,11 +41,22 @@ class FCMService {
 
   /// Initializes FCM permissions, local notification channels, and token listeners.
   Future<void> initialize() async {
-    if (_initialized) return;
+    // Web push needs Firebase web options, a messaging worker, and VAPID setup.
+    // Notifications are optional; only the configured mobile platforms use FCM.
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS) ||
+        _initialized) {
+      return;
+    }
 
     try {
+      await Firebase.initializeApp();
+      final fcm = FirebaseMessaging.instance;
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
       // 1. Request Notification Permissions
-      final settings = await _fcm.requestPermission(
+      final settings = await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -59,15 +72,15 @@ class FCMService {
       await _setupLocalNotifications();
 
       // 3. Obtain & Save FCM Token
-      final token = await _fcm.getToken();
+      final token = await fcm.getToken();
       if (token != null) {
-        if (kDebugMode) debugPrint('[FCM] Token obtained: $token');
+        if (kDebugMode) debugPrint('[FCM] Token obtained.');
         await syncTokenToSupabase(token);
       }
 
       // Listen for Token Refreshes
-      _fcm.onTokenRefresh.listen((newToken) async {
-        if (kDebugMode) debugPrint('[FCM] Token refreshed: $newToken');
+      fcm.onTokenRefresh.listen((newToken) async {
+        if (kDebugMode) debugPrint('[FCM] Token refreshed.');
         await syncTokenToSupabase(newToken);
       });
 
@@ -89,7 +102,7 @@ class FCMService {
       });
 
       // 6. Terminated state launch
-      final initialMessage = await _fcm.getInitialMessage();
+      final initialMessage = await fcm.getInitialMessage();
       if (initialMessage != null) {
         if (kDebugMode) {
           debugPrint(
@@ -97,17 +110,21 @@ class FCMService {
         }
       }
 
+      _fcm = fcm;
       _initialized = true;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[FCM] Service initialization warning/error: $e');
+        debugPrint('[FCM] Notifications unavailable; continuing app startup.');
       }
     }
   }
 
   Future<void> syncCurrentTokenToSupabase() async {
+    final fcm = _fcm;
+    if (kIsWeb || !_initialized || fcm == null) return;
+
     try {
-      final token = await _fcm.getToken();
+      final token = await fcm.getToken();
       if (token != null) await syncTokenToSupabase(token);
     } catch (e) {
       if (kDebugMode) {
